@@ -110,13 +110,16 @@ export async function getOverviewMetrics(
       const prior = priorRes.rows[0];
       const clicks = current?.clicks ?? 0;
       const impressions = current?.impressions ?? 0;
+      const position = current?.position ?? undefined;
       const priorClicks = prior?.clicks ?? 0;
       const priorImpressions = prior?.impressions ?? 0;
+      const priorPosition = prior?.position ?? undefined;
       const daily = (dailyRes.rows ?? [])
         .map((r) => ({
           date: r.keys[0] ?? "",
           clicks: r.clicks,
           impressions: r.impressions,
+          position: r.position,
         }))
         .sort((a, b) => a.date.localeCompare(b.date));
       result.push({
@@ -125,6 +128,11 @@ export async function getOverviewMetrics(
         impressions,
         clicksChangePercent: priorClicks > 0 ? Math.round(((clicks - priorClicks) / priorClicks) * 100) : 0,
         impressionsChangePercent: priorImpressions > 0 ? Math.round(((impressions - priorImpressions) / priorImpressions) * 100) : 0,
+        position,
+        positionChangePercent:
+          position != null && priorPosition != null && priorPosition > 0
+            ? Math.round(((position - priorPosition) / priorPosition) * 100)
+            : undefined,
         daily,
       });
     } catch {
@@ -134,6 +142,8 @@ export async function getOverviewMetrics(
         impressions: 0,
         clicksChangePercent: 0,
         impressionsChangePercent: 0,
+        position: undefined,
+        positionChangePercent: undefined,
         daily: [],
       });
     }

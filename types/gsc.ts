@@ -28,7 +28,9 @@ export interface SiteOverviewMetrics {
   impressions: number;
   clicksChangePercent: number;
   impressionsChangePercent: number;
-  daily: { date: string; clicks: number; impressions: number }[];
+  position?: number;
+  positionChangePercent?: number;
+  daily: { date: string; clicks: number; impressions: number; position?: number }[];
 }
 
 /** Drill-down: summary + daily + dimension tables with prior-period change */

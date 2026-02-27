@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SiteOverviewMetrics } from "@/types/gsc";
 import { encodePropertyId } from "@/types/gsc";
@@ -92,51 +92,96 @@ const PositionIcon = ({ className }: { className?: string }) => (
 function CardMetricsRow({ metrics }: { metrics: SiteOverviewMetrics }) {
   const { series } = useSparkSeries();
   const ctrPct = metrics.impressions > 0 ? (metrics.clicks / metrics.impressions) * 100 : 0;
+  const position = metrics.position;
+  const positionChange = metrics.positionChangePercent;
 
   const cellClass = "min-w-0 flex flex-col items-center text-center gap-0.5";
   const valueClass = "text-sm font-semibold tabular-nums text-foreground truncate w-full";
   const labelClass = "text-[10px] text-muted-foreground uppercase tracking-wide";
 
+  const cells: { key: "clicks" | "impressions" | "ctr" | "position"; label: string; content: ReactNode }[] = [];
+  if (series.clicks) {
+    cells.push({
+      key: "clicks",
+      label: "Clicks",
+      content: (
+        <>
+          <div className="flex items-center justify-center gap-1">
+            <SparkleIcon className="text-muted-foreground size-3" />
+            <span className={valueClass}>{formatNum(metrics.clicks)}</span>
+          </div>
+          <div className="min-h-[1rem] flex items-center justify-center">
+            <ChangeBadge value={metrics.clicksChangePercent} size="xs" />
+          </div>
+        </>
+      ),
+    });
+  }
+  if (series.impressions) {
+    cells.push({
+      key: "impressions",
+      label: "Impr.",
+      content: (
+        <>
+          <div className="flex items-center justify-center gap-1">
+            <EyeIcon className="text-muted-foreground size-3" />
+            <span className={valueClass}>{formatNum(metrics.impressions)}</span>
+          </div>
+          <div className="min-h-[1rem] flex items-center justify-center">
+            <ChangeBadge value={metrics.impressionsChangePercent} size="xs" />
+          </div>
+        </>
+      ),
+    });
+  }
+  if (series.ctr) {
+    cells.push({
+      key: "ctr",
+      label: "CTR",
+      content: (
+        <>
+          <div className="flex items-center justify-center gap-1">
+            <CTRIcon className="text-muted-foreground" />
+            <span className={valueClass}>{ctrPct.toFixed(2)}%</span>
+          </div>
+          <div className="min-h-[1rem]" />
+        </>
+      ),
+    });
+  }
+  if (series.position) {
+    cells.push({
+      key: "position",
+      label: "Pos.",
+      content: (
+        <>
+          <div className="flex items-center justify-center gap-1">
+            <PositionIcon className="text-muted-foreground" />
+            <span className={valueClass}>
+              {position != null ? position.toFixed(1) : "—"}
+            </span>
+          </div>
+          <div className="min-h-[1rem] flex items-center justify-center">
+            {positionChange != null && <ChangeBadge value={positionChange} size="xs" />}
+          </div>
+        </>
+      ),
+    });
+  }
+
+  if (cells.length === 0) return null;
+
   return (
-    <div className="grid grid-cols-4 gap-2 mb-4">
-      <div className={cellClass}>
-        <div className="flex items-center justify-center gap-1">
-          <SparkleIcon className="text-muted-foreground size-3" />
-          <span className={valueClass}>{formatNum(metrics.clicks)}</span>
+    <div
+      className="grid gap-2 mb-4"
+      style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }}
+    >
+      {cells.map(({ key, label, content }) => (
+        <div key={key} className={cellClass}>
+          {content}
+          <span className={labelClass}>{label}</span>
         </div>
-        <div className="min-h-[1rem] flex items-center justify-center">
-          <ChangeBadge value={metrics.clicksChangePercent} size="xs" />
-        </div>
-        <span className={labelClass}>Clicks</span>
-      </div>
-      <div className={cellClass}>
-        <div className="flex items-center justify-center gap-1">
-          <EyeIcon className="text-muted-foreground size-3" />
-          <span className={valueClass}>{formatNum(metrics.impressions)}</span>
-        </div>
-        <div className="min-h-[1rem] flex items-center justify-center">
-          <ChangeBadge value={metrics.impressionsChangePercent} size="xs" />
-        </div>
-        <span className={labelClass}>Impr.</span>
-      </div>
-      <div className={cellClass}>
-        <div className="flex items-center justify-center gap-1">
-          <CTRIcon className="text-muted-foreground" />
-          <span className={valueClass}>
-            {series.ctr ? `${ctrPct.toFixed(2)}%` : "—"}
-          </span>
-        </div>
-        <div className="min-h-[1rem]" />
-        <span className={labelClass}>CTR</span>
-      </div>
-      <div className={cellClass}>
-        <div className="flex items-center justify-center gap-1">
-          <PositionIcon className="text-muted-foreground" />
-          <span className={valueClass}>—</span>
-        </div>
-        <div className="min-h-[1rem]" />
-        <span className={labelClass}>Pos.</span>
-      </div>
+      ))}
     </div>
   );
 }

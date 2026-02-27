@@ -6,27 +6,17 @@ Minimal Google Search Console dashboard: overview grid (all sites) and drill-dow
 
 - **Overview**: Grid of site cards (3 columns), each with clicks, impressions, % change, and sparkline. Date range selector (7d / 28d / 3m / 6m) and optional search.
 - **Drill-down**: Per-site summary metrics, trend chart, and tables for Queries, Pages, Countries, Devices with All / Growing / Decaying filters; Branded vs non-branded breakdown.
-- **API**: Stub data only. Wire GSC by adding credentials and replacing `lib/gsc.ts` with real `sites.list` and `searchanalytics.query` calls.
+- **GSC**: Uses real Search Console API when `GOOGLE_REFRESH_TOKEN` is set; otherwise shows stub data.
 
 ## Setup
 
-```bash
-npm install
-cp .env.example .env.local
-# Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI when ready
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
+1. **Env**: Copy `.env.example` to `.env.local`. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (e.g. `https://consoleviewer.vercel.app/api/auth/callback/google`).
+2. **Refresh token**: Visit `/api/auth/google`, sign in with the Google account that has Search Console access. On the callback page, copy the refresh token and add it as `GOOGLE_REFRESH_TOKEN` in Vercel (or `.env.local` for local). Redeploy if on Vercel.
+3. Run `npm run dev` and open [http://localhost:3000](http://localhost:3000).
 
 ## Deploy on Vercel
 
-1. Push to GitHub and import the project in [Vercel](https://vercel.com).
-2. Add environment variables in the Vercel dashboard (same as `.env.example`).
-3. In Google Cloud Console, add your production URL to OAuth redirect URIs (e.g. `https://your-app.vercel.app/api/auth/callback/google`).
-
-## GSC API (when ready)
-
-- Enable [Search Console API](https://console.cloud.google.com/apis/library/webmasters.googleapis.com) and create OAuth 2.0 credentials.
-- Scope: `https://www.googleapis.com/auth/webmasters.readonly`.
-- Implement OAuth callback in `app/api/auth/[...nextauth]/route.ts` (or use NextAuth) and use the token in `lib/gsc.ts` to call `sites.list` and `searchanalytics.query`.
+1. Import the project from GitHub in [Vercel](https://vercel.com).
+2. Add env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (your production callback URL).
+3. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), add the callback URL to the OAuth 2.0 client’s authorized redirect URIs.
+4. After first deploy, visit `https://your-app.vercel.app/api/auth/google`, sign in, then add the shown refresh token as `GOOGLE_REFRESH_TOKEN` in Vercel and redeploy.

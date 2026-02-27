@@ -28,6 +28,18 @@ export function Header({
             placeholder="Q Search"
           />
         )}
+        <a
+          href="/api/auth/google"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          Sign in
+        </a>
+        <a
+          href="/api/auth/app-logout"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          Log out
+        </a>
         <DateRangeSelect />
       </div>
     </header>

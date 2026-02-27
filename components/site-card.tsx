@@ -52,6 +52,7 @@ function getRecentDaySummary(daily: { date: string; clicks: number; impressions:
 }
 
 const Favicon = ({ domain, className }: { domain: string; className?: string }) => (
+  // eslint-disable-next-line @next/next/no-img-element -- external favicon URL, dynamic domain
   <img
     src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
     alt=""
@@ -238,7 +239,7 @@ export function SiteCard({ metrics }: SiteCardProps) {
       {/* Recent day summary: "Sunday • 53 (-11) clicks • 1652 (+211) impressions" */}
       {recent && (
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-          <p className="text-xs text-muted-foreground truncate min-w-0">
+          <p className="text-xs text-muted-foreground min-w-0 break-words">
             <span className="font-medium text-foreground">{recent.dayName}</span>
             {" • "}
             <span className="text-foreground">{recent.latest.clicks}</span>

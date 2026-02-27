@@ -5,6 +5,8 @@ export const DATE_RANGE_OPTIONS: { value: DateRangeKey; label: string }[] = [
   { value: "28d", label: "28 days" },
   { value: "3m", label: "3 months" },
   { value: "6m", label: "6 months" },
+  { value: "12m", label: "12 months" },
+  { value: "16m", label: "16 months" },
 ];
 
 function daysForRange(key: DateRangeKey): number {
@@ -17,6 +19,10 @@ function daysForRange(key: DateRangeKey): number {
       return 90;
     case "6m":
       return 180;
+    case "12m":
+      return 365;
+    case "16m":
+      return 487; // ~16 months
     default:
       return 28;
   }

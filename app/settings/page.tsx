@@ -13,7 +13,7 @@ function displayUrl(siteUrl: string): string {
 
 export default function SettingsPage() {
   const { hiddenSet, unhide } = useHiddenProjects();
-  const hiddenList = [...hiddenSet];
+  const hiddenList = Array.from(hiddenSet);
 
   return (
     <div className="min-h-screen flex flex-col">

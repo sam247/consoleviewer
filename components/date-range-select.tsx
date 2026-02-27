@@ -50,7 +50,11 @@ export function DateRangeSelect() {
           role="listbox"
         >
           {DATE_RANGE_OPTIONS.map((opt) => (
-            <li key={opt.value} role="option">
+            <li
+              key={opt.value}
+              role="option"
+              aria-selected={rangeKey === opt.value}
+            >
               <button
                 type="button"
                 onClick={() => handleSelect(opt.value)}

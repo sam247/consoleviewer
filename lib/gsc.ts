@@ -38,10 +38,10 @@ export async function querySearchAnalytics(
 
 /** Overview metrics for all sites (aggregate + daily for sparklines). Stub. */
 export async function getOverviewMetrics(
-  startDate: string,
-  endDate: string,
-  priorStartDate: string,
-  priorEndDate: string
+  _startDate: string,
+  _endDate: string,
+  _priorStartDate: string,
+  _priorEndDate: string
 ): Promise<SiteOverviewMetrics[]> {
   const sites = await listSites();
   return sites.map((site, i) => {
@@ -105,11 +105,10 @@ function mockDimensionRows(
   baseClicks: number,
   baseImpressions: number
 ): { key: string; clicks: number; impressions: number; changePercent: number }[] {
-  return keys.map((key, i) => {
+  return keys.map((key) => {
     const clicks = Math.floor(baseClicks / keys.length + (Math.random() - 0.3) * 200);
     const impressions = Math.floor(baseImpressions / keys.length + (Math.random() - 0.3) * 2000);
     const priorClicks = Math.floor(clicks * (0.4 + Math.random() * 0.6));
-    const priorImpressions = Math.floor(impressions * (0.4 + Math.random() * 0.6));
     const changePercent =
       priorClicks > 0 ? Math.round(((clicks - priorClicks) / priorClicks) * 100) : 0;
     return {
@@ -124,10 +123,10 @@ function mockDimensionRows(
 /** Full drill-down data for one site. Stub. */
 export async function getSiteDetail(
   siteUrl: string,
-  startDate: string,
-  endDate: string,
-  priorStartDate: string,
-  priorEndDate: string
+  _startDate: string,
+  _endDate: string,
+  _priorStartDate: string,
+  _priorEndDate: string
 ): Promise<SiteDetailData> {
   const clicks = 1800 + Math.floor(Math.random() * 800);
   const impressions = 650000 + Math.floor(Math.random() * 100000);

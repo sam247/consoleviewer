@@ -68,8 +68,10 @@ export function TrendChart({
           <Tooltip
             contentStyle={{
               fontSize: 12,
+              padding: "8px 12px",
               background: "var(--surface)",
               border: "1px solid var(--border)",
+              borderRadius: 6,
             }}
             labelFormatter={(v) => new Date(v).toLocaleDateString()}
           />
@@ -77,7 +79,7 @@ export function TrendChart({
             type="monotone"
             dataKey="clicks"
             stroke={CHART_CLICKS}
-            strokeWidth={1.5}
+            strokeWidth={2.5}
             dot={false}
           />
           {showImpressions && (
@@ -85,10 +87,10 @@ export function TrendChart({
               type="monotone"
               dataKey="impressions"
               stroke={CHART_IMPRESSIONS}
-              strokeWidth={1.5}
+              strokeWidth={1}
               dot={false}
               strokeDasharray="3 3"
-              strokeOpacity={0.85}
+              strokeOpacity={0.65}
             />
           )}
         </LineChart>
@@ -103,6 +105,63 @@ function normalizeSeries(values: number[]): number[] {
   const max = Math.max(...values);
   const range = max - min || 1;
   return values.map((v) => (v - min) / range);
+}
+
+const SERIES_LABELS: Record<SparkSeriesKey, string> = {
+  clicks: "Clicks",
+  impressions: "Impressions",
+  ctr: "CTR",
+  position: "Avg position",
+};
+
+function formatTooltipValue(key: SparkSeriesKey, value: number): string {
+  if (key === "ctr") return `${value.toFixed(2)}%`;
+  if (key === "position") return value.toFixed(1);
+  if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+  if (value >= 1e3) return `${(value / 1e3).toFixed(1)}k`;
+  return String(value);
+}
+
+function SparklineTooltip({
+  active,
+  payload,
+  label,
+  data,
+  visible,
+}: {
+  active?: boolean;
+  payload?: { dataKey: string }[];
+  label?: string;
+  data: SparklineDataPoint[];
+  visible: typeof SERIES_CONFIG;
+}) {
+  if (!active || !label || !payload?.length) return null;
+  const raw = data.find((d) => d.date === label);
+  if (!raw) return null;
+  const dateStr = new Date(label).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+  return (
+    <div
+      className="rounded-md border border-border bg-surface px-3 py-2 text-xs shadow-sm"
+      style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+    >
+      <div className="font-medium text-foreground mb-1.5">{dateStr}</div>
+      <div className="flex flex-col gap-0.5 text-muted-foreground">
+        {visible.map((s) => {
+          const v = raw[s.dataKey];
+          if (v == null) return null;
+          return (
+            <span key={s.key} className="tabular-nums">
+              {SERIES_LABELS[s.key]}: {formatTooltipValue(s.key, v as number)}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 /** Compact sparkline: each enabled metric normalized to its own scale so all are visible in different colours (SEO Gets style) */
@@ -126,18 +185,26 @@ export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
   });
 
   return (
-    <div className="h-14 w-full">
+    <div className="h-14 w-full min-w-0">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={normalizedData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-          <YAxis hide domain={[0, 1]} />
-          {visible.map((s, i) => (
+        <LineChart
+          data={normalizedData}
+          margin={{ top: 4, right: 4, left: 4, bottom: 4 }}
+        >
+          <YAxis hide domain={[0, 1]} allowDataOverflow />
+          <Tooltip
+            content={(props) => (
+              <SparklineTooltip {...props} data={data} visible={visible} />
+            )}
+          />
+          {visible.map((s) => (
             <Line
               key={s.key}
               type="monotone"
               dataKey={`_norm_${s.key}`}
               stroke={s.stroke}
-              strokeWidth={i === 0 ? 2.5 : 1.5}
-              strokeOpacity={i === 0 ? 1 : 0.7}
+              strokeWidth={1.5}
+              strokeOpacity={0.9}
               dot={false}
             />
           ))}

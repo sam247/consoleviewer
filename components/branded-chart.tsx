@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+
 interface BrandedChartProps {
   brandedClicks: number;
   nonBrandedClicks: number;
@@ -24,10 +26,8 @@ export function BrandedChart({
   const brandedPct = total > 0 ? (brandedClicks / total) * 100 : 0;
 
   return (
-    <div
-      className={`rounded-lg border border-border bg-background p-4 ${className ?? ""}`}
-    >
-      <div className="mb-2 font-medium text-sm text-foreground">
+    <div className={cn(className)}>
+      <div className="mb-2 font-semibold text-sm text-foreground">
         Branded vs non‑branded
       </div>
       <div className="flex flex-wrap gap-4 text-sm">
@@ -36,11 +36,10 @@ export function BrandedChart({
           <span className="font-medium">{formatNum(brandedClicks)}</span>
           {brandedChangePercent != null && (
             <span
-              className={
-                brandedChangePercent >= 0
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-red-600 dark:text-red-400"
-              }
+              className={cn(
+                "tabular-nums",
+                brandedChangePercent >= 0 ? "text-positive" : "text-negative"
+              )}
             >
               {brandedChangePercent >= 0 ? "+" : ""}
               {brandedChangePercent}%
@@ -52,11 +51,10 @@ export function BrandedChart({
           <span className="font-medium">{formatNum(nonBrandedClicks)}</span>
           {nonBrandedChangePercent != null && (
             <span
-              className={
-                nonBrandedChangePercent >= 0
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-red-600 dark:text-red-400"
-              }
+              className={cn(
+                "tabular-nums",
+                nonBrandedChangePercent >= 0 ? "text-positive" : "text-negative"
+              )}
             >
               {nonBrandedChangePercent >= 0 ? "+" : ""}
               {nonBrandedChangePercent}%

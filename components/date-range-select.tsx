@@ -36,7 +36,7 @@ export function DateRangeSelect() {
         onClick={() => setOpen((o) => !o)}
         className={cn(
           "flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm",
-          "hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
+          "hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
         )}
       >
         {label}

@@ -23,6 +23,9 @@ interface TrendChartProps {
   className?: string;
 }
 
+const CHART_CLICKS = "var(--chart-clicks)";
+const CHART_IMPRESSIONS = "var(--chart-impressions)";
+
 export function TrendChart({
   data,
   height = 80,
@@ -47,7 +50,7 @@ export function TrendChart({
           <Tooltip
             contentStyle={{
               fontSize: 12,
-              background: "var(--background)",
+              background: "var(--surface)",
               border: "1px solid var(--border)",
             }}
             labelFormatter={(v) => new Date(v).toLocaleDateString()}
@@ -55,7 +58,7 @@ export function TrendChart({
           <Line
             type="monotone"
             dataKey="clicks"
-            stroke="hsl(217 91% 60%)"
+            stroke={CHART_CLICKS}
             strokeWidth={1.5}
             dot={false}
           />
@@ -63,10 +66,11 @@ export function TrendChart({
             <Line
               type="monotone"
               dataKey="impressions"
-              stroke="hsl(271 81% 56%)"
+              stroke={CHART_IMPRESSIONS}
               strokeWidth={1.5}
               dot={false}
               strokeDasharray="3 3"
+              strokeOpacity={0.85}
             />
           )}
         </LineChart>
@@ -80,23 +84,24 @@ export function Sparkline({ data }: { data: DataPoint[] }) {
   if (!data?.length) return null;
 
   return (
-    <div className="h-12 w-full">
+    <div className="h-14 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
           <Line
             type="monotone"
             dataKey="clicks"
-            stroke="hsl(217 91% 60%)"
-            strokeWidth={1}
+            stroke={CHART_CLICKS}
+            strokeWidth={1.5}
             dot={false}
           />
           <Line
             type="monotone"
             dataKey="impressions"
-            stroke="hsl(271 81% 56%)"
+            stroke={CHART_IMPRESSIONS}
             strokeWidth={1}
             dot={false}
             strokeDasharray="2 2"
+            strokeOpacity={0.6}
           />
         </LineChart>
       </ResponsiveContainer>

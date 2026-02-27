@@ -57,41 +57,55 @@ export function SiteCard({ metrics }: SiteCardProps) {
     <Link
       href={href}
       onMouseEnter={prefetchDetail}
+      title={metrics.siteUrl}
       className={cn(
-        "block rounded-lg border border-[var(--border)] bg-[var(--background)] p-4",
-        "hover:border-[var(--foreground)]/20 hover:bg-[var(--accent)] transition-colors"
+        "block rounded-lg border border-border bg-surface p-5 transition-all duration-150 cursor-pointer",
+        "hover:border-foreground/20 hover:shadow-sm hover:-translate-y-0.5",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       )}
     >
-      <div className="mb-2 font-medium text-[var(--foreground)] truncate">
+      <div
+        className="mb-4 font-medium text-foreground truncate text-sm"
+        title={metrics.siteUrl}
+      >
         {displayUrl(metrics.siteUrl)}
       </div>
-      <div className="flex items-baseline gap-3 text-sm">
-        <span className="flex items-center gap-1">
-          <span className="text-[var(--muted-foreground)]">Clicks</span>
-          <span className="font-medium">{formatNum(metrics.clicks)}</span>
-          <ChangeBadge value={metrics.clicksChangePercent} />
+      <div className="flex items-baseline justify-between gap-2 mb-1">
+        <span className="text-2xl font-semibold tabular-nums text-foreground">
+          {formatNum(metrics.clicks)}
         </span>
-        <span className="flex items-center gap-1">
-          <span className="text-[var(--muted-foreground)]">Impressions</span>
-          <span className="font-medium">{formatNum(metrics.impressions)}</span>
-          <ChangeBadge value={metrics.impressionsChangePercent} />
-        </span>
+        <ChangeBadge value={metrics.clicksChangePercent} size="sm" />
       </div>
-      <div className="mt-3">
+      <p className="text-xs text-muted-foreground mb-3">Clicks</p>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-sm font-medium tabular-nums text-foreground">
+          {formatNum(metrics.impressions)}
+        </span>
+        <ChangeBadge value={metrics.impressionsChangePercent} size="xs" />
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">Impressions</p>
+      <div className="pt-1">
         <Sparkline data={metrics.daily} />
       </div>
     </Link>
   );
 }
 
-function ChangeBadge({ value }: { value: number }) {
+function ChangeBadge({
+  value,
+  size = "sm",
+}: {
+  value: number;
+  size?: "xs" | "sm";
+}) {
   if (value === 0) return null;
   const positive = value > 0;
   return (
     <span
       className={cn(
-        "text-xs",
-        positive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+        size === "xs" ? "text-xs" : "text-sm",
+        "text-right tabular-nums",
+        positive ? "text-positive" : "text-negative"
       )}
     >
       {positive ? "+" : ""}{value}%

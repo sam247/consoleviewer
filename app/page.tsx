@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
 import { SiteCard } from "@/components/site-card";
 import { SiteCardSkeleton } from "@/components/site-card-skeleton";
+import { SortSelect, type SortKey } from "@/components/sort-select";
 import { useDateRange } from "@/contexts/date-range-context";
 import type { SiteOverviewMetrics } from "@/types/gsc";
 
@@ -25,8 +26,25 @@ async function fetchOverview(
   return res.json();
 }
 
+function sortMetrics(metrics: SiteOverviewMetrics[], sortBy: SortKey): SiteOverviewMetrics[] {
+  const arr = [...metrics];
+  switch (sortBy) {
+    case "clicks":
+      return arr.sort((a, b) => b.clicks - a.clicks);
+    case "clicksChange":
+      return arr.sort((a, b) => b.clicksChangePercent - a.clicksChangePercent);
+    case "impressions":
+      return arr.sort((a, b) => b.impressions - a.impressions);
+    case "impressionsChange":
+      return arr.sort((a, b) => b.impressionsChangePercent - a.impressionsChangePercent);
+    default:
+      return arr;
+  }
+}
+
 export default function OverviewPage() {
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortKey>("clicks");
   const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
 
   const { data: gscStatus } = useQuery({
@@ -50,9 +68,16 @@ export default function OverviewPage() {
     return metrics.filter((m) => m.siteUrl.toLowerCase().includes(q));
   }, [metrics, search]);
 
+  const sorted = useMemo(() => sortMetrics(filtered, sortBy), [filtered, sortBy]);
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header showSearch searchValue={search} onSearchChange={setSearch} />
+      <Header
+        showSearch
+        searchValue={search}
+        onSearchChange={setSearch}
+        sortSelect={<SortSelect value={sortBy} onChange={setSortBy} />}
+      />
       <main className="flex-1 p-4 md:p-6">
         {gscStatus && !gscStatus.gscConnected && (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
@@ -78,12 +103,16 @@ export default function OverviewPage() {
             ? Array.from({ length: 6 }).map((_, i) => (
                 <SiteCardSkeleton key={`skeleton-${i}`} />
               ))
-            : filtered.map((m) => <SiteCard key={m.siteUrl} metrics={m} />)}
+            : sorted.map((m) => <SiteCard key={m.siteUrl} metrics={m} />)}
         </div>
-        {!isLoading && filtered.length === 0 && (
-          <p className="text-muted-foreground text-sm py-8">
-            No sites match your search.
-          </p>
+        {!isLoading && sorted.length === 0 && (
+          <div className="py-12 text-center">
+            <p className="text-muted-foreground text-sm">
+              {search.trim()
+                ? "No properties match your search."
+                : "No properties yet. Connect Google Search Console to see your sites."}
+            </p>
+          </div>
         )}
       </main>
     </div>

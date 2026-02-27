@@ -10,6 +10,7 @@ const config: Config = {
     extend: {
       colors: {
         background: "var(--background)",
+        surface: "var(--surface)",
         foreground: "var(--foreground)",
         muted: "var(--muted)",
         "muted-foreground": "var(--muted-foreground)",
@@ -17,6 +18,11 @@ const config: Config = {
         input: "var(--input)",
         accent: "var(--accent)",
         ring: "var(--ring)",
+        positive: "var(--positive)",
+        negative: "var(--negative)",
+        neutral: "var(--neutral)",
+        "chart-clicks": "var(--chart-clicks)",
+        "chart-impressions": "var(--chart-impressions)",
       },
     },
   },

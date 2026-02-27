@@ -8,6 +8,7 @@ import { encodePropertyId } from "@/types/gsc";
 import { Sparkline } from "./trend-chart";
 import { useDateRange } from "@/contexts/date-range-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
+import { usePinnedProjects } from "@/contexts/pinned-projects-context";
 import { cn } from "@/lib/utils";
 
 interface SiteCardProps {
@@ -83,18 +84,44 @@ const ArrowIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const StarIcon = ({ className }: { className?: string }) => (
-  <button
-    type="button"
-    className={cn("shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1", className)}
-    aria-label="Star site"
-    onClick={(e) => e.preventDefault()}
-  >
-    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 15 9 22 9 17 14 18 21 12 18 6 21 7 14 2 9 9 9 12 2" />
-    </svg>
-  </button>
-);
+function StarButton({
+  siteUrl,
+  className,
+}: {
+  siteUrl: string;
+  className?: string;
+}) {
+  const { isPinned, togglePin } = usePinnedProjects();
+  const pinned = isPinned(siteUrl);
+  return (
+    <button
+      type="button"
+      aria-label={pinned ? "Unpin project" : "Pin project to top"}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        togglePin(siteUrl);
+      }}
+      className={cn(
+        "shrink-0 rounded p-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+        pinned ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-foreground",
+        className
+      )}
+    >
+      <svg
+        className="size-4"
+        viewBox="0 0 24 24"
+        fill={pinned ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polygon points="12 2 15 9 22 9 17 14 18 21 12 18 6 21 7 14 2 9 9 9 12 2" />
+      </svg>
+    </button>
+  );
+}
 
 const KebabIcon = ({ className }: { className?: string }) => (
   <svg className={cn("size-4", className)} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -257,7 +284,7 @@ export function SiteCard({ metrics }: SiteCardProps) {
             )}
             {" impressions"}
           </p>
-          <StarIcon />
+          <StarButton siteUrl={metrics.siteUrl} />
         </div>
       )}
     </Link>

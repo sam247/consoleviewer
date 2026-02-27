@@ -118,6 +118,7 @@ export default function SiteDetailPage({
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 p-4 md:p-6">
+        <div className="mx-auto max-w-[86rem]">
         <div className="mb-4">
           <Link
             href="/"
@@ -215,6 +216,7 @@ export default function SiteDetailPage({
             </div>
           </>
         )}
+        </div>
       </main>
     </div>
   );

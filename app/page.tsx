@@ -9,6 +9,7 @@ import { SortSelect, type SortKey } from "@/components/sort-select";
 import { FilterSelect, type FilterKey } from "@/components/filter-select";
 import { useDateRange } from "@/contexts/date-range-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
+import { usePinnedProjects } from "@/contexts/pinned-projects-context";
 import type { SiteOverviewMetrics } from "@/types/gsc";
 
 async function fetchOverview(
@@ -66,6 +67,7 @@ export default function OverviewPage() {
   const [filterBy, setFilterBy] = useState<FilterKey>("all");
   const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
   const { hiddenSet } = useHiddenProjects();
+  const { pinnedSet } = usePinnedProjects();
 
   const { data: gscStatus } = useQuery({
     queryKey: ["authStatus"],
@@ -99,7 +101,17 @@ export default function OverviewPage() {
     return list;
   }, [notHidden, search, filterBy]);
 
-  const sorted = useMemo(() => sortMetrics(filtered, sortBy), [filtered, sortBy]);
+  const sorted = useMemo(() => {
+    const bySort = sortMetrics(filtered, sortBy);
+    if (pinnedSet.size === 0) return bySort;
+    return [...bySort].sort((a, b) => {
+      const aPin = pinnedSet.has(a.siteUrl);
+      const bPin = pinnedSet.has(b.siteUrl);
+      if (aPin && !bPin) return -1;
+      if (!aPin && bPin) return 1;
+      return 0;
+    });
+  }, [filtered, sortBy, pinnedSet]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -111,7 +123,7 @@ export default function OverviewPage() {
         filterSelect={<FilterSelect value={filterBy} onChange={setFilterBy} />}
       />
       <main className="flex-1 p-4 md:p-6">
-        <div className="mx-auto max-w-[108rem]">
+        <div className="mx-auto max-w-[86rem]">
         {gscStatus && !gscStatus.gscConnected && (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
             <p className="font-medium">Connect Google Search Console</p>

@@ -128,7 +128,14 @@ export async function getOverviewMetrics(
         daily,
       });
     } catch {
-      result.push(getStubOverviewMetrics(site, result.length, startDate, endDate, priorStartDate, priorEndDate));
+      result.push({
+        siteUrl: site.siteUrl,
+        clicks: 0,
+        impressions: 0,
+        clicksChangePercent: 0,
+        impressionsChangePercent: 0,
+        daily: [],
+      });
     }
   }
   return result;
@@ -282,8 +289,31 @@ export async function getSiteDetail(
       },
     };
   } catch {
-    return getStubSiteDetail(siteUrl);
+    return emptySiteDetail(siteUrl);
   }
+}
+
+function emptySiteDetail(siteUrl: string): Promise<SiteDetailData> {
+  return Promise.resolve({
+    siteUrl,
+    summary: {
+      clicks: 0,
+      impressions: 0,
+      clicksChangePercent: 0,
+      impressionsChangePercent: 0,
+    },
+    daily: [],
+    queries: [],
+    pages: [],
+    countries: [],
+    devices: [],
+    branded: {
+      brandedClicks: 0,
+      nonBrandedClicks: 0,
+      brandedChangePercent: 0,
+      nonBrandedChangePercent: 0,
+    },
+  });
 }
 
 function getStubSiteDetail(siteUrl: string): Promise<SiteDetailData> {

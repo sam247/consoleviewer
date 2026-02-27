@@ -26,7 +26,7 @@ function loadHidden(): Set<string> {
 
 function saveHidden(set: Set<string>) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(set)));
   } catch {}
 }
 

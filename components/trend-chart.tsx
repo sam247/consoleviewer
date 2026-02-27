@@ -130,7 +130,7 @@ function SparklineTooltip({
   visible,
 }: {
   active?: boolean;
-  payload?: { dataKey: string }[];
+  payload?: readonly { dataKey?: string }[];
   label?: string;
   data: SparklineDataPoint[];
   visible: typeof SERIES_CONFIG;
@@ -193,8 +193,14 @@ export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
         >
           <YAxis hide domain={[0, 1]} allowDataOverflow />
           <Tooltip
-            content={(props) => (
-              <SparklineTooltip {...props} data={data} visible={visible} />
+            content={({ active, payload, label }) => (
+              <SparklineTooltip
+                active={active}
+                payload={payload}
+                label={label != null ? String(label) : undefined}
+                data={data}
+                visible={visible}
+              />
             )}
           />
           {visible.map((s) => (

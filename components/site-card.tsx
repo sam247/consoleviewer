@@ -18,8 +18,12 @@ function formatNum(n: number): string {
   return String(n);
 }
 
+/** Display like GSC/SEO Gets: xxx.com or https://xxx (no sc-domain: prefix) */
 function displayUrl(siteUrl: string): string {
-  return siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "") || siteUrl;
+  if (siteUrl.startsWith("sc-domain:")) {
+    return siteUrl.slice("sc-domain:".length).replace(/\/$/, "");
+  }
+  return siteUrl.replace(/\/$/, "") || siteUrl;
 }
 
 /** Domain for favicon: sc-domain:example.com -> example.com; URL -> hostname */
@@ -162,9 +166,14 @@ export function SiteCard({ metrics }: SiteCardProps) {
       </div>
       <p className="text-xs text-muted-foreground mb-4">Impressions</p>
 
-      {/* Trend sparkline (clicks + impressions) */}
+      {/* Trend sparkline (clicks, impressions, optional CTR from toolbar toggles) */}
       <div className="pt-1 mb-4">
-        <Sparkline data={metrics.daily} />
+        <Sparkline
+          data={metrics.daily.map((d) => ({
+            ...d,
+            ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
+          }))}
+        />
       </div>
 
       {/* Recent day summary: "Sunday • 53 (-11) clicks • 1652 (+211) impressions" */}

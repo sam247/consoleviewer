@@ -18,6 +18,8 @@
   --neutral: #525252;
   --chart-clicks: #2563eb;
   --chart-impressions: #7c3aed;
+  --chart-ctr: #15803d;
+  --chart-position: #ea580c;
 }
 
 /* Dark theme */
@@ -36,6 +38,8 @@
   --neutral: #737373;
   --chart-clicks: #3b82f6;
   --chart-impressions: #a78bfa;
+  --chart-ctr: #22c55e;
+  --chart-position: #f97316;
 }
 
 body {

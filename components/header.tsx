@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { DateRangeSelect } from "./date-range-select";
 import { OverviewSearch } from "./overview-search";
+import { ProfileMenu } from "./profile-menu";
+import { SparkToggles } from "./spark-toggles";
 import { ThemeToggle } from "./theme-toggle";
 
 interface HeaderProps {
@@ -19,14 +21,14 @@ export function Header({
   sortSelect,
 }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background px-4 py-3">
+    <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-border bg-background px-6 py-4">
       <Link
         href="/"
-        className="text-lg font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
+        className="shrink-0 text-lg font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
       >
         Consoleview
       </Link>
-      <div className="flex items-center gap-3 md:gap-4">
+      <div className="flex flex-1 items-center justify-end gap-4 md:gap-6">
         {showSearch && onSearchChange && (
           <OverviewSearch
             value={searchValue}
@@ -35,19 +37,22 @@ export function Header({
           />
         )}
         {sortSelect}
+        <button
+          type="button"
+          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+          aria-label="Filter sites"
+        >
+          Filter
+        </button>
+        <SparkToggles />
         <ThemeToggle />
         <a
           href="/api/auth/google"
-          className="text-sm text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
+          className="text-sm text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded whitespace-nowrap"
         >
           Sign in
         </a>
-        <a
-          href="/api/auth/app-logout"
-          className="text-sm text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
-        >
-          Log out
-        </a>
+        <ProfileMenu />
         <DateRangeSelect />
       </div>
     </header>

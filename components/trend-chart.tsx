@@ -97,7 +97,15 @@ export function TrendChart({
   );
 }
 
-/** Compact sparkline for overview cards: first series = hard base, rest = faint (SEO Gets style) */
+/** Normalize a series to 0-1 range so multiple metrics are all visible (each uses full vertical scale) */
+function normalizeSeries(values: number[]): number[] {
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  return values.map((v) => (v - min) / range);
+}
+
+/** Compact sparkline: each enabled metric normalized to its own scale so all are visible in different colours (SEO Gets style) */
 export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
   const { series } = useSparkSeries();
   if (!data?.length) return null;
@@ -105,18 +113,31 @@ export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
   const visible = SERIES_CONFIG.filter((s) => series[s.key] && data.some((d) => d[s.dataKey] != null));
   if (visible.length === 0) return null;
 
+  const normalizedData = data.map((point, i) => {
+    const out: Record<string, string | number> = { date: point.date };
+    visible.forEach((s) => {
+      const raw = point[s.dataKey];
+      if (raw == null) return;
+      const values = data.map((d) => (d[s.dataKey] as number) ?? 0);
+      const norm = normalizeSeries(values);
+      out[`_norm_${s.key}`] = norm[i];
+    });
+    return out;
+  });
+
   return (
     <div className="h-14 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+        <LineChart data={normalizedData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+          <YAxis hide domain={[0, 1]} />
           {visible.map((s, i) => (
             <Line
               key={s.key}
               type="monotone"
-              dataKey={s.dataKey}
+              dataKey={`_norm_${s.key}`}
               stroke={s.stroke}
-              strokeWidth={i === 0 ? 2.5 : 1}
-              strokeOpacity={i === 0 ? 1 : 0.35}
+              strokeWidth={i === 0 ? 2.5 : 1.5}
+              strokeOpacity={i === 0 ? 1 : 0.7}
               dot={false}
             />
           ))}

@@ -187,6 +187,8 @@ export default function SiteDetailPage({
       ),
   });
 
+  const [trendFilter, setTrendFilter] = useState<TrendFilter>("all");
+
   if (error) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -227,8 +229,6 @@ export default function SiteDetailPage({
     impressions: r.impressions,
     changePercent: r.changePercent,
   })) ?? [];
-
-  const [trendFilter, setTrendFilter] = useState<TrendFilter>("all");
 
   return (
     <div className="min-h-screen flex flex-col">

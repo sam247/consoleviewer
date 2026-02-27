@@ -1,3 +1,4 @@
+import { createHmac } from "crypto";
 import { cookies } from "next/headers";
 
 const COOKIE_NAME = "consoleview_app_session";
@@ -12,7 +13,6 @@ function getSecret(): string {
 }
 
 function sign(value: string, secret: string): string {
-  const { createHmac } = require("crypto");
   const hmac = createHmac("sha256", secret);
   hmac.update(value);
   return `${value}.${hmac.digest("hex").slice(0, 32)}`;

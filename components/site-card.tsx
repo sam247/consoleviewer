@@ -233,25 +233,29 @@ export function SiteCard({ metrics }: SiteCardProps) {
         <ArrowIcon />
       </div>
 
-      {/* Clicks with icon + % change */}
-      <div className="flex items-baseline gap-2 mb-0.5">
-        <SparkleIcon className="text-muted-foreground" />
-        <span className="text-xl font-semibold tabular-nums text-foreground">
-          {formatNum(metrics.clicks)}
-        </span>
-        <ChangeBadge value={metrics.clicksChangePercent} size="sm" />
+      {/* Clicks and Impressions side by side */}
+      <div className="flex items-stretch gap-4 mb-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2 mb-0.5">
+            <SparkleIcon className="text-muted-foreground shrink-0" />
+            <span className="text-xl font-semibold tabular-nums text-foreground truncate block">
+              {formatNum(metrics.clicks)}
+            </span>
+            <ChangeBadge value={metrics.clicksChangePercent} size="sm" />
+          </div>
+          <p className="text-xs text-muted-foreground">Clicks</p>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2 mb-0.5">
+            <EyeIcon className="text-muted-foreground shrink-0" />
+            <span className="text-xl font-semibold tabular-nums text-foreground truncate block">
+              {formatNum(metrics.impressions)}
+            </span>
+            <ChangeBadge value={metrics.impressionsChangePercent} size="sm" />
+          </div>
+          <p className="text-xs text-muted-foreground">Impressions</p>
+        </div>
       </div>
-      <p className="text-xs text-muted-foreground mb-3">Clicks</p>
-
-      {/* Impressions with icon + % change */}
-      <div className="flex items-baseline gap-2 mb-0.5">
-        <EyeIcon className="text-muted-foreground" />
-        <span className="text-sm font-medium tabular-nums text-foreground">
-          {formatNum(metrics.impressions)}
-        </span>
-        <ChangeBadge value={metrics.impressionsChangePercent} size="xs" />
-      </div>
-      <p className="text-xs text-muted-foreground mb-4">Impressions</p>
 
       {/* Trend sparkline (clicks, impressions, optional CTR from toolbar toggles) */}
       <div className="pt-1 mb-4">

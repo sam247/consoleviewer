@@ -22,11 +22,80 @@ function displayUrl(siteUrl: string): string {
   return siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "") || siteUrl;
 }
 
+/** Domain for favicon: sc-domain:example.com -> example.com; URL -> hostname */
+function faviconDomain(siteUrl: string): string {
+  if (siteUrl.startsWith("sc-domain:")) {
+    return siteUrl.slice("sc-domain:".length).replace(/\/$/, "");
+  }
+  try {
+    return new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`).hostname;
+  } catch {
+    return siteUrl.replace(/^https?:\/\//, "").split("/")[0] || siteUrl;
+  }
+}
+
+/** Latest day and previous day from daily for "Sunday • 53 (-11) clicks" summary */
+function getRecentDaySummary(daily: { date: string; clicks: number; impressions: number }[]) {
+  if (!daily?.length) return null;
+  const latest = daily[daily.length - 1];
+  const prev = daily.length > 1 ? daily[daily.length - 2] : null;
+  const dayName = new Date(latest.date).toLocaleDateString("en-GB", { weekday: "long" });
+  const clickDelta = prev != null ? latest.clicks - prev.clicks : null;
+  const impressionDelta = prev != null ? latest.impressions - prev.impressions : null;
+  return { dayName, latest, clickDelta, impressionDelta };
+}
+
+const Favicon = ({ domain, className }: { domain: string; className?: string }) => (
+  <img
+    src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+    alt=""
+    width={20}
+    height={20}
+    className={cn("shrink-0 rounded", className)}
+  />
+);
+
+const SparkleIcon = ({ className }: { className?: string }) => (
+  <svg className={cn("size-4 shrink-0", className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+    <path d="M5 19l1.5-4.5L2 13l4.5-1.5L5 7l1.5 4.5L11 13l-4.5 1.5L5 19z" />
+    <path d="M19 19l-1.5-4.5L13 13l4.5-1.5L19 7l-1.5 4.5L13 13l4.5 1.5L19 19z" />
+  </svg>
+);
+
+const EyeIcon = ({ className }: { className?: string }) => (
+  <svg className={cn("size-4 shrink-0", className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const ArrowIcon = ({ className }: { className?: string }) => (
+  <svg className={cn("size-4 shrink-0 opacity-60", className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </svg>
+);
+
+const StarIcon = ({ className }: { className?: string }) => (
+  <button
+    type="button"
+    className={cn("shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1", className)}
+    aria-label="Star site"
+    onClick={(e) => e.preventDefault()}
+  >
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15 9 22 9 17 14 18 21 12 18 6 21 7 14 2 9 9 9 12 2" />
+    </svg>
+  </button>
+);
+
 export function SiteCard({ metrics }: SiteCardProps) {
   const propertyId = encodePropertyId(metrics.siteUrl);
   const href = `/sites/${propertyId}`;
   const queryClient = useQueryClient();
   const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
+  const domain = faviconDomain(metrics.siteUrl);
+  const recent = getRecentDaySummary(metrics.daily);
 
   const prefetchDetail = () => {
     queryClient.prefetchQuery({
@@ -64,29 +133,64 @@ export function SiteCard({ metrics }: SiteCardProps) {
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       )}
     >
-      <div
-        className="mb-4 font-medium text-foreground truncate text-sm"
-        title={metrics.siteUrl}
-      >
-        {displayUrl(metrics.siteUrl)}
+      {/* Domain row: favicon + domain + arrow */}
+      <div className="flex items-center gap-2 mb-4">
+        <Favicon domain={domain} />
+        <span className="min-w-0 flex-1 font-medium text-foreground truncate text-sm" title={metrics.siteUrl}>
+          {displayUrl(metrics.siteUrl)}
+        </span>
+        <ArrowIcon />
       </div>
-      <div className="flex items-baseline justify-between gap-2 mb-1">
-        <span className="text-2xl font-semibold tabular-nums text-foreground">
+
+      {/* Clicks with icon + % change */}
+      <div className="flex items-baseline gap-2 mb-0.5">
+        <SparkleIcon className="text-muted-foreground" />
+        <span className="text-xl font-semibold tabular-nums text-foreground">
           {formatNum(metrics.clicks)}
         </span>
         <ChangeBadge value={metrics.clicksChangePercent} size="sm" />
       </div>
       <p className="text-xs text-muted-foreground mb-3">Clicks</p>
-      <div className="flex items-baseline justify-between gap-2">
+
+      {/* Impressions with icon + % change */}
+      <div className="flex items-baseline gap-2 mb-0.5">
+        <EyeIcon className="text-muted-foreground" />
         <span className="text-sm font-medium tabular-nums text-foreground">
           {formatNum(metrics.impressions)}
         </span>
         <ChangeBadge value={metrics.impressionsChangePercent} size="xs" />
       </div>
       <p className="text-xs text-muted-foreground mb-4">Impressions</p>
-      <div className="pt-1">
+
+      {/* Trend sparkline (clicks + impressions) */}
+      <div className="pt-1 mb-4">
         <Sparkline data={metrics.daily} />
       </div>
+
+      {/* Recent day summary: "Sunday • 53 (-11) clicks • 1652 (+211) impressions" */}
+      {recent && (
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
+          <p className="text-xs text-muted-foreground truncate min-w-0">
+            <span className="font-medium text-foreground">{recent.dayName}</span>
+            {" • "}
+            <span className="text-foreground">{recent.latest.clicks}</span>
+            {recent.clickDelta != null && (
+              <span className={recent.clickDelta < 0 ? "text-negative" : "text-positive"}>
+                {" "}({recent.clickDelta >= 0 ? "+" : ""}{recent.clickDelta})
+              </span>
+            )}
+            {" clicks • "}
+            <span className="text-foreground">{formatNum(recent.latest.impressions)}</span>
+            {recent.impressionDelta != null && (
+              <span className={recent.impressionDelta < 0 ? "text-negative" : "text-positive"}>
+                {" "}({recent.impressionDelta >= 0 ? "+" : ""}{recent.impressionDelta})
+              </span>
+            )}
+            {" impressions"}
+          </p>
+          <StarIcon />
+        </div>
+      )}
     </Link>
   );
 }

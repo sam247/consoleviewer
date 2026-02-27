@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { DateRangeProvider } from "@/contexts/date-range-context";
+import { HiddenProjectsProvider } from "@/contexts/hidden-projects-context";
 import { SparkSeriesProvider } from "@/contexts/spark-series-context";
 import { ThemeProvider } from "@/contexts/theme-context";
 
@@ -23,7 +24,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <DateRangeProvider>
-          <SparkSeriesProvider>{children}</SparkSeriesProvider>
+          <HiddenProjectsProvider>
+            <SparkSeriesProvider>{children}</SparkSeriesProvider>
+          </HiddenProjectsProvider>
         </DateRangeProvider>
       </ThemeProvider>
     </QueryClientProvider>

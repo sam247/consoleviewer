@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRef, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SiteOverviewMetrics } from "@/types/gsc";
 import { encodePropertyId } from "@/types/gsc";
 import { Sparkline } from "./trend-chart";
 import { useDateRange } from "@/contexts/date-range-context";
+import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { cn } from "@/lib/utils";
 
 interface SiteCardProps {
@@ -93,13 +95,32 @@ const StarIcon = ({ className }: { className?: string }) => (
   </button>
 );
 
+const KebabIcon = ({ className }: { className?: string }) => (
+  <svg className={cn("size-4", className)} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <circle cx="12" cy="6" r="1.5" />
+    <circle cx="12" cy="12" r="1.5" />
+    <circle cx="12" cy="18" r="1.5" />
+  </svg>
+);
+
 export function SiteCard({ metrics }: SiteCardProps) {
   const propertyId = encodePropertyId(metrics.siteUrl);
   const href = `/sites/${propertyId}`;
   const queryClient = useQueryClient();
   const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
+  const { hide } = useHiddenProjects();
   const domain = faviconDomain(metrics.siteUrl);
   const recent = getRecentDaySummary(metrics.daily);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const prefetchDetail = () => {
     queryClient.prefetchQuery({
@@ -137,12 +158,50 @@ export function SiteCard({ metrics }: SiteCardProps) {
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       )}
     >
-      {/* Domain row: favicon + domain + arrow */}
+      {/* Domain row: favicon + domain + arrow + card menu */}
       <div className="flex items-center gap-2 mb-4">
         <Favicon domain={domain} />
         <span className="min-w-0 flex-1 font-medium text-foreground truncate text-sm" title={metrics.siteUrl}>
           {displayUrl(metrics.siteUrl)}
         </span>
+        <div className="relative shrink-0" ref={menuRef}>
+          <button
+            type="button"
+            aria-label="Card options"
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setMenuOpen((o) => !o);
+            }}
+            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+          >
+            <KebabIcon />
+          </button>
+          {menuOpen && (
+            <ul
+              className="absolute right-0 top-full z-20 mt-1 min-w-[140px] rounded-md border border-border bg-surface py-1 shadow-lg"
+              role="menu"
+            >
+              <li role="none">
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    hide(metrics.siteUrl);
+                    setMenuOpen(false);
+                  }}
+                >
+                  Hide project
+                </button>
+              </li>
+            </ul>
+          )}
+        </div>
         <ArrowIcon />
       </div>
 

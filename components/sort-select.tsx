@@ -3,14 +3,31 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
-export type SortKey = "clicks" | "clicksChange" | "impressions" | "impressionsChange";
+export type SortKey =
+  | "aToZ"
+  | "total"
+  | "growth"
+  | "growthPct"
+  | "clicks"
+  | "clicksChange"
+  | "impressions"
+  | "impressionsChange";
 
-const OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "clicks", label: "Clicks (high first)" },
+const ORDER_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "aToZ", label: "A to Z" },
+  { value: "total", label: "Total" },
+  { value: "growth", label: "Growth" },
+  { value: "growthPct", label: "Growth %" },
+];
+
+const METRIC_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "clicks", label: "Clicks" },
+  { value: "impressions", label: "Impressions" },
   { value: "clicksChange", label: "Click change %" },
-  { value: "impressions", label: "Impressions (high first)" },
   { value: "impressionsChange", label: "Impression change %" },
 ];
+
+const ALL_OPTIONS = [...ORDER_OPTIONS, ...METRIC_OPTIONS];
 
 interface SortSelectProps {
   value: SortKey;
@@ -37,7 +54,7 @@ export function SortSelect({ value, onChange }: SortSelectProps) {
     [onChange]
   );
 
-  const label = OPTIONS.find((o) => o.value === value)?.label ?? value;
+  const label = ALL_OPTIONS.find((o) => o.value === value)?.label ?? value;
 
   return (
     <div className="relative" ref={ref}>
@@ -53,17 +70,33 @@ export function SortSelect({ value, onChange }: SortSelectProps) {
         )}
       >
         <span className="text-muted-foreground">Sort:</span>
-        <span className="max-w-[120px] truncate">{label}</span>
-        <span className="text-muted-foreground" aria-hidden>
-          ▾
-        </span>
+        <span className="max-w-[100px] truncate">{label}</span>
+        <span className="text-muted-foreground" aria-hidden>▾</span>
       </button>
       {open && (
         <ul
-          className="absolute right-0 top-full z-10 mt-1 min-w-[180px] rounded-md border border-input bg-surface py-1 shadow-md"
+          className="absolute right-0 top-full z-10 mt-1 min-w-[160px] rounded-md border border-input bg-surface py-1 shadow-md"
           role="listbox"
         >
-          {OPTIONS.map((opt) => (
+          {ORDER_OPTIONS.map((opt) => (
+            <li key={opt.value} role="option" aria-selected={value === opt.value}>
+              <button
+                type="button"
+                onClick={() => handleSelect(opt.value)}
+                className={cn(
+                  "w-full px-3 py-1.5 text-left text-sm",
+                  value === opt.value
+                    ? "bg-accent font-medium text-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            </li>
+          ))}
+          <li role="separator" className="my-1 border-t border-border" />
+          <li className="px-3 py-1 text-xs font-medium text-muted-foreground">Metric</li>
+          {METRIC_OPTIONS.map((opt) => (
             <li key={opt.value} role="option" aria-selected={value === opt.value}>
               <button
                 type="button"

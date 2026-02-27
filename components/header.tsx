@@ -12,6 +12,7 @@ interface HeaderProps {
   onSearchChange?: (value: string) => void;
   showSearch?: boolean;
   sortSelect?: React.ReactNode;
+  filterSelect?: React.ReactNode;
 }
 
 export function Header({
@@ -19,6 +20,7 @@ export function Header({
   onSearchChange,
   showSearch = false,
   sortSelect,
+  filterSelect,
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-border bg-background px-6 py-4">
@@ -37,13 +39,7 @@ export function Header({
           />
         )}
         {sortSelect}
-        <button
-          type="button"
-          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
-          aria-label="Filter sites"
-        >
-          Filter
-        </button>
+        {filterSelect}
         <SparkToggles />
         <ThemeToggle />
         <a

@@ -9,6 +9,7 @@ import { Sparkline } from "./trend-chart";
 import { useDateRange } from "@/contexts/date-range-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
+import { useSparkSeries } from "@/contexts/spark-series-context";
 import { cn } from "@/lib/utils";
 
 interface SiteCardProps {
@@ -77,6 +78,68 @@ const EyeIcon = ({ className }: { className?: string }) => (
     <circle cx="12" cy="12" r="3" />
   </svg>
 );
+
+const CTRIcon = ({ className }: { className?: string }) => (
+  <span className={cn("text-xs font-medium shrink-0", className)} aria-hidden>%</span>
+);
+
+const PositionIcon = ({ className }: { className?: string }) => (
+  <svg className={cn("size-3.5 shrink-0", className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+    <path d="M3 17v-2h6v2H3zm0-4v-2h10v2H3zm0-4V7h14v2H3z" />
+  </svg>
+);
+
+function CardMetricsRow({ metrics }: { metrics: SiteOverviewMetrics }) {
+  const { series } = useSparkSeries();
+  const ctrPct = metrics.impressions > 0 ? (metrics.clicks / metrics.impressions) * 100 : 0;
+
+  const cellClass = "min-w-0 flex flex-col items-center text-center gap-0.5";
+  const valueClass = "text-sm font-semibold tabular-nums text-foreground truncate w-full";
+  const labelClass = "text-[10px] text-muted-foreground uppercase tracking-wide";
+
+  return (
+    <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className={cellClass}>
+        <div className="flex items-center justify-center gap-1">
+          <SparkleIcon className="text-muted-foreground size-3" />
+          <span className={valueClass}>{formatNum(metrics.clicks)}</span>
+        </div>
+        <div className="min-h-[1rem] flex items-center justify-center">
+          <ChangeBadge value={metrics.clicksChangePercent} size="xs" />
+        </div>
+        <span className={labelClass}>Clicks</span>
+      </div>
+      <div className={cellClass}>
+        <div className="flex items-center justify-center gap-1">
+          <EyeIcon className="text-muted-foreground size-3" />
+          <span className={valueClass}>{formatNum(metrics.impressions)}</span>
+        </div>
+        <div className="min-h-[1rem] flex items-center justify-center">
+          <ChangeBadge value={metrics.impressionsChangePercent} size="xs" />
+        </div>
+        <span className={labelClass}>Impr.</span>
+      </div>
+      <div className={cellClass}>
+        <div className="flex items-center justify-center gap-1">
+          <CTRIcon className="text-muted-foreground" />
+          <span className={valueClass}>
+            {series.ctr ? `${ctrPct.toFixed(2)}%` : "—"}
+          </span>
+        </div>
+        <div className="min-h-[1rem]" />
+        <span className={labelClass}>CTR</span>
+      </div>
+      <div className={cellClass}>
+        <div className="flex items-center justify-center gap-1">
+          <PositionIcon className="text-muted-foreground" />
+          <span className={valueClass}>—</span>
+        </div>
+        <div className="min-h-[1rem]" />
+        <span className={labelClass}>Pos.</span>
+      </div>
+    </div>
+  );
+}
 
 const ArrowIcon = ({ className }: { className?: string }) => (
   <svg className={cn("size-4 shrink-0 opacity-60", className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -233,29 +296,8 @@ export function SiteCard({ metrics }: SiteCardProps) {
         <ArrowIcon />
       </div>
 
-      {/* Clicks and Impressions side by side */}
-      <div className="flex items-stretch gap-4 mb-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2 mb-0.5">
-            <SparkleIcon className="text-muted-foreground shrink-0" />
-            <span className="text-xl font-semibold tabular-nums text-foreground truncate block">
-              {formatNum(metrics.clicks)}
-            </span>
-            <ChangeBadge value={metrics.clicksChangePercent} size="sm" />
-          </div>
-          <p className="text-xs text-muted-foreground">Clicks</p>
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2 mb-0.5">
-            <EyeIcon className="text-muted-foreground shrink-0" />
-            <span className="text-xl font-semibold tabular-nums text-foreground truncate block">
-              {formatNum(metrics.impressions)}
-            </span>
-            <ChangeBadge value={metrics.impressionsChangePercent} size="sm" />
-          </div>
-          <p className="text-xs text-muted-foreground">Impressions</p>
-        </div>
-      </div>
+      {/* Four metrics: ~25% each with small gap (Clicks, Impressions, CTR, Position) */}
+      <CardMetricsRow metrics={metrics} />
 
       {/* Trend sparkline (clicks, impressions, optional CTR from toolbar toggles) */}
       <div className="pt-1 mb-4">

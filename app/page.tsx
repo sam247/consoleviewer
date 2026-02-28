@@ -87,7 +87,7 @@ export default function OverviewPage() {
   });
 
   const metrics = useMemo(
-    () => attachMockRankToMetrics(rawMetrics, 3),
+    () => attachMockRankToMetrics(rawMetrics, 12),
     [rawMetrics]
   );
 

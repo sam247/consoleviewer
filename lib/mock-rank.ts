@@ -30,21 +30,30 @@ export function getTrackedKeywordsStorageKey(): string {
   return STORAGE_KEY;
 }
 
+/** Mock rank values for dashboard cards (repeated so many cards show rank). */
+const MOCK_RANK_VALUES: { avg: number; delta: number }[] = [
+  { avg: 6.4, delta: 1.2 },
+  { avg: 8.1, delta: -0.5 },
+  { avg: 4.9, delta: 0.3 },
+  { avg: 12.2, delta: 0.8 },
+  { avg: 5.1, delta: -0.2 },
+  { avg: 9.0, delta: -1.1 },
+  { avg: 7.3, delta: 0.4 },
+  { avg: 3.8, delta: -0.6 },
+  { avg: 11.5, delta: 1.0 },
+  { avg: 6.0, delta: 0 },
+  { avg: 14.2, delta: -0.3 },
+  { avg: 4.5, delta: 0.5 },
+];
+
 /** Attach mock avgTrackedRank and avgTrackedRankDelta to first N sites for dashboard testing. */
 export function attachMockRankToMetrics(
   metrics: SiteOverviewMetrics[],
-  count = 3
+  count = 12
 ): SiteOverviewMetrics[] {
-  const mockRankByIndex: { avg: number; delta: number }[] = [
-    { avg: 6.4, delta: 1.2 },
-    { avg: 8.1, delta: -0.5 },
-    { avg: 4.9, delta: 0.3 },
-  ];
   return metrics.map((m, i) => {
     if (i >= count) return m;
-    const mock = mockRankByIndex[i];
-    return mock
-      ? { ...m, avgTrackedRank: mock.avg, avgTrackedRankDelta: mock.delta }
-      : m;
+    const mock = MOCK_RANK_VALUES[i % MOCK_RANK_VALUES.length];
+    return { ...m, avgTrackedRank: mock.avg, avgTrackedRankDelta: mock.delta };
   });
 }

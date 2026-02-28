@@ -140,13 +140,20 @@ function truncateKeyword(k: string): string {
   return k.length > KEYWORD_MAX_LEN ? k.slice(0, KEYWORD_MAX_LEN - 1) + "…" : k;
 }
 
+/** Format clicks % with arrow: positive = ↑, negative = ↓. */
+function clicksPctWithArrow(pct: number): string {
+  const val = pct.toFixed(0) + "%";
+  return pct >= 0 ? `↑${val}` : `↓${Math.abs(pct).toFixed(0)}%`;
+}
+
 /**
- * Compressed operator-summary sentence. ↑/↓ for rank; "The keyword '…'"; max 110 chars.
+ * Compressed operator-summary sentence. ↑/↓ for rank and clicks; "The keyword '…'"; max 110 chars.
  */
 export function getFooterSummarySentence(insight: StructuredInsight): string | null {
+  const hasTrafficMove = Math.abs(insight.clicksChangePercent) >= CLICKS_FLAT_THRESHOLD;
   const clicksPct =
-    Math.abs(insight.clicksChangePercent) >= CLICKS_FLAT_THRESHOLD
-      ? (insight.clicksChangePercent > 0 ? "+" : "") + insight.clicksChangePercent.toFixed(0) + "%"
+    hasTrafficMove
+      ? clicksPctWithArrow(insight.clicksChangePercent)
       : null;
 
   let sentence: string | null = null;
@@ -161,7 +168,7 @@ export function getFooterSummarySentence(insight: StructuredInsight): string | n
       break;
     }
     case "traffic_only":
-      sentence = clicksPct ? `Clicks ${clicksPct}; no tracked rank shift.` : null;
+      sentence = clicksPct ? `Clicks ${clicksPct}; rank stable.` : null;
       break;
     case "keyword_only": {
       const k = truncateKeyword(insight.keyword!);
@@ -178,9 +185,9 @@ export function getFooterSummarySentence(insight: StructuredInsight): string | n
       return null;
   }
 
-  if (!sentence || sentence.length > MAX_LENGTH)
-    sentence = sentence ? sentence.slice(0, MAX_LENGTH - 1).replace(/\.?$/, ".") : null;
-  return sentence ?? null;
+  if (sentence && sentence.length > MAX_LENGTH)
+    sentence = sentence.slice(0, MAX_LENGTH - 1).replace(/\.?$/, ".");
+  return sentence;
 }
 
 export function getAiFooterLine(input: FooterInsightInput): string | null {

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState, useEffect, useMemo, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SiteOverviewMetrics } from "@/types/gsc";
@@ -241,6 +242,7 @@ const KebabIcon = ({ className }: { className?: string }) => (
 );
 
 export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
+  const router = useRouter();
   const propertyId = encodePropertyId(metrics.siteUrl);
   const href = `/sites/${propertyId}`;
   const queryClient = useQueryClient();
@@ -368,12 +370,13 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
         />
       </div>
 
-      {/* Footer: daily summary, rank strip, AI summary */}
-      {(recent || (hasKeywords && metrics.avgTrackedRank != null) || !hasKeywords || aiFooterLine) && (
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-          <div className="min-w-0 flex-1">
-            {recent && (
-              <p className="text-xs text-muted-foreground min-w-0 break-words">
+      {/* Footer: 3-line structure (daily summary, avg rank, intelligence or Add keywords +) */}
+      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
+        <div className="min-w-0 flex-1">
+          {/* Line 1: Daily performance summary */}
+          <p className="text-xs text-muted-foreground min-w-0 break-words">
+            {recent ? (
+              <>
                 <span className="font-medium text-foreground">{recent.dayName}</span>
                 {" • "}
                 <span className="text-foreground">{recent.latest.clicks}</span>
@@ -390,46 +393,60 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
                   </span>
                 )}
                 {" impressions"}
-              </p>
+              </>
+            ) : (
+              "—"
             )}
-            {!hasKeywords && (
-              <span className={cn("text-xs text-muted-foreground", recent ? "mt-0.5 block" : "")}>
-                Add Keywords +
-              </span>
-            )}
-            {((hasKeywords && metrics.avgTrackedRank != null) || aiFooterLine) && (
-              <div className={cn(recent || !hasKeywords ? "mt-1" : "")}>
-                {hasKeywords && metrics.avgTrackedRank != null && (
-                  <button
-                    ref={rankTriggerRef}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setRankPopoverOpen(true);
-                    }}
-                    className="text-left text-xs text-muted-foreground cursor-pointer block hover:text-foreground transition-colors"
-                  >
-                    Avg rank: {metrics.avgTrackedRank.toFixed(1)}
-                    {metrics.avgTrackedRankDelta != null && (
-                      <span className={metrics.avgTrackedRankDelta < 0 ? " text-positive" : metrics.avgTrackedRankDelta > 0 ? " text-negative" : ""}>
-                        {" "}({metrics.avgTrackedRankDelta >= 0 ? "▲" : "▼"}
-                        {Math.abs(metrics.avgTrackedRankDelta).toFixed(1)})
-                      </span>
-                    )}
-                  </button>
+          </p>
+          {/* Line 2 + Line 3 grouped */}
+          <div className="mt-1">
+            {/* Line 2: Avg rank */}
+            {hasKeywords && metrics.avgTrackedRank != null ? (
+              <button
+                ref={rankTriggerRef}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setRankPopoverOpen(true);
+                }}
+                className="text-left text-xs text-muted-foreground cursor-pointer block hover:text-foreground transition-colors"
+              >
+                Avg rank: {metrics.avgTrackedRank.toFixed(1)}
+                {metrics.avgTrackedRankDelta != null && (
+                  <span className={metrics.avgTrackedRankDelta < 0 ? " text-positive" : metrics.avgTrackedRankDelta > 0 ? " text-negative" : ""}>
+                    {" "}({metrics.avgTrackedRankDelta >= 0 ? "▲" : "▼"}
+                    {Math.abs(metrics.avgTrackedRankDelta).toFixed(1)})
+                  </span>
                 )}
-                {aiFooterLine && (
-                  <p className="text-xs text-muted-foreground/80 min-w-0 break-words mt-1">
-                    {aiFooterLine}
-                  </p>
-                )}
-              </div>
+              </button>
+            ) : (
+              <p className="text-xs text-muted-foreground">Avg rank: —</p>
             )}
+            {/* Line 3: intelligence, "Rank stable; traffic flat.", or Add keywords + */}
+            <p className="text-xs text-muted-foreground/80 min-w-0 break-words mt-1">
+              {!hasKeywords ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(`${href}#tracked-keywords`);
+                  }}
+                  className="text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                >
+                  Add keywords +
+                </button>
+              ) : aiFooterLine ? (
+                aiFooterLine
+              ) : (
+                "Rank stable; traffic flat."
+              )}
+            </p>
           </div>
-          <StarButton siteUrl={metrics.siteUrl} />
         </div>
-      )}
+        <StarButton siteUrl={metrics.siteUrl} />
+      </div>
       <RankPopover
         keywords={getMockTrackedKeywords(metrics.siteUrl).slice(0, 5)}
         anchorRef={rankTriggerRef}

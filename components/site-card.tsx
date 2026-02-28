@@ -385,30 +385,32 @@ export function SiteCard({ metrics }: SiteCardProps) {
         />
       </div>
 
-      {/* Recent day summary; optional footer rank line when rankVariant=footer (or unset) */}
-      {recent && (
+      {/* Footer: daily summary and/or rank strip (Rank: Footer variant) */}
+      {(recent || (rankVariant !== "kpi" && metrics.avgTrackedRank != null)) && (
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground min-w-0 break-words">
-              <span className="font-medium text-foreground">{recent.dayName}</span>
-              {" • "}
-              <span className="text-foreground">{recent.latest.clicks}</span>
-              {recent.clickDelta != null && (
-                <span className={recent.clickDelta < 0 ? "text-negative" : "text-positive"}>
-                  {" "}({recent.clickDelta >= 0 ? "+" : ""}{recent.clickDelta})
-                </span>
-              )}
-              {" clicks • "}
-              <span className="text-foreground">{formatNum(recent.latest.impressions)}</span>
-              {recent.impressionDelta != null && (
-                <span className={recent.impressionDelta < 0 ? "text-negative" : "text-positive"}>
-                  {" "}({recent.impressionDelta >= 0 ? "+" : ""}{recent.impressionDelta})
-                </span>
-              )}
-              {" impressions"}
-            </p>
+            {recent && (
+              <p className="text-xs text-muted-foreground min-w-0 break-words">
+                <span className="font-medium text-foreground">{recent.dayName}</span>
+                {" • "}
+                <span className="text-foreground">{recent.latest.clicks}</span>
+                {recent.clickDelta != null && (
+                  <span className={recent.clickDelta < 0 ? "text-negative" : "text-positive"}>
+                    {" "}({recent.clickDelta >= 0 ? "+" : ""}{recent.clickDelta})
+                  </span>
+                )}
+                {" clicks • "}
+                <span className="text-foreground">{formatNum(recent.latest.impressions)}</span>
+                {recent.impressionDelta != null && (
+                  <span className={recent.impressionDelta < 0 ? "text-negative" : "text-positive"}>
+                    {" "}({recent.impressionDelta >= 0 ? "+" : ""}{recent.impressionDelta})
+                  </span>
+                )}
+                {" impressions"}
+              </p>
+            )}
             {rankVariant !== "kpi" && metrics.avgTrackedRank != null && (
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className={recent ? "text-xs text-muted-foreground mt-0.5" : "text-xs text-muted-foreground"}>
                 Avg tracked rank: {metrics.avgTrackedRank.toFixed(1)}
                 {metrics.avgTrackedRankDelta != null && (
                   <span className={metrics.avgTrackedRankDelta < 0 ? " text-positive" : metrics.avgTrackedRankDelta > 0 ? " text-negative" : ""}>

@@ -134,7 +134,7 @@ export function getFooterSummarySentence(insight: StructuredInsight): string | n
       ? (insight.clicksChangePercent > 0 ? "+" : "") + insight.clicksChangePercent.toFixed(0) + "%"
       : null;
 
-  let sentence: string;
+  let sentence: string | null = null;
   const shortK = k && k.length > 24 ? k.slice(0, 21) + "…" : k;
 
   switch (insight.category) {

@@ -16,6 +16,8 @@ import { RankPopover } from "./rank-popover";
 
 interface SiteCardProps {
   metrics: SiteOverviewMetrics;
+  /** When false, show muted "Add Keywords +" instead of rank. Default true. */
+  hasKeywords?: boolean;
 }
 
 function formatNum(n: number): string {
@@ -237,7 +239,7 @@ const KebabIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export function SiteCard({ metrics }: SiteCardProps) {
+export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
   const propertyId = encodePropertyId(metrics.siteUrl);
   const href = `/sites/${propertyId}`;
   const queryClient = useQueryClient();
@@ -355,7 +357,7 @@ export function SiteCard({ metrics }: SiteCardProps) {
       </div>
 
       {/* Footer: daily summary and/or rank strip */}
-      {(recent || metrics.avgTrackedRank != null) && (
+      {(recent || (hasKeywords && metrics.avgTrackedRank != null) || !hasKeywords) && (
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
           <div className="min-w-0 flex-1">
             {recent && (
@@ -378,7 +380,12 @@ export function SiteCard({ metrics }: SiteCardProps) {
                 {" impressions"}
               </p>
             )}
-            {metrics.avgTrackedRank != null && (
+            {!hasKeywords && (
+              <span className={cn("text-xs text-muted-foreground", recent ? "mt-0.5 block" : "")}>
+                Add Keywords +
+              </span>
+            )}
+            {hasKeywords && metrics.avgTrackedRank != null && (
               <button
                 ref={rankTriggerRef}
                 type="button"
@@ -393,7 +400,7 @@ export function SiteCard({ metrics }: SiteCardProps) {
                   recent ? "mt-0.5" : ""
                 )}
               >
-                Avg tracked rank: {metrics.avgTrackedRank.toFixed(1)}
+                Avg Keyword Position: {metrics.avgTrackedRank.toFixed(1)}
                 {metrics.avgTrackedRankDelta != null && (
                   <span className={metrics.avgTrackedRankDelta < 0 ? " text-positive" : metrics.avgTrackedRankDelta > 0 ? " text-negative" : ""}>
                     {" "}({metrics.avgTrackedRankDelta >= 0 ? "▲" : "▼"}

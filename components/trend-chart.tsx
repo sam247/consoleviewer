@@ -195,11 +195,11 @@ export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
   });
 
   return (
-    <div className="h-14 w-full min-w-0">
+    <div className="h-20 w-full min-w-0">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={normalizedData}
-          margin={{ top: 4, right: 4, left: 4, bottom: 4 }}
+          margin={{ top: 10, right: 4, left: 4, bottom: 10 }}
         >
           <YAxis hide domain={[0, 1]} allowDataOverflow />
           <Tooltip

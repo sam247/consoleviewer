@@ -70,7 +70,7 @@ export function SparkToggles() {
           aria-pressed={series[key]}
           aria-label={`${label}: ${series[key] ? "on" : "off"}`}
         >
-          {icon}
+          <span className="inline-flex size-4 shrink-0 items-center justify-center">{icon}</span>
         </button>
       ))}
     </div>

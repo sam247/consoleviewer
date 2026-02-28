@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense } from "react";
 import { DateRangeSelect } from "./date-range-select";
 import { OverviewSearch } from "./overview-search";
 import { ProfileMenu } from "./profile-menu";
@@ -14,7 +13,6 @@ interface HeaderProps {
   showSearch?: boolean;
   sortSelect?: React.ReactNode;
   filterSelect?: React.ReactNode;
-  rankDisplaySelect?: React.ReactNode;
 }
 
 export function Header({
@@ -23,7 +21,6 @@ export function Header({
   showSearch = false,
   sortSelect,
   filterSelect,
-  rankDisplaySelect,
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-border bg-background px-6 py-4">
@@ -43,9 +40,6 @@ export function Header({
         )}
         {sortSelect}
         {filterSelect}
-        {rankDisplaySelect != null ? (
-          <Suspense fallback={null}>{rankDisplaySelect}</Suspense>
-        ) : null}
         <SparkToggles />
         <ThemeToggle />
         <a

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useRef, useState, useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SiteOverviewMetrics } from "@/types/gsc";
@@ -11,7 +10,9 @@ import { useDateRange } from "@/contexts/date-range-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
 import { useSparkSeries } from "@/contexts/spark-series-context";
+import { getMockTrackedKeywords } from "@/lib/mock-rank";
 import { cn } from "@/lib/utils";
+import { RankPopover } from "./rank-popover";
 
 interface SiteCardProps {
   metrics: SiteOverviewMetrics;
@@ -90,21 +91,13 @@ const PositionIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-function CardMetricsRow({
-  metrics,
-  rankVariant,
-}: {
-  metrics: SiteOverviewMetrics;
-  rankVariant: string | null;
-}) {
+function CardMetricsRow({ metrics }: { metrics: SiteOverviewMetrics }) {
   const { series } = useSparkSeries();
   const ctrPct = metrics.impressions > 0 ? (metrics.clicks / metrics.impressions) * 100 : 0;
   const position = metrics.position;
   const positionChange = metrics.positionChangePercent;
-  const avgRank = metrics.avgTrackedRank;
-  const avgRankDelta = metrics.avgTrackedRankDelta;
 
-  const cellClass = "min-w-0 flex flex-col items-center text-center gap-0.5";
+  const cellClass = "min-w-0 flex flex-col items-start text-left gap-0.5 min-w-[4rem]";
   const valueClass = "text-sm font-semibold tabular-nums text-foreground truncate w-full";
   const labelClass = "text-[10px] text-muted-foreground uppercase tracking-wide";
 
@@ -115,11 +108,11 @@ function CardMetricsRow({
       label: "Clicks",
       content: (
         <>
-          <div className="flex items-center justify-center gap-1">
-            <SparkleIcon className="text-muted-foreground size-3" />
+          <div className="flex items-center justify-start gap-1">
+            <SparkleIcon className="text-muted-foreground size-3 shrink-0" />
             <span className={valueClass}>{formatNum(metrics.clicks)}</span>
           </div>
-          <div className="min-h-[1rem] flex items-center justify-center">
+          <div className="min-h-[1rem] flex items-center justify-start">
             <ChangeBadge value={metrics.clicksChangePercent} size="xs" />
           </div>
         </>
@@ -132,11 +125,11 @@ function CardMetricsRow({
       label: "Impr.",
       content: (
         <>
-          <div className="flex items-center justify-center gap-1">
-            <EyeIcon className="text-muted-foreground size-3" />
+          <div className="flex items-center justify-start gap-1">
+            <EyeIcon className="text-muted-foreground size-3 shrink-0" />
             <span className={valueClass}>{formatNum(metrics.impressions)}</span>
           </div>
-          <div className="min-h-[1rem] flex items-center justify-center">
+          <div className="min-h-[1rem] flex items-center justify-start">
             <ChangeBadge value={metrics.impressionsChangePercent} size="xs" />
           </div>
         </>
@@ -149,8 +142,8 @@ function CardMetricsRow({
       label: "CTR",
       content: (
         <>
-          <div className="flex items-center justify-center gap-1">
-            <CTRIcon className="text-muted-foreground" />
+          <div className="flex items-center justify-start gap-1">
+            <CTRIcon className="text-muted-foreground shrink-0" />
             <span className={valueClass}>{ctrPct.toFixed(2)}%</span>
           </div>
           <div className="min-h-[1rem]" />
@@ -164,47 +157,23 @@ function CardMetricsRow({
       label: "Pos.",
       content: (
         <>
-          <div className="flex items-center justify-center gap-1">
-            <PositionIcon className="text-muted-foreground" />
+          <div className="flex items-center justify-start gap-1">
+            <PositionIcon className="text-muted-foreground shrink-0" />
             <span className={valueClass}>
               {position != null ? position.toFixed(1) : "—"}
             </span>
           </div>
-          <div className="min-h-[1rem] flex items-center justify-center">
+          <div className="min-h-[1rem] flex items-center justify-start">
             {positionChange != null && <ChangeBadge value={positionChange} size="xs" />}
           </div>
         </>
       ),
     });
   }
-  if (rankVariant === "kpi" && avgRank != null) {
-    cells.push({
-      key: "rank",
-      label: "RANK",
-      content: (
-        <>
-          <div className="flex items-center justify-center gap-1">
-            <span className={valueClass}>{avgRank.toFixed(1)}</span>
-          </div>
-          <div className="min-h-[1rem] flex items-center justify-center">
-            {avgRankDelta != null && (
-              <span className={cn("text-xs tabular-nums", avgRankDelta < 0 ? "text-positive" : avgRankDelta > 0 ? "text-negative" : "text-muted-foreground")}>
-                {avgRankDelta > 0 ? "+" : ""}{avgRankDelta}
-              </span>
-            )}
-          </div>
-        </>
-      ),
-    });
-  }
-
   if (cells.length === 0) return null;
 
   return (
-    <div
-      className="grid gap-2 mb-4"
-      style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }}
-    >
+    <div className="flex flex-wrap gap-x-4 gap-y-2 mb-4">
       {cells.map(({ key, label, content }) => (
         <div key={key} className={cellClass}>
           {content}
@@ -269,8 +238,6 @@ const KebabIcon = ({ className }: { className?: string }) => (
 );
 
 export function SiteCard({ metrics }: SiteCardProps) {
-  const searchParams = useSearchParams();
-  const rankVariant = searchParams.get("rankVariant");
   const propertyId = encodePropertyId(metrics.siteUrl);
   const href = `/sites/${propertyId}`;
   const queryClient = useQueryClient();
@@ -279,7 +246,9 @@ export function SiteCard({ metrics }: SiteCardProps) {
   const domain = faviconDomain(metrics.siteUrl);
   const recent = getRecentDaySummary(metrics.daily);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [rankPopoverOpen, setRankPopoverOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const rankTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -372,8 +341,8 @@ export function SiteCard({ metrics }: SiteCardProps) {
         <ArrowIcon />
       </div>
 
-      {/* Metrics row: Clicks, Impressions, CTR, Position; optional RANK when rankVariant=kpi */}
-      <CardMetricsRow metrics={metrics} rankVariant={rankVariant} />
+      {/* Metrics row: Clicks, Impressions, CTR, Position */}
+      <CardMetricsRow metrics={metrics} />
 
       {/* Trend sparkline (clicks, impressions, optional CTR from toolbar toggles) */}
       <div className="pt-1 mb-4">
@@ -385,8 +354,8 @@ export function SiteCard({ metrics }: SiteCardProps) {
         />
       </div>
 
-      {/* Footer: daily summary and/or rank strip (Rank: Footer variant) */}
-      {(recent || (rankVariant !== "kpi" && metrics.avgTrackedRank != null)) && (
+      {/* Footer: daily summary and/or rank strip */}
+      {(recent || metrics.avgTrackedRank != null) && (
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
           <div className="min-w-0 flex-1">
             {recent && (
@@ -409,8 +378,21 @@ export function SiteCard({ metrics }: SiteCardProps) {
                 {" impressions"}
               </p>
             )}
-            {rankVariant !== "kpi" && metrics.avgTrackedRank != null && (
-              <p className={recent ? "text-xs text-muted-foreground mt-0.5" : "text-xs text-muted-foreground"}>
+            {metrics.avgTrackedRank != null && (
+              <button
+                ref={rankTriggerRef}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setRankPopoverOpen(true);
+                }}
+                className={cn(
+                  "text-left text-xs text-muted-foreground cursor-pointer",
+                  "hover:text-foreground transition-colors",
+                  recent ? "mt-0.5" : ""
+                )}
+              >
                 Avg tracked rank: {metrics.avgTrackedRank.toFixed(1)}
                 {metrics.avgTrackedRankDelta != null && (
                   <span className={metrics.avgTrackedRankDelta < 0 ? " text-positive" : metrics.avgTrackedRankDelta > 0 ? " text-negative" : ""}>
@@ -418,12 +400,18 @@ export function SiteCard({ metrics }: SiteCardProps) {
                     {Math.abs(metrics.avgTrackedRankDelta).toFixed(1)})
                   </span>
                 )}
-              </p>
+              </button>
             )}
           </div>
           <StarButton siteUrl={metrics.siteUrl} />
         </div>
       )}
+      <RankPopover
+        keywords={getMockTrackedKeywords(metrics.siteUrl).slice(0, 5)}
+        anchorRef={rankTriggerRef}
+        open={rankPopoverOpen}
+        onClose={() => setRankPopoverOpen(false)}
+      />
     </Link>
   );
 }

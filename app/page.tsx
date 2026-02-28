@@ -7,7 +7,6 @@ import { SiteCard } from "@/components/site-card";
 import { SiteCardSkeleton } from "@/components/site-card-skeleton";
 import { SortSelect, type SortKey } from "@/components/sort-select";
 import { FilterSelect, type FilterKey } from "@/components/filter-select";
-import { RankDisplaySelect } from "@/components/rank-display-select";
 import { useDateRange } from "@/contexts/date-range-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
@@ -128,7 +127,6 @@ export default function OverviewPage() {
         onSearchChange={setSearch}
         sortSelect={<SortSelect value={sortBy} onChange={setSortBy} />}
         filterSelect={<FilterSelect value={filterBy} onChange={setFilterBy} />}
-        rankDisplaySelect={<RankDisplaySelect />}
       />
       <main className="flex-1 p-4 md:p-6">
         <div className="mx-auto max-w-[86rem]">

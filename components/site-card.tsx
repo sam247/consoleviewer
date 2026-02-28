@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useRef, useState, useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SiteOverviewMetrics } from "@/types/gsc";
@@ -89,17 +90,25 @@ const PositionIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-function CardMetricsRow({ metrics }: { metrics: SiteOverviewMetrics }) {
+function CardMetricsRow({
+  metrics,
+  rankVariant,
+}: {
+  metrics: SiteOverviewMetrics;
+  rankVariant: string | null;
+}) {
   const { series } = useSparkSeries();
   const ctrPct = metrics.impressions > 0 ? (metrics.clicks / metrics.impressions) * 100 : 0;
   const position = metrics.position;
   const positionChange = metrics.positionChangePercent;
+  const avgRank = metrics.avgTrackedRank;
+  const avgRankDelta = metrics.avgTrackedRankDelta;
 
   const cellClass = "min-w-0 flex flex-col items-center text-center gap-0.5";
   const valueClass = "text-sm font-semibold tabular-nums text-foreground truncate w-full";
   const labelClass = "text-[10px] text-muted-foreground uppercase tracking-wide";
 
-  const cells: { key: "clicks" | "impressions" | "ctr" | "position"; label: string; content: ReactNode }[] = [];
+  const cells: { key: string; label: string; content: ReactNode }[] = [];
   if (series.clicks) {
     cells.push({
       key: "clicks",
@@ -163,6 +172,26 @@ function CardMetricsRow({ metrics }: { metrics: SiteOverviewMetrics }) {
           </div>
           <div className="min-h-[1rem] flex items-center justify-center">
             {positionChange != null && <ChangeBadge value={positionChange} size="xs" />}
+          </div>
+        </>
+      ),
+    });
+  }
+  if (rankVariant === "kpi" && avgRank != null) {
+    cells.push({
+      key: "rank",
+      label: "RANK",
+      content: (
+        <>
+          <div className="flex items-center justify-center gap-1">
+            <span className={valueClass}>{avgRank.toFixed(1)}</span>
+          </div>
+          <div className="min-h-[1rem] flex items-center justify-center">
+            {avgRankDelta != null && (
+              <span className={cn("text-xs tabular-nums", avgRankDelta < 0 ? "text-positive" : avgRankDelta > 0 ? "text-negative" : "text-muted-foreground")}>
+                {avgRankDelta > 0 ? "+" : ""}{avgRankDelta}
+              </span>
+            )}
           </div>
         </>
       ),
@@ -240,6 +269,8 @@ const KebabIcon = ({ className }: { className?: string }) => (
 );
 
 export function SiteCard({ metrics }: SiteCardProps) {
+  const searchParams = useSearchParams();
+  const rankVariant = searchParams.get("rankVariant");
   const propertyId = encodePropertyId(metrics.siteUrl);
   const href = `/sites/${propertyId}`;
   const queryClient = useQueryClient();
@@ -341,8 +372,8 @@ export function SiteCard({ metrics }: SiteCardProps) {
         <ArrowIcon />
       </div>
 
-      {/* Four metrics: ~25% each with small gap (Clicks, Impressions, CTR, Position) */}
-      <CardMetricsRow metrics={metrics} />
+      {/* Metrics row: Clicks, Impressions, CTR, Position; optional RANK when rankVariant=kpi */}
+      <CardMetricsRow metrics={metrics} rankVariant={rankVariant} />
 
       {/* Trend sparkline (clicks, impressions, optional CTR from toolbar toggles) */}
       <div className="pt-1 mb-4">
@@ -354,27 +385,40 @@ export function SiteCard({ metrics }: SiteCardProps) {
         />
       </div>
 
-      {/* Recent day summary: "Sunday • 53 (-11) clicks • 1652 (+211) impressions" */}
+      {/* Recent day summary; optional footer rank line when rankVariant=footer (or unset) */}
       {recent && (
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-          <p className="text-xs text-muted-foreground min-w-0 break-words">
-            <span className="font-medium text-foreground">{recent.dayName}</span>
-            {" • "}
-            <span className="text-foreground">{recent.latest.clicks}</span>
-            {recent.clickDelta != null && (
-              <span className={recent.clickDelta < 0 ? "text-negative" : "text-positive"}>
-                {" "}({recent.clickDelta >= 0 ? "+" : ""}{recent.clickDelta})
-              </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-muted-foreground min-w-0 break-words">
+              <span className="font-medium text-foreground">{recent.dayName}</span>
+              {" • "}
+              <span className="text-foreground">{recent.latest.clicks}</span>
+              {recent.clickDelta != null && (
+                <span className={recent.clickDelta < 0 ? "text-negative" : "text-positive"}>
+                  {" "}({recent.clickDelta >= 0 ? "+" : ""}{recent.clickDelta})
+                </span>
+              )}
+              {" clicks • "}
+              <span className="text-foreground">{formatNum(recent.latest.impressions)}</span>
+              {recent.impressionDelta != null && (
+                <span className={recent.impressionDelta < 0 ? "text-negative" : "text-positive"}>
+                  {" "}({recent.impressionDelta >= 0 ? "+" : ""}{recent.impressionDelta})
+                </span>
+              )}
+              {" impressions"}
+            </p>
+            {rankVariant !== "kpi" && metrics.avgTrackedRank != null && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Avg tracked rank: {metrics.avgTrackedRank.toFixed(1)}
+                {metrics.avgTrackedRankDelta != null && (
+                  <span className={metrics.avgTrackedRankDelta < 0 ? " text-positive" : metrics.avgTrackedRankDelta > 0 ? " text-negative" : ""}>
+                    {" "}({metrics.avgTrackedRankDelta >= 0 ? "▲" : "▼"}
+                    {Math.abs(metrics.avgTrackedRankDelta).toFixed(1)})
+                  </span>
+                )}
+              </p>
             )}
-            {" clicks • "}
-            <span className="text-foreground">{formatNum(recent.latest.impressions)}</span>
-            {recent.impressionDelta != null && (
-              <span className={recent.impressionDelta < 0 ? "text-negative" : "text-positive"}>
-                {" "}({recent.impressionDelta >= 0 ? "+" : ""}{recent.impressionDelta})
-              </span>
-            )}
-            {" impressions"}
-          </p>
+          </div>
           <StarButton siteUrl={metrics.siteUrl} />
         </div>
       )}

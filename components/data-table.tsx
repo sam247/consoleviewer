@@ -52,7 +52,7 @@ export function DataTable({
   }, [rows, trend, maxRows]);
 
   return (
-    <div className={cn("rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 p-0", className)}>
+    <div className={cn("min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 p-0", className)}>
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <span className="font-semibold text-sm text-foreground">{title}</span>
         {showToggles && (
@@ -75,14 +75,14 @@ export function DataTable({
           </div>
         )}
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto min-w-0">
+        <table className="w-full text-sm table-fixed">
           <thead>
             <tr className="border-b border-border text-left text-muted-foreground">
-              <th className="px-4 py-2 font-semibold">Name</th>
-              <th className="px-4 py-2 font-semibold text-right">Clicks</th>
-              <th className="px-4 py-2 font-semibold text-right">Impressions</th>
-              <th className="px-4 py-2 font-semibold text-right w-16">Change</th>
+              <th className="px-4 py-2 pb-2 font-semibold min-w-0 w-[40%]">Name</th>
+              <th className="px-4 py-2 pb-2 font-semibold text-right w-[20%]">Clicks</th>
+              <th className="px-4 py-2 pb-2 font-semibold text-right w-[20%]">Impressions</th>
+              <th className="px-4 py-2 pb-2 font-semibold text-right w-16">Change</th>
             </tr>
           </thead>
           <tbody>
@@ -91,16 +91,16 @@ export function DataTable({
                 key={row.key}
                 className="border-b border-border/50 hover:bg-accent/50 transition-colors duration-150"
               >
-                <td className="px-4 py-2 truncate max-w-[180px]" title={row.key}>
+                <td className="px-4 py-2.5 truncate min-w-0" title={row.key}>
                   {row.key}
                 </td>
-                <td className="px-4 py-2 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums">
                   {formatNum(row.clicks)}
                 </td>
-                <td className="px-4 py-2 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums">
                   {formatNum(row.impressions)}
                 </td>
-                <td className="px-4 py-2 text-right">
+                <td className="px-4 py-2.5 text-right">
                   {row.changePercent != null ? (
                     <span
                       className={cn(

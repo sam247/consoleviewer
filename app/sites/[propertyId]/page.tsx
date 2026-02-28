@@ -7,8 +7,11 @@ import { Header } from "@/components/header";
 import { TrendChart } from "@/components/trend-chart";
 import { DataTable, type DataTableRow, type TrendFilter } from "@/components/data-table";
 import { BrandedChart } from "@/components/branded-chart";
+import { SparkToggles } from "@/components/spark-toggles";
+import { TrackedKeywordsSection } from "@/components/tracked-keywords-section";
 import { useDateRange } from "@/contexts/date-range-context";
 import { decodePropertyId } from "@/types/gsc";
+import { getMockTrackedKeywords } from "@/lib/mock-rank";
 import { cn } from "@/lib/utils";
 
 async function fetchSiteDetail(
@@ -122,9 +125,9 @@ function MovementIntelligence({
   }, [pagesRows]);
 
   return (
-    <section aria-label="Movement intelligence">
+    <section aria-label="Movement intelligence" className="rounded-lg bg-muted/30 border border-border/50 px-4 py-3">
       <h2 className="text-sm font-semibold text-foreground mb-3">Movement intelligence</h2>
-      <div className="flex flex-wrap items-center gap-4 mb-4">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-1">
           {(["all", "growing", "decaying"] as const).map((t) => (
             <button
@@ -142,14 +145,19 @@ function MovementIntelligence({
             </button>
           ))}
         </div>
+        {(topGrowingQuery || topDecayingPage) && (
+          <span className="text-border" aria-hidden>|</span>
+        )}
         {topGrowingQuery && (
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <span className="text-positive shrink-0" aria-hidden>↑</span>
             Top growing query: <span className="text-foreground font-medium truncate max-w-[200px] inline-block align-bottom" title={topGrowingQuery.key}>{topGrowingQuery.key}</span>
             <span className="text-positive ml-1">+{topGrowingQuery.changePercent}%</span>
           </div>
         )}
         {topDecayingPage && (
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <span className="text-negative shrink-0" aria-hidden>↓</span>
             Top decaying page: <span className="text-foreground font-medium truncate max-w-[200px] inline-block align-bottom" title={topDecayingPage.key}>{topDecayingPage.key}</span>
             <span className="text-negative ml-1">{topDecayingPage.changePercent}%</span>
           </div>
@@ -248,22 +256,25 @@ export default function SiteDetailPage({
         </div>
 
         {isLoading ? (
-          <div className="space-y-10">
-            <div className="flex gap-6">
-              <SkeletonBox className="h-24 flex-1" />
-              <SkeletonBox className="h-24 flex-1" />
-            </div>
-            <SkeletonBox className="h-72" />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <SkeletonBox key={i} className="h-64" />
-              ))}
+          <div className="space-y-12">
+            <SkeletonBox className="h-24 border-b border-border pb-10" />
+            <SkeletonBox className="h-80" />
+            <SkeletonBox className="h-20" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="flex flex-col gap-6">
+                <SkeletonBox className="h-64" />
+                <SkeletonBox className="h-64" />
+              </div>
+              <div className="flex flex-col gap-6">
+                <SkeletonBox className="h-64" />
+                <SkeletonBox className="h-64" />
+              </div>
             </div>
           </div>
         ) : (
-          <div className="space-y-10">
+          <div className="space-y-12">
             {/* Section A — Executive Summary */}
-            <section aria-label="Executive summary">
+            <section aria-label="Executive summary" className="border-b border-border pb-10">
               <ExecutiveSummary data={data} formatNum={formatNum} />
             </section>
 
@@ -271,8 +282,11 @@ export default function SiteDetailPage({
             {data?.daily?.length > 0 && (
               <section aria-label="Trend">
                 <div className="rounded-lg border border-border bg-surface p-6 transition-colors hover:border-foreground/20">
-                  <h2 className="text-sm font-semibold text-foreground mb-4">Performance over time</h2>
-                  <TrendChart data={data.daily} height={260} showImpressions />
+                  <div className="flex items-center justify-between gap-4 mb-4">
+                    <h2 className="text-sm font-semibold text-foreground">Performance over time</h2>
+                    <SparkToggles />
+                  </div>
+                  <TrendChart data={data.daily} height={280} showImpressions useSeriesContext />
                 </div>
               </section>
             )}
@@ -285,46 +299,54 @@ export default function SiteDetailPage({
               onTrendFilterChange={setTrendFilter}
             />
 
-            {/* Section D — Performance Tables */}
-            <section aria-label="Performance tables">
-              <h2 className="text-sm font-semibold text-foreground mb-4">Performance tables</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <DataTable
-                  title="Queries"
-                  rows={queriesRows}
-                  trendFilter={trendFilter}
-                  onTrendFilterChange={setTrendFilter}
-                  showFilter={false}
-                />
-                <DataTable
-                  title="Pages"
-                  rows={pagesRows}
-                  trendFilter={trendFilter}
-                  onTrendFilterChange={setTrendFilter}
-                  showFilter={false}
-                />
-                <DataTable title="Countries" rows={countriesRows} />
-              </div>
+            {/* Section D — AI Summary (placeholder) */}
+            <section aria-label="AI Summary" className="rounded-lg bg-muted/20 py-6 px-4">
+              <p className="text-sm text-muted-foreground">AI summary coming soon.</p>
             </section>
 
-            {/* Section E — Segmentation */}
-            {(data?.branded || devicesRows.length > 0) && (
-              <section aria-label="Segmentation">
-                <h2 className="text-sm font-semibold text-foreground mb-4">Segmentation</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {data?.branded && (
-                    <div className="rounded-lg border border-border bg-surface p-6 transition-colors hover:border-foreground/20">
-                      <BrandedChart
-                        brandedClicks={data.branded.brandedClicks}
-                        nonBrandedClicks={data.branded.nonBrandedClicks}
-                        brandedChangePercent={data.branded.brandedChangePercent}
-                        nonBrandedChangePercent={data.branded.nonBrandedChangePercent}
-                      />
-                    </div>
-                  )}
+            {/* Section E — Tracked Keywords (collapsible, mock) */}
+            <TrackedKeywordsSection keywords={getMockTrackedKeywords(siteUrl)} />
+
+            {/* Section F — Performance Tables (two-column) */}
+            <section aria-label="Performance tables">
+              <h2 className="text-sm font-semibold text-foreground mb-4">Performance tables</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="flex flex-col gap-6 min-w-0">
+                  <DataTable
+                    title="Queries"
+                    rows={queriesRows}
+                    trendFilter={trendFilter}
+                    onTrendFilterChange={setTrendFilter}
+                    showFilter={false}
+                  />
                   {devicesRows.length > 0 && (
                     <DataTable title="Devices" rows={devicesRows} />
                   )}
+                </div>
+                <div className="flex flex-col gap-6 min-w-0">
+                  <DataTable
+                    title="Pages"
+                    rows={pagesRows}
+                    trendFilter={trendFilter}
+                    onTrendFilterChange={setTrendFilter}
+                    showFilter={false}
+                  />
+                  <DataTable title="Countries" rows={countriesRows} />
+                </div>
+              </div>
+            </section>
+
+            {/* Section G — Segmentation (Branded only) */}
+            {data?.branded && (
+              <section aria-label="Segmentation">
+                <h2 className="text-sm font-semibold text-foreground mb-4">Segmentation</h2>
+                <div className="rounded-lg border border-border bg-surface p-6 transition-colors hover:border-foreground/20">
+                  <BrandedChart
+                    brandedClicks={data.branded.brandedClicks}
+                    nonBrandedClicks={data.branded.nonBrandedClicks}
+                    brandedChangePercent={data.branded.brandedChangePercent}
+                    nonBrandedChangePercent={data.branded.nonBrandedChangePercent}
+                  />
                 </div>
               </section>
             )}

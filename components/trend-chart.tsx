@@ -29,6 +29,8 @@ interface TrendChartProps {
   data: DataPoint[];
   height?: number;
   showImpressions?: boolean;
+  /** When true, show which series (clicks/impressions) from SparkSeries context; overrides showImpressions when set */
+  useSeriesContext?: boolean;
   className?: string;
 }
 
@@ -48,9 +50,15 @@ export function TrendChart({
   data,
   height = 80,
   showImpressions = true,
+  useSeriesContext = false,
   className,
 }: TrendChartProps) {
+  const { series } = useSparkSeries();
+
   if (!data?.length) return null;
+
+  const showClicks = useSeriesContext ? series?.clicks !== false : true;
+  const showImpr = useSeriesContext ? series?.impressions === true : showImpressions;
 
   return (
     <div className={cn("w-full", className)} style={{ height }}>
@@ -75,14 +83,16 @@ export function TrendChart({
             }}
             labelFormatter={(v) => new Date(v).toLocaleDateString()}
           />
-          <Line
-            type="monotone"
-            dataKey="clicks"
-            stroke={CHART_CLICKS}
-            strokeWidth={2.5}
-            dot={false}
-          />
-          {showImpressions && (
+          {showClicks && (
+            <Line
+              type="monotone"
+              dataKey="clicks"
+              stroke={CHART_CLICKS}
+              strokeWidth={2.5}
+              dot={false}
+            />
+          )}
+          {showImpr && (
             <Line
               type="monotone"
               dataKey="impressions"

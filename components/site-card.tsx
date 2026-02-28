@@ -420,7 +420,7 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
                   </button>
                 )}
                 {aiFooterLine && (
-                  <p className="text-xs text-muted-foreground min-w-0 break-words mt-1">
+                  <p className="text-xs text-muted-foreground/80 min-w-0 break-words mt-1">
                     {aiFooterLine}
                   </p>
                 )}

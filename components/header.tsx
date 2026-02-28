@@ -44,16 +44,12 @@ export function Header({
           <div className="flex shrink-0 items-center gap-4 md:gap-6">
             {sortSelect}
             {filterSelect}
-            <SparkToggles />
+            <div className="flex items-center justify-center">
+              <SparkToggles />
+            </div>
             <ThemeToggle />
-            <a
-              href="/api/auth/google"
-              className="text-sm text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded whitespace-nowrap"
-            >
-              Sign in
-            </a>
-            <ProfileMenu />
             <DateRangeSelect />
+            <ProfileMenu />
           </div>
         </div>
       </div>

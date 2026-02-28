@@ -55,9 +55,9 @@ export function RankPopover({ keywords, anchorRef, open, onClose }: RankPopoverP
     <div
       ref={popoverRef}
       role="dialog"
-      aria-label="Top tracked keywords"
+      aria-label="Tracked keywords"
       className={cn(
-        "fixed z-30 min-w-[240px] max-w-[320px] rounded-md border border-border bg-surface px-3 py-2 shadow-md",
+        "fixed z-30 min-w-[224px] max-w-[300px] rounded-md border border-border bg-surface px-3 py-2 shadow-md",
         "transition-opacity duration-150",
         position ? "opacity-100" : "opacity-0 pointer-events-none"
       )}
@@ -67,17 +67,17 @@ export function RankPopover({ keywords, anchorRef, open, onClose }: RankPopoverP
           : undefined
       }
     >
-      <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-        Top tracked keywords
+      <div className="text-[10px] font-normal text-muted-foreground lowercase tracking-wide mb-1.5">
+        Tracked keywords
       </div>
       <div className="text-xs">
         <table className="w-full table-fixed border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-1 pr-2 font-medium text-muted-foreground truncate">Keyword</th>
-              <th className="text-right py-1 w-12 font-medium text-muted-foreground">Pos</th>
-              <th className="text-right py-1 w-10 font-medium text-muted-foreground">1D</th>
-              <th className="text-right py-1 w-10 font-medium text-muted-foreground">7D</th>
+              <th className="text-left py-1 pr-2 font-normal text-muted-foreground truncate">Keyword</th>
+              <th className="text-right py-1 w-12 font-normal text-muted-foreground">Pos</th>
+              <th className="text-right py-1 w-10 font-normal text-muted-foreground">1D</th>
+              <th className="text-right py-1 w-10 font-normal text-muted-foreground">7D</th>
             </tr>
           </thead>
           <tbody>

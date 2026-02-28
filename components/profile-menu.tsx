@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
-export function ProfileMenu() {
+interface ProfileMenuProps {
+  /** Optional profile image URL (e.g. from session or settings). When set, shown in the trigger. */
+  avatarUrl?: string | null;
+}
+
+export function ProfileMenu({ avatarUrl }: ProfileMenuProps = {}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -22,20 +27,41 @@ export function ProfileMenu() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-accent text-sm font-medium text-foreground",
+          "flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-accent text-sm font-medium text-foreground",
           "hover:bg-accent/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
         aria-expanded={open}
         aria-haspopup="true"
-        aria-label="Account menu"
+        aria-label="Profile and settings"
       >
-        ?
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- user profile image, URL from settings/session
+          <img
+            src={avatarUrl}
+            alt=""
+            width={36}
+            height={36}
+            className="size-full object-cover"
+          />
+        ) : (
+          <span className="text-muted-foreground" aria-hidden>?</span>
+        )}
       </button>
       {open && (
         <ul
           className="absolute right-0 top-full z-30 mt-2 min-w-[160px] rounded-md border border-border bg-surface py-1 shadow-lg"
           role="menu"
         >
+          <li role="none">
+            <a
+              href="/api/auth/google"
+              role="menuitem"
+              className="block px-4 py-2 text-sm text-foreground hover:bg-accent"
+              onClick={() => setOpen(false)}
+            >
+              Sign in
+            </a>
+          </li>
           <li role="none">
             <Link
               href="/settings"

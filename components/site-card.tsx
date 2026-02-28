@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useEffect, type ReactNode } from "react";
+import { useRef, useState, useEffect, useMemo, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SiteOverviewMetrics } from "@/types/gsc";
 import { encodePropertyId } from "@/types/gsc";
@@ -10,6 +10,7 @@ import { useDateRange } from "@/contexts/date-range-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
 import { useSparkSeries } from "@/contexts/spark-series-context";
+import { getAiFooterLine } from "@/lib/ai-footer-insight";
 import { getMockTrackedKeywords } from "@/lib/mock-rank";
 import { cn } from "@/lib/utils";
 import { RankPopover } from "./rank-popover";
@@ -252,6 +253,17 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const rankTriggerRef = useRef<HTMLButtonElement>(null);
 
+  const aiFooterLine = useMemo(
+    () =>
+      getAiFooterLine({
+        clicksChangePercent: metrics.clicksChangePercent,
+        impressionsChangePercent: metrics.impressionsChangePercent,
+        avgTrackedRankDelta: metrics.avgTrackedRankDelta ?? null,
+        keywords: getMockTrackedKeywords(metrics.siteUrl).map((k) => ({ keyword: k.keyword, delta7d: k.delta7d })),
+      }),
+    [metrics.siteUrl, metrics.clicksChangePercent, metrics.impressionsChangePercent, metrics.avgTrackedRankDelta]
+  );
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
@@ -356,8 +368,8 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
         />
       </div>
 
-      {/* Footer: daily summary and/or rank strip */}
-      {(recent || (hasKeywords && metrics.avgTrackedRank != null) || !hasKeywords) && (
+      {/* Footer: daily summary, rank strip, AI summary */}
+      {(recent || (hasKeywords && metrics.avgTrackedRank != null) || !hasKeywords || aiFooterLine) && (
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
           <div className="min-w-0 flex-1">
             {recent && (
@@ -400,7 +412,7 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
                   recent ? "mt-0.5" : ""
                 )}
               >
-                Avg Keyword Position: {metrics.avgTrackedRank.toFixed(1)}
+                Avg KW Position: {metrics.avgTrackedRank.toFixed(1)}
                 {metrics.avgTrackedRankDelta != null && (
                   <span className={metrics.avgTrackedRankDelta < 0 ? " text-positive" : metrics.avgTrackedRankDelta > 0 ? " text-negative" : ""}>
                     {" "}({metrics.avgTrackedRankDelta >= 0 ? "▲" : "▼"}
@@ -408,6 +420,11 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
                   </span>
                 )}
               </button>
+            )}
+            {aiFooterLine && (
+              <p className={cn("text-xs text-muted-foreground min-w-0 break-words", (recent || (hasKeywords && metrics.avgTrackedRank != null) || !hasKeywords) ? "mt-0.5" : "")}>
+                {aiFooterLine}
+              </p>
             )}
           </div>
           <StarButton siteUrl={metrics.siteUrl} />

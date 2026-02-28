@@ -13,6 +13,7 @@ interface HeaderProps {
   showSearch?: boolean;
   sortSelect?: React.ReactNode;
   filterSelect?: React.ReactNode;
+  rankDisplaySelect?: React.ReactNode;
 }
 
 export function Header({
@@ -21,6 +22,7 @@ export function Header({
   showSearch = false,
   sortSelect,
   filterSelect,
+  rankDisplaySelect,
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-border bg-background px-6 py-4">
@@ -40,6 +42,7 @@ export function Header({
         )}
         {sortSelect}
         {filterSelect}
+        {rankDisplaySelect}
         <SparkToggles />
         <ThemeToggle />
         <a

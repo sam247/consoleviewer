@@ -397,34 +397,34 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
                 Add Keywords +
               </span>
             )}
-            {hasKeywords && metrics.avgTrackedRank != null && (
-              <button
-                ref={rankTriggerRef}
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setRankPopoverOpen(true);
-                }}
-                className={cn(
-                  "text-left text-xs text-muted-foreground cursor-pointer",
-                  "hover:text-foreground transition-colors",
-                  recent ? "mt-0.5" : ""
+            {((hasKeywords && metrics.avgTrackedRank != null) || aiFooterLine) && (
+              <div className={cn(recent || !hasKeywords ? "mt-1" : "")}>
+                {hasKeywords && metrics.avgTrackedRank != null && (
+                  <button
+                    ref={rankTriggerRef}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setRankPopoverOpen(true);
+                    }}
+                    className="text-left text-xs text-muted-foreground cursor-pointer block hover:text-foreground transition-colors"
+                  >
+                    Avg rank: {metrics.avgTrackedRank.toFixed(1)}
+                    {metrics.avgTrackedRankDelta != null && (
+                      <span className={metrics.avgTrackedRankDelta < 0 ? " text-positive" : metrics.avgTrackedRankDelta > 0 ? " text-negative" : ""}>
+                        {" "}({metrics.avgTrackedRankDelta >= 0 ? "▲" : "▼"}
+                        {Math.abs(metrics.avgTrackedRankDelta).toFixed(1)})
+                      </span>
+                    )}
+                  </button>
                 )}
-              >
-                Avg KW Position: {metrics.avgTrackedRank.toFixed(1)}
-                {metrics.avgTrackedRankDelta != null && (
-                  <span className={metrics.avgTrackedRankDelta < 0 ? " text-positive" : metrics.avgTrackedRankDelta > 0 ? " text-negative" : ""}>
-                    {" "}({metrics.avgTrackedRankDelta >= 0 ? "▲" : "▼"}
-                    {Math.abs(metrics.avgTrackedRankDelta).toFixed(1)})
-                  </span>
+                {aiFooterLine && (
+                  <p className="text-xs text-muted-foreground min-w-0 break-words mt-1">
+                    {aiFooterLine}
+                  </p>
                 )}
-              </button>
-            )}
-            {aiFooterLine && (
-              <p className={cn("text-xs text-muted-foreground min-w-0 break-words", (recent || (hasKeywords && metrics.avgTrackedRank != null) || !hasKeywords) ? "mt-0.5" : "")}>
-                {aiFooterLine}
-              </p>
+              </div>
             )}
           </div>
           <StarButton siteUrl={metrics.siteUrl} />

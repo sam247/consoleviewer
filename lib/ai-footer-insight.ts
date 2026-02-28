@@ -1,29 +1,28 @@
 /**
- * Deterministic insight for dashboard card AI footer summary.
- * No LLM calls; output can later be passed to an LLM for wording refinement only.
+ * Deterministic insight for dashboard card footer (Line 3).
+ * No LLM; compressed console tone. Option to pipe structured insight to LLM later for wording only.
  */
 
 const RANK_THRESHOLD = 0.8;
-const CLICKS_FLAT_THRESHOLD = 5; // % change below this = "flat"
+const TRAFFIC_THRESHOLD = 10; // % — render Line 3 if |clicksChangePercent| >= this
+const CLICKS_FLAT_THRESHOLD = 5; // % below this = "flat" / "unchanged"
 
 export interface FooterInsightInput {
   clicksChangePercent: number;
   impressionsChangePercent: number;
   avgTrackedRankDelta: number | null;
-  /** Top keywords with 7D delta; used to find largest movement */
   keywords: { keyword: string; delta7d: number }[];
 }
 
 export type InsightCategory =
-  | "rank_down_clicks_down"
-  | "rank_down_clicks_flat"
-  | "rank_up_clicks_up"
-  | "rank_up_clicks_flat"
+  | "rank_and_clicks_same_direction"
+  | "rank_moved_clicks_flat"
+  | "traffic_moved_rank_stable"
+  | "avg_rank_moved_no_keyword"
   | "no_significant_movement";
 
 export interface StructuredInsight {
   category: InsightCategory;
-  /** Keyword with largest |delta7d|, if any */
   keyword: string | null;
   keywordDelta7d: number | null;
   avgRankDelta: number | null;
@@ -31,10 +30,27 @@ export interface StructuredInsight {
 }
 
 /**
- * Compute structured insight from card data. Used for deterministic sentence generation
- * and can be passed to an LLM later for wording only.
+ * Only render Line 3 when there is meaningful signal: keyword 7D >= 0.8 OR traffic >= 10%.
  */
+function shouldRenderLine3(input: FooterInsightInput): boolean {
+  const { clicksChangePercent, avgTrackedRankDelta, keywords } = input;
+  const hasTrafficMovement = Math.abs(clicksChangePercent) >= TRAFFIC_THRESHOLD;
+  const hasRankDelta =
+    avgTrackedRankDelta != null && Math.abs(avgTrackedRankDelta) >= RANK_THRESHOLD;
+  const largestKeyword =
+    keywords.length > 0
+      ? keywords.reduce((best, k) =>
+          Math.abs(k.delta7d) > Math.abs(best.delta7d) ? k : best
+        )
+      : null;
+  const hasKeywordMovement =
+    largestKeyword != null && Math.abs(largestKeyword.delta7d) >= RANK_THRESHOLD;
+  return hasTrafficMovement || hasRankDelta || hasKeywordMovement;
+}
+
 export function getStructuredInsight(input: FooterInsightInput): StructuredInsight | null {
+  if (!shouldRenderLine3(input)) return null;
+
   const { clicksChangePercent, avgTrackedRankDelta, keywords } = input;
   const hasRankDelta =
     avgTrackedRankDelta != null && Math.abs(avgTrackedRankDelta) >= RANK_THRESHOLD;
@@ -52,42 +68,48 @@ export function getStructuredInsight(input: FooterInsightInput): StructuredInsig
   const keywordDelta7d = hasKeywordMovement ? largestKeyword!.delta7d : null;
 
   const clicksFlat = Math.abs(clicksChangePercent) < CLICKS_FLAT_THRESHOLD;
-  const rankDown = (rankDelta ?? keywordDelta7d ?? 0) > 0; // position up = rank got worse
+  const trafficMoved = Math.abs(clicksChangePercent) >= TRAFFIC_THRESHOLD;
+  const rankDown = (rankDelta ?? keywordDelta7d ?? 0) > 0;
   const rankUp = (rankDelta ?? keywordDelta7d ?? 0) < 0;
   const clicksDown = clicksChangePercent < -CLICKS_FLAT_THRESHOLD;
   const clicksUp = clicksChangePercent > CLICKS_FLAT_THRESHOLD;
 
-  if (!hasRankDelta && !hasKeywordMovement) return null;
+  // 1. Rank moved + clicks moved same direction
+  if ((rankDown && clicksDown) || (rankUp && clicksUp))
+    return {
+      category: "rank_and_clicks_same_direction",
+      keyword: keyword ?? null,
+      keywordDelta7d,
+      avgRankDelta: rankDelta,
+      clicksChangePercent,
+    };
 
-  if (rankDown && clicksDown)
+  // 2. Rank moved + clicks flat
+  if ((rankDown || rankUp) && clicksFlat)
     return {
-      category: "rank_down_clicks_down",
+      category: "rank_moved_clicks_flat",
       keyword: keyword ?? null,
       keywordDelta7d,
       avgRankDelta: rankDelta,
       clicksChangePercent,
     };
-  if (rankDown && clicksFlat)
+
+  // 3. Traffic moved but rank stable (no significant rank/keyword)
+  if (trafficMoved && !hasRankDelta && !hasKeywordMovement)
     return {
-      category: "rank_down_clicks_flat",
-      keyword: keyword ?? null,
-      keywordDelta7d,
-      avgRankDelta: rankDelta,
+      category: "traffic_moved_rank_stable",
+      keyword: null,
+      keywordDelta7d: null,
+      avgRankDelta: null,
       clicksChangePercent,
     };
-  if (rankUp && clicksUp)
+
+  // 4. Avg rank moved but no major keyword shift
+  if (hasRankDelta && !hasKeywordMovement)
     return {
-      category: "rank_up_clicks_up",
-      keyword: keyword ?? null,
-      keywordDelta7d,
-      avgRankDelta: rankDelta,
-      clicksChangePercent,
-    };
-  if (rankUp && clicksFlat)
-    return {
-      category: "rank_up_clicks_flat",
-      keyword: keyword ?? null,
-      keywordDelta7d,
+      category: "avg_rank_moved_no_keyword",
+      keyword: null,
+      keywordDelta7d: null,
       avgRankDelta: rankDelta,
       clicksChangePercent,
     };
@@ -95,68 +117,60 @@ export function getStructuredInsight(input: FooterInsightInput): StructuredInsig
   return null;
 }
 
-const MAX_LENGTH = 120;
+const MAX_LENGTH = 110;
 
 /**
- * Generate one short sentence from structured insight. Deterministic; no LLM.
- * Returns null if no significant movement or sentence would exceed MAX_LENGTH.
+ * Compressed console-style sentence. No sparkle, no emoji, no advice. Semicolon-separated.
  */
 export function getFooterSummarySentence(insight: StructuredInsight): string | null {
   const k = insight.keyword;
   const d7 = insight.keywordDelta7d ?? insight.avgRankDelta;
-  const absD7 = d7 != null ? Math.abs(d7).toFixed(1) : null;
-  const dir = d7 != null && d7 < 0 ? "improved" : "dropped";
+  const d7Str =
+    d7 != null
+      ? (d7 > 0 ? "+" : "") + d7.toFixed(1)
+      : null;
   const clicksPct =
     Math.abs(insight.clicksChangePercent) >= CLICKS_FLAT_THRESHOLD
-      ? `${Math.abs(insight.clicksChangePercent).toFixed(0)}%`
+      ? (insight.clicksChangePercent > 0 ? "+" : "") + insight.clicksChangePercent.toFixed(0) + "%"
       : null;
 
   let sentence: string;
-  const avgAbs = insight.avgRankDelta != null ? Math.abs(insight.avgRankDelta).toFixed(1) : absD7;
+  const shortK = k && k.length > 24 ? k.slice(0, 21) + "…" : k;
+
   switch (insight.category) {
-    case "rank_down_clicks_down":
+    case "rank_and_clicks_same_direction":
       sentence =
-        k && absD7
-          ? `✨ '${k}' ${dir} ${absD7} positions; clicks are also down.`
-          : `✨ Avg rank slipped ${insight.avgRankDelta?.toFixed(1) ?? absD7} and clicks are down.`;
+        shortK && d7Str && clicksPct
+          ? `'${shortK}' ${d7Str}; clicks ${clicksPct}.`
+          : avgRankSentence(insight.avgRankDelta, `clicks ${clicksPct ?? "moved"}.`);
       break;
-    case "rank_down_clicks_flat":
+    case "rank_moved_clicks_flat":
       sentence =
-        k && absD7
-          ? `✨ '${k}' ${dir} ${absD7} positions; traffic stable.`
-          : `✨ Avg rank slipped ${insight.avgRankDelta?.toFixed(1) ?? absD7} but traffic remains stable.`;
+        shortK && d7Str
+          ? `'${shortK}' ${d7Str}; traffic stable.`
+          : avgRankSentence(insight.avgRankDelta, "traffic stable.");
       break;
-    case "rank_up_clicks_up":
-      sentence =
-        k && absD7 && clicksPct
-          ? `✨ '${k}' ${dir} ${absD7} positions and clicks rose ${clicksPct}.`
-          : `✨ Avg rank improved ${avgAbs ?? ""} and clicks rose ${clicksPct ?? ""}.`;
+    case "traffic_moved_rank_stable":
+      sentence = clicksPct ? `Clicks ${clicksPct}; no tracked rank shift.` : null;
       break;
-    case "rank_up_clicks_flat":
-      sentence =
-        k && absD7
-          ? `✨ '${k}' ${dir} ${absD7} positions; traffic stable.`
-          : `✨ Avg rank improved ${avgAbs ?? ""} but traffic remains stable.`;
+    case "avg_rank_moved_no_keyword":
+      sentence = avgRankSentence(insight.avgRankDelta, "traffic unchanged.");
       break;
     default:
       return null;
   }
 
-  if (sentence.length > MAX_LENGTH) {
-    // Truncate keyword if needed
-    if (k && sentence.includes(`'${k}'`)) {
-      const maxK = 20;
-      const shortK = k.length > maxK ? k.slice(0, maxK - 2) + "…" : k;
-      sentence = sentence.replace(`'${k}'`, `'${shortK}'`);
-    }
-    if (sentence.length > MAX_LENGTH) sentence = sentence.slice(0, MAX_LENGTH - 1) + ".";
-  }
-  return sentence;
+  if (!sentence || sentence.length > MAX_LENGTH)
+    sentence = sentence ? sentence.slice(0, MAX_LENGTH - 1).replace(/\.?$/, ".") : null;
+  return sentence ?? null;
 }
 
-/**
- * Get AI footer line for a card, or null if nothing to show.
- */
+function avgRankSentence(delta: number | null, second: string): string {
+  if (delta == null) return second;
+  const s = (delta > 0 ? "+" : "") + delta.toFixed(1);
+  return `Avg rank ${s}; ${second}`;
+}
+
 export function getAiFooterLine(input: FooterInsightInput): string | null {
   const structured = getStructuredInsight(input);
   if (!structured) return null;

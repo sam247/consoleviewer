@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
 import { SiteCard } from "@/components/site-card";
@@ -156,7 +156,15 @@ export default function OverviewPage() {
             ? Array.from({ length: 6 }).map((_, i) => (
                 <SiteCardSkeleton key={`skeleton-${i}`} />
               ))
-            : sorted.map((m) => <SiteCard key={m.siteUrl} metrics={m} />)}
+            : (
+                <Suspense
+                  fallback={Array.from({ length: Math.min(sorted.length || 6, 12) }).map((_, i) => (
+                    <SiteCardSkeleton key={`suspense-${i}`} />
+                  ))}
+                >
+                  {sorted.map((m) => <SiteCard key={m.siteUrl} metrics={m} />)}
+                </Suspense>
+              )}
         </div>
         {!isLoading && sorted.length === 0 && (
           <div className="py-12 text-center">

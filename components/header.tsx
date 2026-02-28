@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { DateRangeSelect } from "./date-range-select";
 import { OverviewSearch } from "./overview-search";
 import { ProfileMenu } from "./profile-menu";
@@ -42,7 +43,9 @@ export function Header({
         )}
         {sortSelect}
         {filterSelect}
-        {rankDisplaySelect}
+        {rankDisplaySelect != null ? (
+          <Suspense fallback={null}>{rankDisplaySelect}</Suspense>
+        ) : null}
         <SparkToggles />
         <ThemeToggle />
         <a

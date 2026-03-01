@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     const flags: string[] = [];
     let signal: "warning" | "stable" = "stable";
     const lastSeen: string | null = page ? fmt(end) : null;
-    let impressionsDelta: number | null = page?.changePercent ?? null;
+    const impressionsDelta: number | null = page?.changePercent ?? null;
 
     if (!page) {
       flags.push("No impressions in last 14 days");

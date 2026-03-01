@@ -85,7 +85,7 @@ export function OpportunityIndex({ queries, className }: OpportunityIndexProps) 
             </tr>
           </thead>
           <tbody>
-            {top5.map((row, i) => (
+            {top5.map((row) => (
               <tr key={row.key} className="border-b border-border/40 last:border-0 hover:bg-accent/50 transition-colors duration-100">
                 <td className="px-4 py-1.5 truncate max-w-[200px]" title={row.key}>{row.key}</td>
                 <td className="px-4 py-1.5 text-right tabular-nums">{row.position.toFixed(1)}</td>

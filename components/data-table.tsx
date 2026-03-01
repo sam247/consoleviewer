@@ -171,7 +171,7 @@ function DataTableView({
 export function DataTable({
   title,
   rows,
-  maxRows = 10,
+  maxRows: _maxRows = 10,
   className,
   trendFilter: controlledTrend,
   onTrendFilterChange,

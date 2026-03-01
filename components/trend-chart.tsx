@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -37,6 +38,8 @@ interface TrendChartProps {
   useSeriesContext?: boolean;
   /** When true and priorData is provided, overlay prior period series */
   compareToPrior?: boolean;
+  /** When true with useSeriesContext, normalize each series to 0-1 so multiple metrics are visible (dashboard sparkline style) */
+  normalizeWhenMultiSeries?: boolean;
   className?: string;
 }
 
@@ -52,6 +55,14 @@ const SERIES_CONFIG: { key: SparkSeriesKey; dataKey: keyof SparklineDataPoint; s
   { key: "position", dataKey: "position", stroke: CHART_POSITION },
 ];
 
+/** Normalize a series to 0-1 range so multiple metrics are all visible (each uses full vertical scale) */
+function normalizeSeriesValues(values: number[]): number[] {
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  return values.map((v) => (v - min) / range);
+}
+
 export function TrendChart({
   data,
   priorData,
@@ -59,6 +70,7 @@ export function TrendChart({
   showImpressions = true,
   useSeriesContext = false,
   compareToPrior = false,
+  normalizeWhenMultiSeries = false,
   className,
 }: TrendChartProps) {
   const { series } = useSparkSeries();
@@ -70,15 +82,148 @@ export function TrendChart({
   const showCtr = useSeriesContext ? series?.ctr === true : false;
   const showPosition = useSeriesContext ? series?.position === true : false;
 
-  const chartData = useSeriesContext && compareToPrior && priorData?.length
-    ? data.map((d, i) => ({
-        ...d,
-        clicksPrior: priorData[i]?.clicks,
-        impressionsPrior: priorData[i]?.impressions,
-        ctrPrior: priorData[i]?.ctr,
-        positionPrior: priorData[i]?.position,
-      }))
-    : data;
+  const visibleSeries = useSeriesContext
+    ? SERIES_CONFIG.filter((s) => {
+        if (s.key === "clicks") return showClicks;
+        if (s.key === "impressions") return showImpr;
+        if (s.key === "ctr") return showCtr;
+        if (s.key === "position") return showPosition;
+        return false;
+      })
+    : [];
+
+  const useNormalized =
+    normalizeWhenMultiSeries &&
+    useSeriesContext &&
+    visibleSeries.length > 0 &&
+    visibleSeries.some((s) => data.some((d) => (d[s.dataKey] as number) != null));
+
+  const chartData = useMemo(() => {
+    if (!useNormalized) {
+      if (useSeriesContext && compareToPrior && priorData?.length) {
+        return data.map((d, i) => ({
+          ...d,
+          clicksPrior: priorData[i]?.clicks,
+          impressionsPrior: priorData[i]?.impressions,
+          ctrPrior: priorData[i]?.ctr,
+          positionPrior: priorData[i]?.position,
+        }));
+      }
+      return data;
+    }
+    return data.map((point, i) => {
+      const out: Record<string, string | number | undefined> = { ...point };
+      visibleSeries.forEach((s) => {
+        const raw = point[s.dataKey] as number | undefined;
+        if (raw == null) return;
+        const values = data.map((d) => (d[s.dataKey] as number) ?? 0);
+        const norm = normalizeSeriesValues(values);
+        out[`_norm_${s.key}`] = norm[i];
+      });
+      if (compareToPrior && priorData?.length) {
+        visibleSeries.forEach((s) => {
+          const raw = priorData[i]?.[s.dataKey] as number | undefined;
+          if (raw == null) return;
+          const values = priorData.map((d) => (d[s.dataKey] as number) ?? 0);
+          const norm = normalizeSeriesValues(values);
+          out[`_norm_${s.key}Prior`] = norm[i];
+        });
+      }
+      return out;
+    });
+  }, [data, priorData, useSeriesContext, compareToPrior, useNormalized, visibleSeries]);
+
+  if (useNormalized) {
+    return (
+      <div className={cn("w-full", className)} style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10 }}
+              tickFormatter={(v) => {
+                const d = new Date(v);
+                return `${d.getMonth() + 1}/${d.getDate()}`;
+              }}
+            />
+            <YAxis hide domain={[0, 1]} allowDataOverflow />
+            <Tooltip
+              contentStyle={{
+                fontSize: 12,
+                padding: "8px 12px",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+              }}
+              labelFormatter={(v) => new Date(v).toLocaleDateString()}
+              content={({ active, payload, label }) => {
+                if (!active || !label || !payload?.length) return null;
+                const raw = data.find((d) => d.date === label);
+                if (!raw) return null;
+                return (
+                  <div
+                    className="rounded-md border border-border bg-surface px-3 py-2 text-xs shadow-sm"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+                  >
+                    <div className="font-medium text-foreground mb-1.5">
+                      {new Date(label).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                    </div>
+                    <div className="flex flex-col gap-0.5 text-muted-foreground">
+                      {visibleSeries.map((s) => {
+                        const v = raw[s.dataKey];
+                        if (v == null) return null;
+                        const fmt =
+                          s.key === "ctr"
+                            ? `${(v as number).toFixed(2)}%`
+                            : s.key === "position"
+                              ? (v as number).toFixed(1)
+                              : (v as number) >= 1e6
+                                ? `${((v as number) / 1e6).toFixed(1)}M`
+                                : (v as number) >= 1e3
+                                  ? `${((v as number) / 1e3).toFixed(1)}k`
+                                  : String(v);
+                        return (
+                          <span key={s.key} className="tabular-nums">
+                            {s.key.charAt(0).toUpperCase() + s.key.slice(1)}: {fmt}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }}
+            />
+            {visibleSeries.map((s) => (
+              <Line
+                key={s.key}
+                type="monotone"
+                dataKey={`_norm_${s.key}`}
+                stroke={s.stroke}
+                strokeWidth={s.key === "clicks" ? 2.5 : 1.5}
+                strokeOpacity={s.key === "impressions" ? 0.85 : 1}
+                dot={false}
+              />
+            ))}
+            {compareToPrior &&
+              priorData?.length &&
+              visibleSeries.map((s) => (
+                <Line
+                  key={`${s.key}-prior`}
+                  type="monotone"
+                  dataKey={`_norm_${s.key}Prior`}
+                  stroke={s.stroke}
+                  strokeWidth={1}
+                  strokeOpacity={0.45}
+                  strokeDasharray="4 4"
+                  dot={false}
+                  name="Prior"
+                />
+              ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("w-full", className)} style={{ height }}>

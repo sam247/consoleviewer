@@ -458,6 +458,7 @@ export default function SiteDetailPage({
                     showImpressions
                     useSeriesContext
                     compareToPrior={compareToPrior}
+                    normalizeWhenMultiSeries
                   />
                 </div>
               </section>

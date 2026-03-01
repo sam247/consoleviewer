@@ -2,10 +2,11 @@
 
 import { useMemo } from "react";
 import {
+  Area,
   CartesianGrid,
   Legend,
-  LineChart,
   Line,
+  LineChart,
   XAxis,
   YAxis,
   ResponsiveContainer,
@@ -57,7 +58,7 @@ const SERIES_CONFIG: { key: SparkSeriesKey; dataKey: keyof SparklineDataPoint; s
   { key: "position", dataKey: "position", stroke: CHART_POSITION, label: "Avg position" },
 ];
 
-const CHART_MARGIN = { top: 8, right: 8, left: 40, bottom: 20 };
+const CHART_MARGIN = { top: 6, right: 6, left: 36, bottom: 18 };
 
 /** Normalize a series to 0-1 range so multiple metrics are all visible (each uses full vertical scale) */
 function normalizeSeriesValues(values: number[]): number[] {
@@ -148,20 +149,20 @@ export function TrendChart({
       <div className={cn("w-full", className)} style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={CHART_MARGIN}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} vertical horizontal />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10 }}
+              tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
               tickFormatter={(v) => {
                 const d = new Date(v);
                 return `${d.getMonth() + 1}/${d.getDate()}`;
               }}
             />
             <YAxis
-              width={40}
+              width={36}
               domain={[0, 1]}
               allowDataOverflow
-              tick={{ fontSize: 10 }}
+              tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
               tickFormatter={(v) => `${Math.round(Number(v) * 100)}%`}
             />
             <Tooltip
@@ -251,69 +252,118 @@ export function TrendChart({
     if (v < 1 && v > 0) return v.toFixed(2);
     return String(Math.round(v));
   };
+
+  const priorByDate = useMemo(() => {
+    const m = new Map<string, DataPoint>();
+    (priorData ?? []).forEach((d) => m.set(d.date, d));
+    return m;
+  }, [priorData]);
+
   return (
     <div className={cn("w-full", className)} style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={CHART_MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+          <defs>
+            <linearGradient id="trend-fill-clicks" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={CHART_CLICKS} stopOpacity={0.25} />
+              <stop offset="100%" stopColor={CHART_CLICKS} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} vertical horizontal />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 10 }}
+            tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
             tickFormatter={(v) => {
               const d = new Date(v);
               return `${d.getMonth() + 1}/${d.getDate()}`;
             }}
           />
           <YAxis
-            width={40}
+            width={36}
             hide={false}
             domain={["auto", "auto"]}
-            tick={{ fontSize: 10 }}
+            tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
             tickFormatter={yAxisTickFormatter}
           />
           <Tooltip
-            contentStyle={{
-              fontSize: 12,
-              padding: "8px 12px",
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: 6,
+            cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+            content={({ active, payload, label }) => {
+              if (!active || !label || !payload?.length) return null;
+              const row = chartData.find((d) => d.date === String(label)) as (DataPoint & { clicksPrior?: number; impressionsPrior?: number; ctrPrior?: number; positionPrior?: number }) | undefined;
+              const prior = priorByDate.get(String(label));
+              const fmt = (v: number, isPct = false) =>
+                isPct ? `${v.toFixed(1)}%` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}k` : String(Math.round(v));
+              const pctChange = (curr: number, prev: number) => (prev === 0 ? null : ((curr - prev) / prev) * 100);
+              return (
+                <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs shadow-md" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                  <div className="font-semibold text-foreground mb-1.5">{new Date(label).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
+                  <div className="flex flex-col gap-0.5 text-muted-foreground">
+                    {row?.clicks != null && (
+                      <span className="tabular-nums">
+                        Clicks {fmt(row.clicks)}
+                        {prior?.clicks != null && (() => {
+                          const p = pctChange(row.clicks, prior.clicks);
+                          return p != null ? ` (${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior)` : "";
+                        })()}
+                      </span>
+                    )}
+                    {row?.impressions != null && (
+                      <span className="tabular-nums">
+                        Impressions {fmt(row.impressions)}
+                        {prior?.impressions != null && (() => {
+                          const p = pctChange(row.impressions, prior.impressions);
+                          return p != null ? ` (${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior)` : "";
+                        })()}
+                      </span>
+                    )}
+                    {row?.position != null && (
+                      <span className="tabular-nums">
+                        Position {row.position.toFixed(1)}
+                        {prior?.position != null && (() => {
+                          const p = pctChange(row.position, prior.position);
+                          return p != null ? ` (${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior)` : "";
+                        })()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
             }}
-            labelFormatter={(v) => new Date(v).toLocaleDateString()}
           />
           {showClicks && (
             <>
-              <Line type="monotone" dataKey="clicks" stroke={CHART_CLICKS} strokeWidth={2.5} dot={false} name="Clicks" />
+              <Area type="monotone" dataKey="clicks" fill="url(#trend-fill-clicks)" stroke="none" />
+              <Line type="monotone" dataKey="clicks" stroke={CHART_CLICKS} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} name="Clicks" />
               {compareToPrior && priorData?.length && (
-                <Line type="monotone" dataKey="clicksPrior" stroke={CHART_CLICKS} strokeWidth={1} dot={false} strokeDasharray="4 4" strokeOpacity={0.5} name="Prior" />
+                <Line type="monotone" dataKey="clicksPrior" stroke={CHART_CLICKS} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="4 4" strokeOpacity={0.5} name="Prior" />
               )}
             </>
           )}
           {showImpr && (
             <>
-              <Line type="monotone" dataKey="impressions" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} strokeDasharray="3 3" strokeOpacity={0.65} name="Impressions" />
+              <Line type="monotone" dataKey="impressions" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} activeDot={{ r: 4 }} strokeDasharray="3 3" strokeOpacity={0.65} name="Impressions" />
               {compareToPrior && priorData?.length && (
-                <Line type="monotone" dataKey="impressionsPrior" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} strokeDasharray="5 5" strokeOpacity={0.4} name="Prior" />
+                <Line type="monotone" dataKey="impressionsPrior" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="5 5" strokeOpacity={0.4} name="Prior" />
               )}
             </>
           )}
           {showCtr && (
             <>
-              <Line type="monotone" dataKey="ctr" stroke={CHART_CTR} strokeWidth={1.5} dot={false} name="CTR" />
+              <Line type="monotone" dataKey="ctr" stroke={CHART_CTR} strokeWidth={1.5} dot={false} activeDot={{ r: 4 }} name="CTR" />
               {compareToPrior && priorData?.length && (
-                <Line type="monotone" dataKey="ctrPrior" stroke={CHART_CTR} strokeWidth={1} dot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
+                <Line type="monotone" dataKey="ctrPrior" stroke={CHART_CTR} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
               )}
             </>
           )}
           {showPosition && (
             <>
-              <Line type="monotone" dataKey="position" stroke={CHART_POSITION} strokeWidth={1.5} dot={false} name="Avg position" />
+              <Line type="monotone" dataKey="position" stroke={CHART_POSITION} strokeWidth={1.5} dot={false} activeDot={{ r: 4 }} name="Avg position" />
               {compareToPrior && priorData?.length && (
-                <Line type="monotone" dataKey="positionPrior" stroke={CHART_POSITION} strokeWidth={1} dot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
+                <Line type="monotone" dataKey="positionPrior" stroke={CHART_POSITION} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
               )}
             </>
           )}
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend align="right" verticalAlign="top" wrapperStyle={{ fontSize: 10 }} formatter={(value) => <span style={{ color: "var(--muted-foreground)" }}>{value}</span>} />
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -23,6 +23,10 @@ interface DataTableProps {
   trendFilter?: TrendFilter;
   onTrendFilterChange?: (t: TrendFilter) => void;
   showFilter?: boolean;
+  /** When set, rows are clickable and this is called on row click (e.g. open detail drawer) */
+  onRowClick?: (row: DataTableRow) => void;
+  /** When set, an export CSV icon is shown in the header; callback should trigger CSV download */
+  onExportCsv?: () => void;
 }
 
 const INITIAL_VISIBLE = 10;
@@ -64,6 +68,8 @@ interface DataTableViewProps {
   hasMore: boolean;
   expanded: boolean;
   onToggleExpand: () => void;
+  onRowClick?: (row: DataTableRow) => void;
+  onExportCsv?: () => void;
 }
 
 function DataTableView({
@@ -80,6 +86,8 @@ function DataTableView({
   hasMore,
   expanded,
   onToggleExpand,
+  onRowClick,
+  onExportCsv,
 }: DataTableViewProps) {
   const filterOptions: TrendFilter[] = hasPosition
     ? ["all", "growing", "decaying", "new", "lost", "highImprLowCtr"]
@@ -88,7 +96,19 @@ function DataTableView({
   return (
     <div className={cn("min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 p-0", className)}>
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap">
-        <span className="font-semibold text-sm text-foreground shrink-0">{title}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="font-semibold text-sm text-foreground">{title}</span>
+          {onExportCsv && (
+            <button
+              type="button"
+              onClick={onExportCsv}
+              className="p-1 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150"
+              title="Export CSV"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            </button>
+          )}
+        </div>
         {showFilterBar && trend !== "new" && trend !== "lost" && (
           <div className="flex flex-wrap gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
             {filterOptions.filter((t) => t !== "new" && t !== "lost").map((t) => (
@@ -170,7 +190,15 @@ function DataTableView({
               {visibleRows.map((row) => (
                 <tr
                   key={row.key}
-                  className="border-b border-border/50 hover:bg-accent/50 transition-colors duration-100"
+                  className={cn(
+                    "border-b border-border/50 transition-colors duration-150",
+                    onRowClick && "cursor-pointer hover:border-l-2 hover:border-l-foreground/30",
+                    "hover:bg-accent/50"
+                  )}
+                  onClick={() => onRowClick?.(row)}
+                  role={onRowClick ? "button" : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onKeyDown={onRowClick ? (e) => e.key === "Enter" && onRowClick(row) : undefined}
                 >
                   <td className="px-4 py-1.5 truncate min-w-0" title={row.key}>
                     {row.key}
@@ -234,6 +262,8 @@ export function DataTable({
   trendFilter: controlledTrend,
   onTrendFilterChange,
   showFilter = true,
+  onRowClick,
+  onExportCsv,
 }: DataTableProps) {
   const [internalTrend, setInternalTrend] = useState<TrendFilter>("all");
   const trend = controlledTrend ?? internalTrend;
@@ -298,6 +328,8 @@ export function DataTable({
       hasMore={hasMore}
       expanded={expanded}
       onToggleExpand={() => setExpanded((e) => !e)}
+      onRowClick={onRowClick}
+      onExportCsv={onExportCsv}
     />
   );
 }

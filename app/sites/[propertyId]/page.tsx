@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
 import { TrendChart } from "@/components/trend-chart";
@@ -11,7 +11,7 @@ import { SparkToggles } from "@/components/spark-toggles";
 import { TrackedKeywordsSection } from "@/components/tracked-keywords-section";
 import { IndexSignalsCard } from "@/components/index-signals-card";
 import { CannibalisationCard } from "@/components/cannibalisation-card";
-import { QueryFootprint } from "@/components/query-footprint";
+import { QueryFootprint, type BandFilter } from "@/components/query-footprint";
 import { RankingBandChart } from "@/components/ranking-band-chart";
 import { PositionVolatilityChart } from "@/components/position-volatility-chart";
 import { MomentumScoreCard } from "@/components/momentum-score-card";
@@ -20,6 +20,7 @@ import { OpportunityIndex } from "@/components/opportunity-index";
 import { useDateRange } from "@/contexts/date-range-context";
 import { decodePropertyId } from "@/types/gsc";
 import { getMockTrackedKeywords } from "@/lib/mock-rank";
+import { exportToCsv, exportChartToPng } from "@/lib/export-csv";
 import { cn } from "@/lib/utils";
 
 async function fetchSiteDetail(
@@ -281,6 +282,38 @@ export default function SiteDetailPage({
   const [compareToPrior, setCompareToPrior] = useState(false);
   const [showPercentView, setShowPercentView] = useState(true);
   const [contentFilterPattern, setContentFilterPattern] = useState("");
+  const [bandFilter, setBandFilter] = useState<BandFilter>(null);
+  const trendChartContainerRef = useRef<HTMLDivElement>(null);
+  const [contentMounted, setContentMounted] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setContentMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const SEGMENTS_KEY = "consoleview_content_segments";
+  type SavedSegment = { id: string; name: string; pattern: string };
+  const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
+  useEffect(() => {
+    try {
+      const raw = typeof localStorage !== "undefined" ? localStorage.getItem(SEGMENTS_KEY) : null;
+      if (raw) setSavedSegments(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+  const saveSegment = () => {
+    if (contentGroupsFilteredPages.error || !contentFilterPattern.trim()) return;
+    const next: SavedSegment[] = [
+      ...savedSegments,
+      { id: crypto.randomUUID?.() ?? String(Date.now()), name: contentFilterPattern.trim().slice(0, 30) || "Segment", pattern: contentFilterPattern.trim() },
+    ];
+    setSavedSegments(next);
+    try {
+      localStorage.setItem(SEGMENTS_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
 
   const queriesRows = useMemo<DataTableRow[]>(
     () =>
@@ -330,10 +363,12 @@ export default function SiteDetailPage({
     changePercent: undefined,
   }));
   const queriesRowsForTable = useMemo(() => {
-    if (trendFilter === "new") return newQueriesRows;
-    if (trendFilter === "lost") return lostQueriesRows;
-    return queriesRows;
-  }, [trendFilter, queriesRows, newQueriesRows, lostQueriesRows]);
+    let rows = trendFilter === "new" ? newQueriesRows : trendFilter === "lost" ? lostQueriesRows : queriesRows;
+    if (bandFilter) {
+      rows = rows.filter((r) => r.position != null && r.position >= bandFilter.min && r.position <= bandFilter.max);
+    }
+    return rows;
+  }, [trendFilter, queriesRows, newQueriesRows, lostQueriesRows, bandFilter]);
   const pagesRowsForTable = useMemo(() => {
     if (trendFilter === "new") return newPagesRows;
     if (trendFilter === "lost") return lostPagesRows;
@@ -457,21 +492,12 @@ export default function SiteDetailPage({
             </div>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className={cn("space-y-4 transition-opacity duration-300", contentMounted ? "opacity-100" : "opacity-0")}>
             {/* Section A — Header metric row + footprint summary */}
             <section aria-label="Overview" className="border-b border-border pb-4">
               <div className="flex flex-wrap items-baseline justify-between gap-4">
                 <HeaderMetricRow summary={data?.summary} formatNum={formatNum} />
                 <div className="flex flex-wrap items-center gap-3 shrink-0">
-                  {data?.summary && (
-                    <MomentumScoreCard
-                      summary={{
-                        clicksChangePercent: data.summary.clicksChangePercent,
-                        positionChangePercent: data.summary.positionChangePercent,
-                        queryCountChangePercent: data.summary.queryCountChangePercent,
-                      }}
-                    />
-                  )}
                   <div className="text-right">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">Queries in band</div>
                     <div className="text-sm font-semibold tabular-nums text-foreground mt-0.5">
@@ -482,13 +508,37 @@ export default function SiteDetailPage({
               </div>
             </section>
 
-            {/* Section B — Trend */}
+            {/* Section B — Trend + right column (Momentum, Query Footprint) */}
             {data?.daily?.length > 0 && (
-              <section aria-label="Trend">
-                <div className="rounded-lg border border-border bg-surface px-4 py-3 transition-colors hover:border-foreground/20">
-                  <div className="flex items-center justify-between gap-4 mb-2 flex-wrap">
+              <section aria-label="Trend" className="grid grid-cols-1 lg:grid-cols-[minmax(0,4fr)_minmax(200px,1fr)] gap-4">
+                <div className="rounded-lg border border-border bg-surface px-4 py-2.5 transition-colors hover:border-foreground/20 min-w-0">
+                  <div className="flex items-center justify-between gap-4 mb-1.5 flex-wrap">
                     <h2 className="text-sm font-semibold text-foreground">Performance over time</h2>
-                    <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => exportToCsv((data?.daily ?? []).map((d: { date: string; clicks: number; impressions?: number; ctr?: number; position?: number }) => ({
+                            date: d.date,
+                            clicks: d.clicks,
+                            impressions: d.impressions ?? 0,
+                            ctr: d.ctr ?? 0,
+                            position: d.position ?? "",
+                          })), "performance-over-time")}
+                          className="p-1.5 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150"
+                          title="Export CSV"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => exportChartToPng(trendChartContainerRef.current, "performance-over-time")}
+                          className="p-1.5 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150"
+                          title="Export PNG"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 16m4-4v12" /></svg>
+                        </button>
+                      </div>
                       <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-150">
                         <input
                           type="checkbox"
@@ -510,6 +560,7 @@ export default function SiteDetailPage({
                       <SparkToggles />
                     </div>
                   </div>
+                  <div ref={trendChartContainerRef}>
                   <TrendChart
                     data={data.daily}
                     priorData={data?.priorDaily}
@@ -519,15 +570,39 @@ export default function SiteDetailPage({
                     compareToPrior={compareToPrior}
                     normalizeWhenMultiSeries={showPercentView}
                   />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-4 min-w-0">
+                  {data?.summary && (
+                    <MomentumScoreCard
+                      summary={{
+                        clicksChangePercent: data.summary.clicksChangePercent,
+                        positionChangePercent: data.summary.positionChangePercent,
+                        queryCountChangePercent: data.summary.queryCountChangePercent,
+                      }}
+                      className="py-2"
+                    />
+                  )}
+                  {queriesRows.length > 0 && (
+                    <QueryFootprint
+                      queries={queriesRows}
+                      daily={data?.daily ?? []}
+                      className="flex-1 min-h-0"
+                      onBandSelect={setBandFilter}
+                      selectedBand={bandFilter}
+                    />
+                  )}
                 </div>
               </section>
             )}
 
-            {/* Query Footprint */}
-            {queriesRows.length > 0 && (
+            {/* Query Footprint (full width when no daily data, so it still shows) */}
+            {!data?.daily?.length && queriesRows.length > 0 && (
               <QueryFootprint
                 queries={queriesRows}
                 daily={data?.daily ?? []}
+                onBandSelect={setBandFilter}
+                selectedBand={bandFilter}
               />
             )}
 
@@ -579,18 +654,19 @@ export default function SiteDetailPage({
             </div>
 
             {/* Section F — Performance tables + Query Counting + Content Groups */}
-            <section aria-label="Performance tables" className="space-y-5">
+            <section aria-label="Performance tables" className="space-y-4">
               <h2 className="text-sm font-semibold text-foreground mb-2">Performance tables</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <div className="flex flex-col gap-5 min-w-0">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-4 min-w-0">
                   <DataTable
                     title="Queries"
                     rows={queriesRowsForTable}
                     trendFilter={trendFilter}
                     onTrendFilterChange={setTrendFilter}
                     showFilter
+                    onExportCsv={() => exportToCsv(queriesRowsForTable as unknown as Record<string, string | number | undefined>[], "queries")}
                   />
-                  <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 p-3">
+                  <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 px-4 py-2.5">
                     <h3 className="text-sm font-semibold text-foreground mb-1.5">Query counting</h3>
                     <p className="text-xs text-muted-foreground mb-2">Queries in top 10</p>
                     <div className="flex flex-wrap gap-3 text-sm">
@@ -609,13 +685,14 @@ export default function SiteDetailPage({
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-col gap-5 min-w-0">
+                <div className="flex flex-col gap-4 min-w-0">
                   <DataTable
                     title="Pages"
                     rows={pagesRowsForTable}
                     trendFilter={trendFilter}
                     onTrendFilterChange={setTrendFilter}
                     showFilter
+                    onExportCsv={() => exportToCsv(pagesRowsForTable as unknown as Record<string, string | number | undefined>[], "pages")}
                   />
                   {contentGroups.length > 0 && (() => {
                     const maxClicks = Math.max(...contentGroups.map((g) => g.clicks), 1);
@@ -626,23 +703,93 @@ export default function SiteDetailPage({
                     return (
                       <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20">
                         <div className="border-b border-border px-4 py-2.5">
-                          <h3 className="text-sm font-semibold text-foreground">Content groups</h3>
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <h3 className="text-sm font-semibold text-foreground">Content groups</h3>
+                            <button
+                              type="button"
+                              onClick={() => exportToCsv(contentGroups.map((g) => ({ label: g.label, clicks: g.clicks, impressions: g.impressions, avgChangePercent: g.avgChangePercent ?? "" })), "content-groups")}
+                              className="p-1 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150"
+                              title="Export CSV"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            </button>
+                          </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {contentGroups.length} groups · {formatNum(totalGroupClicks)} clicks ({sharePct}% of total)
                             {siteTrend != null ? ` · Site trend ${siteTrend >= 0 ? "+" : ""}${siteTrend}%` : " · —"}
                           </p>
-                          <div className="mt-2 flex items-center gap-2">
+                          <label className="block text-xs text-muted-foreground mt-2 mb-1">Filter by path or URL regex</label>
+                          <div className="flex flex-wrap items-center gap-2">
                             <input
                               type="text"
-                              placeholder="Filter by path regex (e.g. ^/blog/)"
+                              placeholder="e.g. ^/blog/"
                               value={contentFilterPattern}
                               onChange={(e) => setContentFilterPattern(e.target.value)}
-                              className="flex-1 min-w-0 rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                              className={cn(
+                                "flex-1 min-w-[140px] rounded border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring",
+                                contentGroupsFilteredPages.error ? "border-negative" : "border-border"
+                              )}
                             />
+                            <button
+                              type="button"
+                              onClick={saveSegment}
+                              disabled={!!contentGroupsFilteredPages.error || !contentFilterPattern.trim()}
+                              className="rounded border border-border bg-muted/30 px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50 disabled:pointer-events-none transition-colors duration-150"
+                            >
+                              Save as segment
+                            </button>
                             {contentGroupsFilteredPages.error && (
-                              <span className="text-xs text-negative shrink-0">{contentGroupsFilteredPages.error}</span>
+                              <span className="text-xs text-negative shrink-0">Invalid regex</span>
                             )}
                           </div>
+                          {contentFilterPattern.trim() && !contentGroupsFilteredPages.error && (() => {
+                            const matched = contentGroupsFilteredPages.pages;
+                            const n = matched.length;
+                            const totalClicks = pagesRows.reduce((s, p) => s + p.clicks, 0);
+                            const totalImpr = pagesRows.reduce((s, p) => s + p.impressions, 0);
+                            const matchedClicks = matched.reduce((s, p) => s + p.clicks, 0);
+                            const matchedImpr = matched.reduce((s, p) => s + p.impressions, 0);
+                            const pctClicks = totalClicks > 0 ? Math.round((matchedClicks / totalClicks) * 100) : 0;
+                            const pctImpr = totalImpr > 0 ? Math.round((matchedImpr / totalImpr) * 100) : 0;
+                            return (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {n} pages matched · {pctClicks}% of clicks · {pctImpr}% of impressions
+                              </p>
+                            );
+                          })()}
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {[
+                              { label: "/blog", pattern: "^/blog" },
+                              { label: "/products", pattern: "^/products" },
+                              { label: "/category", pattern: "^/category" },
+                              { label: "?utm", pattern: "\\?utm" },
+                            ].map(({ label, pattern }) => (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => setContentFilterPattern(pattern)}
+                                className="rounded border border-border bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150"
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                          {savedSegments.length > 0 && (
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <span className="text-xs text-muted-foreground">Saved:</span>
+                              {savedSegments.map((seg) => (
+                                <button
+                                  key={seg.id}
+                                  type="button"
+                                  onClick={() => setContentFilterPattern(seg.pattern)}
+                                  className="rounded border border-border/50 bg-muted/20 px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150 truncate max-w-[120px]"
+                                  title={seg.pattern}
+                                >
+                                  {seg.name || seg.pattern.slice(0, 15)}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           {contentFilterPattern.trim() && !contentGroupsFilteredPages.error && (
                             <p className="text-xs text-muted-foreground mt-1">Grouped by: path (filtered)</p>
                           )}
@@ -682,7 +829,7 @@ export default function SiteDetailPage({
                   })()}
                 </div>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
                 {countriesRows.length > 0 && <DataTable title="Countries" rows={countriesRows} showFilter={false} />}
                 {devicesRows.length > 0 && <DataTable title="Devices" rows={devicesRows} showFilter={false} />}
               </div>
@@ -692,7 +839,7 @@ export default function SiteDetailPage({
             {data?.branded && (
               <section aria-label="Segmentation">
                 <h2 className="text-sm font-semibold text-foreground mb-2">Segmentation</h2>
-                <div className="rounded-lg border border-border bg-surface p-3 transition-colors hover:border-foreground/20">
+                <div className="rounded-lg border border-border bg-surface px-4 py-2.5 transition-colors hover:border-foreground/20">
                   <BrandedChart
                     brandedClicks={data.branded.brandedClicks}
                     nonBrandedClicks={data.branded.nonBrandedClicks}

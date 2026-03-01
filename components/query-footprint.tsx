@@ -1,19 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  LineChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
 import { cn } from "@/lib/utils";
 import type { DataTableRow } from "@/components/data-table";
+import { QueryFootprintContent, type BandFilter } from "@/components/query-footprint-content";
+
+export type { BandFilter };
 
 interface QueryFootprintProps {
   queries: DataTableRow[];
   daily: { date: string; clicks: number }[];
   className?: string;
+  onBandSelect?: (band: BandFilter) => void;
+  selectedBand?: BandFilter;
 }
 
 type FootprintView = "total" | "bands";
@@ -30,7 +29,7 @@ function countInBand(queries: DataTableRow[], min: number, max: number): number 
   return queries.filter((r) => r.position != null && r.position >= min && r.position <= max).length;
 }
 
-export function QueryFootprint({ queries, daily, className }: QueryFootprintProps) {
+export function QueryFootprint({ queries, daily, className, onBandSelect, selectedBand = null }: QueryFootprintProps) {
   const [view, setView] = useState<FootprintView>("total");
 
   const withPosition = useMemo(() => queries.filter((r) => r.position != null), [queries]);
@@ -58,105 +57,25 @@ export function QueryFootprint({ queries, daily, className }: QueryFootprintProp
     { label: "Total", value: total },
   ];
 
-  return (
-    <div className={cn("rounded-lg border border-border bg-surface transition-colors hover:border-foreground/20 overflow-hidden", className)}>
-      <div className="border-b border-border px-4 py-2.5">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Query footprint</h3>
-            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
-              Top 10: {top10} · Top 3: {top3}
-            </p>
-          </div>
-          <div className="flex gap-1 rounded-md border border-border bg-muted/30 p-0.5">
-            {(["total", "bands"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setView(v)}
-                className={cn(
-                  "rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-150",
-                  view === v ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"
-                )}
-              >
-                {v === "total" ? "Total" : "By ranking band"}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+  const rootClassName = cn(
+    "rounded-lg border border-border bg-surface transition-colors hover:border-foreground/20 overflow-hidden",
+    className
+  );
 
-      <div className="px-4 py-2.5">
-        {view === "total" ? (
-          <div className="flex flex-wrap items-start gap-4">
-            <div className="flex gap-3 flex-wrap">
-              {pillStats.map((stat) => (
-                <div key={stat.label} className="flex flex-col">
-                  <span className="text-xs text-muted-foreground">{stat.label}</span>
-                  <span className="text-xl font-semibold tabular-nums text-foreground leading-tight">
-                    {stat.value}
-                    {total > 0 && stat.label !== "Total" && (
-                      <span className="text-xs font-normal text-muted-foreground ml-1">
-                        ({Math.round((stat.value / total) * 100)}%)
-                      </span>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
-            {sparkData.length > 0 && (
-              <div className="flex-1 min-w-[120px] h-14 self-end">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={sparkData} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
-                    <Tooltip
-                      contentStyle={{
-                        fontSize: 11,
-                        padding: "4px 8px",
-                        background: "var(--surface)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 4,
-                      }}
-                      labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                      formatter={(v: number | undefined) => [(v ?? 0).toLocaleString(), "Clicks"]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="clicks"
-                      stroke="var(--chart-clicks)"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {bands.map((b) => (
-              <div key={b.label} className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-12 shrink-0">{b.label}</span>
-                <div className="flex-1 h-5 rounded-sm bg-muted/40 overflow-hidden">
-                  <div
-                    className="h-full rounded-sm transition-all duration-300"
-                    style={{
-                      width: `${(b.count / maxBandCount) * 100}%`,
-                      background: b.color,
-                      opacity: 0.7,
-                    }}
-                  />
-                </div>
-                <span className="text-xs tabular-nums text-foreground w-8 text-right">{b.count}</span>
-                {total > 0 && (
-                  <span className="text-xs text-muted-foreground w-10 text-right tabular-nums">
-                    {Math.round((b.count / total) * 100)}%
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+  return (
+    <QueryFootprintContent
+      view={view}
+      setView={setView}
+      top10={top10}
+      top3={top3}
+      total={total}
+      bands={bands}
+      maxBandCount={maxBandCount}
+      sparkData={sparkData}
+      pillStats={pillStats}
+      rootClassName={rootClassName}
+      onBandSelect={onBandSelect}
+      selectedBand={selectedBand}
+    />
   );
 }

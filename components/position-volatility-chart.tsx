@@ -38,13 +38,23 @@ function findCrossings(daily: DailyPoint[], threshold: number): string[] {
   return out;
 }
 
-export function PositionVolatilityChart({ daily, className, height = 140 }: PositionVolatilityChartProps) {
+export function PositionVolatilityChart({ daily, className, height = 110 }: PositionVolatilityChartProps) {
   const dataWithPosition = useMemo(
     () => daily.filter((d) => d.position != null).map((d) => ({ ...d, position: d.position! })),
     [daily]
   );
   const crossings10 = useMemo(() => findCrossings(dataWithPosition, 10), [dataWithPosition]);
   const crossings20 = useMemo(() => findCrossings(dataWithPosition, 20), [dataWithPosition]);
+
+  const summaryStats = useMemo(() => {
+    const positions = dataWithPosition.map((d) => d.position);
+    if (positions.length === 0) return null;
+    const min = Math.min(...positions);
+    const max = Math.max(...positions);
+    const dayOverDay = positions.slice(1).map((p, i) => Math.abs(p - positions[i]));
+    const maxSpike = dayOverDay.length > 0 ? Math.max(...dayOverDay) : 0;
+    return { min, max, maxSpike };
+  }, [dataWithPosition]);
 
   if (dataWithPosition.length === 0) return null;
 
@@ -55,6 +65,11 @@ export function PositionVolatilityChart({ daily, className, height = 140 }: Posi
         <p className="text-xs text-muted-foreground mt-0.5">
           Site avg position over time · Top 10 / Top 20 thresholds
         </p>
+        {summaryStats && (
+          <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+            Avg position drift: {summaryStats.max - summaryStats.min} (range {summaryStats.min.toFixed(1)}–{summaryStats.max.toFixed(1)}) · Max spike: {summaryStats.maxSpike.toFixed(1)}
+          </p>
+        )}
         {(crossings10.length > 0 || crossings20.length > 0) && (
           <p className="text-xs text-muted-foreground mt-1">
             {crossings10.length > 0 && `Entered top 10: ${crossings10.map((d) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" })).join(", ")}. `}
@@ -82,6 +97,7 @@ export function PositionVolatilityChart({ daily, className, height = 140 }: Posi
               reversed
             />
             <Tooltip
+              cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
               contentStyle={{
                 fontSize: 11,
                 padding: "6px 10px",
@@ -90,7 +106,7 @@ export function PositionVolatilityChart({ daily, className, height = 140 }: Posi
                 borderRadius: 6,
               }}
               labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-              formatter={(value: number | undefined) => [(value ?? 0).toFixed(1), "Avg position"]}
+              formatter={(value: number | undefined) => [(value ?? 0).toFixed(1), "Position"]}
             />
             <ReferenceLine y={10} stroke="var(--chart-ctr)" strokeDasharray="3 3" strokeOpacity={0.8} />
             <ReferenceLine y={20} stroke="var(--muted-foreground)" strokeDasharray="3 3" strokeOpacity={0.6} />
@@ -99,6 +115,7 @@ export function PositionVolatilityChart({ daily, className, height = 140 }: Posi
               dataKey="position"
               stroke="var(--chart-position)"
               strokeWidth={2}
+              strokeOpacity={1}
               dot={false}
               name="Avg position"
             />

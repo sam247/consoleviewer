@@ -75,33 +75,37 @@ export function TrendChart({
 }: TrendChartProps) {
   const { series } = useSparkSeries();
 
-  if (!data?.length) return null;
-
   const showClicks = useSeriesContext ? series?.clicks !== false : true;
   const showImpr = useSeriesContext ? series?.impressions === true : showImpressions;
   const showCtr = useSeriesContext ? series?.ctr === true : false;
   const showPosition = useSeriesContext ? series?.position === true : false;
 
-  const visibleSeries = useSeriesContext
-    ? SERIES_CONFIG.filter((s) => {
-        if (s.key === "clicks") return showClicks;
-        if (s.key === "impressions") return showImpr;
-        if (s.key === "ctr") return showCtr;
-        if (s.key === "position") return showPosition;
-        return false;
-      })
-    : [];
+  const visibleSeries = useMemo(
+    () =>
+      useSeriesContext
+        ? SERIES_CONFIG.filter((s) => {
+            if (s.key === "clicks") return showClicks;
+            if (s.key === "impressions") return showImpr;
+            if (s.key === "ctr") return showCtr;
+            if (s.key === "position") return showPosition;
+            return false;
+          })
+        : [],
+    [useSeriesContext, showClicks, showImpr, showCtr, showPosition]
+  );
 
   const useNormalized =
     normalizeWhenMultiSeries &&
     useSeriesContext &&
     visibleSeries.length > 0 &&
-    visibleSeries.some((s) => data.some((d) => (d[s.dataKey] as number) != null));
+    (data?.length ?? 0) > 0 &&
+    visibleSeries.some((s) => (data ?? []).some((d) => (d[s.dataKey] as number) != null));
 
   const chartData = useMemo(() => {
+    const safeData = data ?? [];
     if (!useNormalized) {
       if (useSeriesContext && compareToPrior && priorData?.length) {
-        return data.map((d, i) => ({
+        return safeData.map((d, i) => ({
           ...d,
           clicksPrior: priorData[i]?.clicks,
           impressionsPrior: priorData[i]?.impressions,
@@ -109,14 +113,14 @@ export function TrendChart({
           positionPrior: priorData[i]?.position,
         }));
       }
-      return data;
+      return safeData;
     }
-    return data.map((point, i) => {
+    return safeData.map((point, i) => {
       const out: Record<string, string | number | undefined> = { ...point };
       visibleSeries.forEach((s) => {
         const raw = point[s.dataKey] as number | undefined;
         if (raw == null) return;
-        const values = data.map((d) => (d[s.dataKey] as number) ?? 0);
+        const values = safeData.map((d) => (d[s.dataKey] as number) ?? 0);
         const norm = normalizeSeriesValues(values);
         out[`_norm_${s.key}`] = norm[i];
       });
@@ -132,6 +136,8 @@ export function TrendChart({
       return out;
     });
   }, [data, priorData, useSeriesContext, compareToPrior, useNormalized, visibleSeries]);
+
+  if (!data?.length) return null;
 
   if (useNormalized) {
     return (

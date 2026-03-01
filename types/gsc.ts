@@ -67,9 +67,9 @@ export interface SiteDetailData {
     queryCount?: number;
     queryCountChangePercent?: number;
   };
-  daily: { date: string; clicks: number; impressions: number; ctr?: number }[];
+  daily: { date: string; clicks: number; impressions: number; ctr?: number; position?: number }[];
   /** Prior period daily for chart overlay (compare mode). */
-  priorDaily?: { date: string; clicks: number; impressions: number; ctr?: number }[];
+  priorDaily?: { date: string; clicks: number; impressions: number; ctr?: number; position?: number }[];
   queries: SiteDetailDimensionRow[];
   pages: SiteDetailDimensionRow[];
   countries: { key: string; clicks: number; impressions: number; changePercent: number }[];

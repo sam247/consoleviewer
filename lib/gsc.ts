@@ -295,6 +295,7 @@ export async function getSiteDetail(
           clicks: c,
           impressions: imp,
           ctr: imp > 0 ? (c / imp) * 100 : 0,
+          position: r.position ?? undefined,
         };
       })
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -308,6 +309,7 @@ export async function getSiteDetail(
           clicks: c,
           impressions: imp,
           ctr: imp > 0 ? (c / imp) * 100 : 0,
+          position: r.position ?? undefined,
         };
       })
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -447,6 +449,7 @@ function getStubSiteDetail(siteUrl: string): Promise<SiteDetailData> {
   const impressions = 650000 + Math.floor(Math.random() * 100000);
   const priorClicks = Math.floor(clicks * 0.6);
   const priorImpressions = Math.floor(impressions * 0.55);
+  const basePosition = 8 + Math.random() * 6;
   const daily = Array.from({ length: 28 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (27 - i));
@@ -457,6 +460,7 @@ function getStubSiteDetail(siteUrl: string): Promise<SiteDetailData> {
       clicks: c,
       impressions: imp,
       ctr: imp > 0 ? (c / imp) * 100 : 0,
+      position: basePosition + (Math.random() - 0.5) * 2,
     };
   });
   const queriesStub = mockDimensionRowsWithPosition(MOCK_QUERIES, clicks * 0.8, impressions * 0.8);

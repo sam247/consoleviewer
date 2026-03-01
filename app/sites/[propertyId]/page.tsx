@@ -9,6 +9,8 @@ import { DataTable, type DataTableRow, type TrendFilter } from "@/components/dat
 import { BrandedChart } from "@/components/branded-chart";
 import { SparkToggles } from "@/components/spark-toggles";
 import { TrackedKeywordsSection } from "@/components/tracked-keywords-section";
+import { QueryFootprint } from "@/components/query-footprint";
+import { OpportunityIntelligence } from "@/components/opportunity-intelligence";
 import { useDateRange } from "@/contexts/date-range-context";
 import { decodePropertyId } from "@/types/gsc";
 import { getMockTrackedKeywords } from "@/lib/mock-rank";
@@ -125,6 +127,25 @@ function HeaderMetricRow({
   );
 }
 
+function buildInsightSentence(
+  type: "query" | "page",
+  direction: "growing" | "decaying",
+  row: DataTableRow
+): string {
+  const label = type === "query" ? `The query '${row.key}'` : `The page '${row.key}'`;
+  const pct = Math.abs(row.changePercent ?? 0);
+  const posInfo =
+    row.position != null
+      ? direction === "growing" && row.position <= 10
+        ? ` and is in the top 10 (pos ${row.position.toFixed(1)})`
+        : ` at position ${row.position.toFixed(1)}`
+      : "";
+  if (direction === "growing") {
+    return `${label} gained +${pct}% clicks${posInfo}.`;
+  }
+  return `${label} lost ${pct}% clicks${posInfo}.`;
+}
+
 function MovementIntelligence({
   queriesRows,
   pagesRows,
@@ -137,26 +158,37 @@ function MovementIntelligence({
   onTrendFilterChange: (t: TrendFilter) => void;
 }) {
   const topGrowingQuery = useMemo(() => {
-    const growing = queriesRows.filter((r) => (r.changePercent ?? 0) > 0).sort((a, b) => (b.changePercent ?? 0) - (a.changePercent ?? 0));
-    return growing[0];
+    return queriesRows
+      .filter((r) => (r.changePercent ?? 0) > 0)
+      .sort((a, b) => (b.changePercent ?? 0) - (a.changePercent ?? 0))[0];
   }, [queriesRows]);
   const topDecayingQuery = useMemo(() => {
-    const decaying = queriesRows.filter((r) => (r.changePercent ?? 0) < 0).sort((a, b) => (a.changePercent ?? 0) - (b.changePercent ?? 0));
-    return decaying[0];
+    return queriesRows
+      .filter((r) => (r.changePercent ?? 0) < 0)
+      .sort((a, b) => (a.changePercent ?? 0) - (b.changePercent ?? 0))[0];
   }, [queriesRows]);
   const topGrowingPage = useMemo(() => {
-    const growing = pagesRows.filter((r) => (r.changePercent ?? 0) > 0).sort((a, b) => (b.changePercent ?? 0) - (a.changePercent ?? 0));
-    return growing[0];
+    return pagesRows
+      .filter((r) => (r.changePercent ?? 0) > 0)
+      .sort((a, b) => (b.changePercent ?? 0) - (a.changePercent ?? 0))[0];
   }, [pagesRows]);
   const topDecayingPage = useMemo(() => {
-    const decaying = pagesRows.filter((r) => (r.changePercent ?? 0) < 0).sort((a, b) => (a.changePercent ?? 0) - (b.changePercent ?? 0));
-    return decaying[0];
+    return pagesRows
+      .filter((r) => (r.changePercent ?? 0) < 0)
+      .sort((a, b) => (a.changePercent ?? 0) - (b.changePercent ?? 0))[0];
   }, [pagesRows]);
 
+  const signals = [
+    topGrowingQuery && { direction: "growing" as const, sentence: buildInsightSentence("query", "growing", topGrowingQuery) },
+    topDecayingQuery && { direction: "decaying" as const, sentence: buildInsightSentence("query", "decaying", topDecayingQuery) },
+    topGrowingPage && { direction: "growing" as const, sentence: buildInsightSentence("page", "growing", topGrowingPage) },
+    topDecayingPage && { direction: "decaying" as const, sentence: buildInsightSentence("page", "decaying", topDecayingPage) },
+  ].filter(Boolean) as { direction: "growing" | "decaying"; sentence: string }[];
+
   return (
-    <section aria-label="Movement intelligence" className="rounded-lg bg-muted/30 border border-border/50 px-4 py-3">
-      <h2 className="text-sm font-semibold text-foreground mb-3">Movement intelligence</h2>
-      <div className="flex flex-wrap items-center gap-3">
+    <section aria-label="Movement intelligence" className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h2 className="text-sm font-semibold text-foreground">Movement intelligence</h2>
         <div className="flex gap-1">
           {(["all", "growing", "decaying", "new", "lost"] as const).map((t) => (
             <button
@@ -164,7 +196,7 @@ function MovementIntelligence({
               type="button"
               onClick={() => onTrendFilterChange(t)}
               className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+                "rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors",
                 trendFilter === t
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:bg-accent"
@@ -174,40 +206,26 @@ function MovementIntelligence({
             </button>
           ))}
         </div>
-        {(topGrowingQuery || topDecayingQuery || topGrowingPage || topDecayingPage) && (
-          <span className="text-border" aria-hidden>|</span>
-        )}
-        {topGrowingQuery && (
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <span className="text-positive shrink-0" aria-hidden>↑</span>
-            Top growing query: <span className="text-foreground font-medium truncate max-w-[200px] inline-block align-bottom" title={topGrowingQuery.key}>{topGrowingQuery.key}</span>
-            <span className="text-positive ml-1">+{topGrowingQuery.changePercent}%</span>
-          </div>
-        )}
-        {topDecayingQuery && (
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <span className="text-negative shrink-0" aria-hidden>↓</span>
-            Top decaying query: <span className="text-foreground font-medium truncate max-w-[200px] inline-block align-bottom" title={topDecayingQuery.key}>{topDecayingQuery.key}</span>
-            <span className="text-negative ml-1">{topDecayingQuery.changePercent}%</span>
-          </div>
-        )}
-        {topGrowingPage && (
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <span className="text-positive shrink-0" aria-hidden>↑</span>
-            Top growing page: <span className="text-foreground font-medium truncate max-w-[200px] inline-block align-bottom" title={topGrowingPage.key}>{topGrowingPage.key}</span>
-            <span className="text-positive ml-1">+{topGrowingPage.changePercent}%</span>
-          </div>
-        )}
-        {topDecayingPage && (
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <span className="text-negative shrink-0" aria-hidden>↓</span>
-            Top decaying page: <span className="text-foreground font-medium truncate max-w-[200px] inline-block align-bottom" title={topDecayingPage.key}>{topDecayingPage.key}</span>
-            <span className="text-negative ml-1">{topDecayingPage.changePercent}%</span>
-          </div>
-        )}
       </div>
-      <div className="mt-3 pt-3 border-t border-border/50">
-        <p className="text-sm text-muted-foreground max-w-prose">AI summary coming soon.</p>
+
+      {signals.length > 0 && (
+        <div className="px-4 py-3 space-y-1.5 border-b border-border/50">
+          {signals.map((s, i) => (
+            <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+              <span className={cn("mt-px shrink-0 text-xs", s.direction === "growing" ? "text-positive" : "text-negative")}>
+                {s.direction === "growing" ? "↑" : "↓"}
+              </span>
+              <span>{s.sentence}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="px-4 py-3">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1.5 font-medium">AI summary</p>
+        <p className="text-sm text-muted-foreground/60 italic">
+          Detailed opportunity and trend summary will appear here. Coming soon.
+        </p>
       </div>
     </section>
   );
@@ -246,29 +264,32 @@ export default function SiteDetailPage({
 
   const queriesRows = useMemo<DataTableRow[]>(
     () =>
-      data?.queries?.map((r: { key: string; clicks: number; impressions: number; changePercent: number }) => ({
+      data?.queries?.map((r: { key: string; clicks: number; impressions: number; changePercent: number; position?: number }) => ({
         key: r.key,
         clicks: r.clicks,
         impressions: r.impressions,
         changePercent: r.changePercent,
+        position: r.position,
       })) ?? [],
     [data?.queries]
   );
   const pagesRows = useMemo<DataTableRow[]>(
     () =>
-      data?.pages?.map((r: { key: string; clicks: number; impressions: number; changePercent: number }) => ({
+      data?.pages?.map((r: { key: string; clicks: number; impressions: number; changePercent: number; position?: number }) => ({
         key: r.key,
         clicks: r.clicks,
         impressions: r.impressions,
         changePercent: r.changePercent,
+        position: r.position,
       })) ?? [],
     [data?.pages]
   );
-  const newQueriesRows: DataTableRow[] = (data?.newQueries ?? []).map((r: { key: string; clicks: number; impressions: number; changePercent?: number }) => ({
+  const newQueriesRows: DataTableRow[] = (data?.newQueries ?? []).map((r: { key: string; clicks: number; impressions: number; changePercent?: number; position?: number }) => ({
     key: r.key,
     clicks: r.clicks,
     impressions: r.impressions,
     changePercent: r.changePercent,
+    position: r.position,
   }));
   const lostQueriesRows: DataTableRow[] = (data?.lostQueries ?? []).map((r: { key: string; clicks: number; impressions: number }) => ({
     key: r.key,
@@ -310,26 +331,36 @@ export default function SiteDetailPage({
   }, [data?.queries]);
 
   const contentGroups = useMemo(() => {
-    const groups = new Map<string, { clicks: number; impressions: number }>();
+    const groups = new Map<string, { clicks: number; impressions: number; changes: number[] }>();
     for (const p of pagesRows) {
       try {
         const pathname = p.key.startsWith("http") ? new URL(p.key).pathname : p.key;
         const segment = pathname.split("/").filter(Boolean)[0] ?? "/";
         const label = segment || "(root)";
-        const cur = groups.get(label) ?? { clicks: 0, impressions: 0 };
+        const cur = groups.get(label) ?? { clicks: 0, impressions: 0, changes: [] };
         cur.clicks += p.clicks;
         cur.impressions += p.impressions;
+        if (p.changePercent != null) cur.changes.push(p.changePercent);
         groups.set(label, cur);
       } catch {
-        const cur = groups.get("(other)") ?? { clicks: 0, impressions: 0 };
+        const cur = groups.get("(other)") ?? { clicks: 0, impressions: 0, changes: [] };
         cur.clicks += p.clicks;
         cur.impressions += p.impressions;
+        if (p.changePercent != null) cur.changes.push(p.changePercent);
         groups.set("(other)", cur);
       }
     }
     return Array.from(groups.entries())
-      .map(([label, agg]) => ({ label, ...agg }))
-      .sort((a, b) => b.clicks - a.clicks);
+      .map(([label, agg]) => ({
+        label,
+        clicks: agg.clicks,
+        impressions: agg.impressions,
+        avgChangePercent: agg.changes.length > 0
+          ? Math.round(agg.changes.reduce((s, v) => s + v, 0) / agg.changes.length)
+          : undefined,
+      }))
+      .sort((a, b) => b.clicks - a.clicks)
+      .slice(0, 5);
   }, [pagesRows]);
 
   const countriesRows: DataTableRow[] = data?.countries?.map((r: { key: string; clicks: number; impressions: number; changePercent: number }) => ({
@@ -432,7 +463,20 @@ export default function SiteDetailPage({
               </section>
             )}
 
-            {/* Section C — Movement Intelligence */}
+            {/* Query Footprint */}
+            {queriesRows.length > 0 && (
+              <QueryFootprint
+                queries={queriesRows}
+                daily={data?.daily ?? []}
+              />
+            )}
+
+            {/* Opportunity Intelligence */}
+            {queriesRows.length > 0 && (
+              <OpportunityIntelligence queries={queriesRows} />
+            )}
+
+            {/* Movement Intelligence */}
             <MovementIntelligence
               queriesRows={queriesRows}
               pagesRows={pagesRows}
@@ -481,33 +525,47 @@ export default function SiteDetailPage({
                     onTrendFilterChange={setTrendFilter}
                     showFilter
                   />
-                  {contentGroups.length > 0 && (
-                    <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 p-0">
-                      <div className="border-b border-border px-4 py-3">
-                        <h3 className="text-sm font-semibold text-foreground">Content groups</h3>
+                  {contentGroups.length > 0 && (() => {
+                    const maxClicks = Math.max(...contentGroups.map((g) => g.clicks), 1);
+                    return (
+                      <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20">
+                        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                          <h3 className="text-sm font-semibold text-foreground">Content groups</h3>
+                          <span className="text-xs text-muted-foreground">Top 5 by clicks</span>
+                        </div>
+                        <div className="px-4 py-3 space-y-3">
+                          {contentGroups.map((g) => (
+                            <div key={g.label}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-foreground truncate max-w-[120px]" title={g.label}>
+                                  /{g.label}
+                                </span>
+                                <div className="flex items-center gap-2 text-xs tabular-nums shrink-0">
+                                  <span className="text-foreground">{formatNum(g.clicks)}</span>
+                                  {g.avgChangePercent != null && (
+                                    <span className={cn(g.avgChangePercent >= 0 ? "text-positive" : "text-negative")}>
+                                      {g.avgChangePercent >= 0 ? "+" : ""}{g.avgChangePercent}%
+                                    </span>
+                                  )}
+                                  <span className="text-muted-foreground">{formatNum(g.impressions)} impr.</span>
+                                </div>
+                              </div>
+                              <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-300"
+                                  style={{
+                                    width: `${(g.clicks / maxClicks) * 100}%`,
+                                    background: "var(--chart-clicks)",
+                                    opacity: 0.65,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="overflow-x-auto max-h-[200px] overflow-y-auto">
-                        <table className="w-full text-sm">
-                          <thead className="sticky top-0 bg-surface border-b border-border">
-                            <tr className="text-left text-muted-foreground">
-                              <th className="px-4 py-2 font-semibold">Group</th>
-                              <th className="px-4 py-2 font-semibold text-right">Clicks</th>
-                              <th className="px-4 py-2 font-semibold text-right">Impressions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {contentGroups.map((g) => (
-                              <tr key={g.label} className="border-b border-border/50 last:border-0">
-                                <td className="px-4 py-2 text-foreground">{g.label}</td>
-                                <td className="px-4 py-2 text-right tabular-nums">{formatNum(g.clicks)}</td>
-                                <td className="px-4 py-2 text-right tabular-nums">{formatNum(g.impressions)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">

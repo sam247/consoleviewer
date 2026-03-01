@@ -24,6 +24,7 @@ interface DataPoint {
   clicks: number;
   impressions: number;
   ctr?: number;
+  position?: number;
 }
 
 interface TrendChartProps {
@@ -75,6 +76,7 @@ export function TrendChart({
         clicksPrior: priorData[i]?.clicks,
         impressionsPrior: priorData[i]?.impressions,
         ctrPrior: priorData[i]?.ctr,
+        positionPrior: priorData[i]?.position,
       }))
     : data;
 
@@ -126,7 +128,12 @@ export function TrendChart({
             </>
           )}
           {showPosition && (
-            <Line type="monotone" dataKey="position" stroke={CHART_POSITION} strokeWidth={1.5} dot={false} />
+            <>
+              <Line type="monotone" dataKey="position" stroke={CHART_POSITION} strokeWidth={1.5} dot={false} />
+              {compareToPrior && priorData?.length && (
+                <Line type="monotone" dataKey="positionPrior" stroke={CHART_POSITION} strokeWidth={1} dot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
+              )}
+            </>
           )}
         </LineChart>
       </ResponsiveContainer>

@@ -20,7 +20,7 @@ import { OpportunityIndex } from "@/components/opportunity-index";
 import { useDateRange } from "@/contexts/date-range-context";
 import { decodePropertyId } from "@/types/gsc";
 import { getMockTrackedKeywords } from "@/lib/mock-rank";
-import { exportToCsv, exportChartToPng } from "@/lib/export-csv";
+import { exportToCsv, exportChartToPng, formatExportFilename } from "@/lib/export-csv";
 import { cn } from "@/lib/utils";
 
 async function fetchSiteDetail(
@@ -205,7 +205,7 @@ function MovementIntelligence({
   };
 
   return (
-    <section aria-label="Movement intelligence" className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20">
+    <section aria-label="Movement intelligence" className="rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <h2 className="text-sm font-semibold text-foreground">Movement intelligence</h2>
         <div className="flex gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
@@ -215,7 +215,7 @@ function MovementIntelligence({
               type="button"
               onClick={() => onTrendFilterChange(t)}
               className={cn(
-                "rounded px-2 py-1 text-xs font-medium capitalize transition-colors duration-150",
+                "rounded px-2 py-1 text-xs font-medium capitalize transition-colors duration-[120ms]",
                 trendFilter === t
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:bg-accent"
@@ -282,9 +282,29 @@ export default function SiteDetailPage({
   const [compareToPrior, setCompareToPrior] = useState(false);
   const [showPercentView, setShowPercentView] = useState(true);
   const [contentFilterPattern, setContentFilterPattern] = useState("");
+  const [contentFilterExclude, setContentFilterExclude] = useState(false);
   const [bandFilter, setBandFilter] = useState<BandFilter>(null);
   const trendChartContainerRef = useRef<HTMLDivElement>(null);
+  const trendExportMenuRef = useRef<HTMLDivElement>(null);
+  const [trendExportMenuOpen, setTrendExportMenuOpen] = useState(false);
   const [contentMounted, setContentMounted] = useState(false);
+  const siteSlug = useMemo(() => {
+    try {
+      const host = new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`).hostname.replace(/^www\./, "");
+      return host.replace(/\./g, "-").toLowerCase();
+    } catch {
+      return propertyId.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+    }
+  }, [siteUrl, propertyId]);
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (trendExportMenuRef.current && !trendExportMenuRef.current.contains(e.target as Node)) setTrendExportMenuOpen(false);
+    };
+    if (trendExportMenuOpen) {
+      document.addEventListener("click", close);
+      return () => document.removeEventListener("click", close);
+    }
+  }, [trendExportMenuOpen]);
   useEffect(() => {
     const id = requestAnimationFrame(() => setContentMounted(true));
     return () => cancelAnimationFrame(id);
@@ -385,15 +405,27 @@ export default function SiteDetailPage({
     };
   }, [data?.queries]);
 
+  const dailyForCharts = useMemo(() => data?.daily ?? [], [data?.daily]);
+
   const contentGroupsFilteredPages = useMemo(() => {
-    if (!contentFilterPattern.trim()) return { pages: pagesRows, error: null };
-    try {
-      const re = new RegExp(contentFilterPattern.trim());
-      return { pages: pagesRows.filter((p) => re.test(p.key)), error: null };
-    } catch {
-      return { pages: pagesRows, error: "Invalid regex" };
+    const raw = contentFilterPattern.trim();
+    if (!raw) return { pages: pagesRows, error: null };
+    const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    const patterns: RegExp[] = [];
+    for (const p of parts) {
+      try {
+        patterns.push(new RegExp(p));
+      } catch {
+        return { pages: pagesRows, error: "Invalid regex" };
+      }
     }
-  }, [pagesRows, contentFilterPattern]);
+    if (patterns.length === 0) return { pages: pagesRows, error: null };
+    const match = (key: string) => patterns.some((re) => re.test(key));
+    const filtered = contentFilterExclude
+      ? pagesRows.filter((p) => !match(p.key))
+      : pagesRows.filter((p) => match(p.key));
+    return { pages: filtered, error: null };
+  }, [pagesRows, contentFilterPattern, contentFilterExclude]);
 
   const contentGroups = useMemo(() => {
     const source = contentGroupsFilteredPages.pages;
@@ -492,7 +524,7 @@ export default function SiteDetailPage({
             </div>
           </div>
         ) : (
-          <div className={cn("space-y-4 transition-opacity duration-300", contentMounted ? "opacity-100" : "opacity-0")}>
+          <div className={cn("space-y-4 transition-opacity duration-200", contentMounted ? "opacity-100" : "opacity-0")}>
             {/* Section A — Header metric row + footprint summary */}
             <section aria-label="Overview" className="border-b border-border pb-4">
               <div className="flex flex-wrap items-baseline justify-between gap-4">
@@ -510,50 +542,69 @@ export default function SiteDetailPage({
 
             {/* Section B — Trend + right column (Momentum, Query Footprint) */}
             {data?.daily?.length > 0 && (
-              <section aria-label="Trend" className="grid grid-cols-1 lg:grid-cols-[minmax(0,4fr)_minmax(200px,1fr)] gap-4">
-                <div className="rounded-lg border border-border bg-surface px-4 py-2.5 transition-colors hover:border-foreground/20 min-w-0">
+              <section aria-label="Trend" className="grid grid-cols-1 lg:grid-cols-[minmax(0,4fr)_minmax(220px,1fr)] gap-4">
+                <div className="rounded-lg border border-border bg-surface px-4 py-2.5 transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu min-w-0">
                   <div className="flex items-center justify-between gap-4 mb-1.5 flex-wrap">
-                    <h2 className="text-sm font-semibold text-foreground">Performance over time</h2>
+                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-1">
+                      Performance over time
+                      <span className="text-muted-foreground cursor-help" title="Clicks and impressions from Google Search Console for the selected date range" aria-label="Help">?</span>
+                    </h2>
                     <div className="flex items-center gap-3 flex-wrap">
-                      <div className="flex items-center gap-1">
+                      <div className="relative" ref={trendExportMenuRef}>
                         <button
                           type="button"
-                          onClick={() => exportToCsv((data?.daily ?? []).map((d: { date: string; clicks: number; impressions?: number; ctr?: number; position?: number }) => ({
-                            date: d.date,
-                            clicks: d.clicks,
-                            impressions: d.impressions ?? 0,
-                            ctr: d.ctr ?? 0,
-                            position: d.position ?? "",
-                          })), "performance-over-time")}
-                          className="p-1.5 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150"
-                          title="Export CSV"
+                          onClick={() => setTrendExportMenuOpen((o) => !o)}
+                          className="p-1.5 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms] focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                          title="Export"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => exportChartToPng(trendChartContainerRef.current, "performance-over-time")}
-                          className="p-1.5 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150"
-                          title="Export PNG"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 16m4-4v12" /></svg>
-                        </button>
+                        {trendExportMenuOpen && (
+                          <div className="absolute right-0 top-full mt-0.5 z-20 min-w-[120px] rounded border border-border bg-surface py-1 shadow-lg">
+                            <button
+                              type="button"
+                              className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                              onClick={() => {
+                                exportToCsv((data?.daily ?? []).map((d: { date: string; clicks: number; impressions?: number; ctr?: number; position?: number }) => ({
+                                  date: d.date,
+                                  clicks: d.clicks,
+                                  impressions: d.impressions ?? 0,
+                                  ctr: d.ctr ?? 0,
+                                  position: d.position ?? "",
+                                })), formatExportFilename(siteSlug, "performance-over-time", startDate, endDate));
+                                setTrendExportMenuOpen(false);
+                              }}
+                            >
+                              Export CSV
+                            </button>
+                            <button
+                              type="button"
+                              className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                              onClick={() => {
+                                exportChartToPng(trendChartContainerRef.current, formatExportFilename(siteSlug, "performance-over-time", startDate, endDate));
+                                setTrendExportMenuOpen(false);
+                              }}
+                            >
+                              Export PNG
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-150">
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-[120ms]">
                         <input
                           type="checkbox"
                           checked={compareToPrior}
                           onChange={(e) => setCompareToPrior(e.target.checked)}
-                          className="rounded border-border transition-all duration-150"
+                          className="rounded border-border transition-all duration-[120ms] focus:ring-2 focus:ring-ring focus:ring-offset-1"
                         />
                         Compare to previous
                       </label>
-                      <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-150">
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-[120ms]">
                         <input
                           type="checkbox"
                           checked={showPercentView}
                           onChange={(e) => setShowPercentView(e.target.checked)}
-                          className="rounded border-border transition-all duration-150"
+                          className="rounded border-border transition-all duration-[120ms] focus:ring-2 focus:ring-ring focus:ring-offset-1"
                         />
                         View as %
                       </label>
@@ -572,7 +623,7 @@ export default function SiteDetailPage({
                   />
                   </div>
                 </div>
-                <div className="flex flex-col gap-4 min-w-0">
+                <div className="flex flex-col gap-3 min-w-0">
                   {data?.summary && (
                     <MomentumScoreCard
                       summary={{
@@ -586,7 +637,7 @@ export default function SiteDetailPage({
                   {queriesRows.length > 0 && (
                     <QueryFootprint
                       queries={queriesRows}
-                      daily={data?.daily ?? []}
+                      daily={dailyForCharts}
                       className="flex-1 min-h-0"
                       onBandSelect={setBandFilter}
                       selectedBand={bandFilter}
@@ -600,7 +651,7 @@ export default function SiteDetailPage({
             {!data?.daily?.length && queriesRows.length > 0 && (
               <QueryFootprint
                 queries={queriesRows}
-                daily={data?.daily ?? []}
+                daily={dailyForCharts}
                 onBandSelect={setBandFilter}
                 selectedBand={bandFilter}
               />
@@ -611,6 +662,7 @@ export default function SiteDetailPage({
               <RankingBandChart queries={queriesRows} />
             )}
 
+            <div className="space-y-3">
             {/* Position volatility (site-level avg position over time) */}
             {data?.daily?.length > 0 && data.daily.some((d: { position?: number }) => d.position != null) && (
               <PositionVolatilityChart daily={data.daily} />
@@ -633,6 +685,7 @@ export default function SiteDetailPage({
               trendFilter={trendFilter}
               onTrendFilterChange={setTrendFilter}
             />
+            </div>
 
             {/* Tracked Keywords (collapsible; SerpRobot when key set, else mock) */}
             <div className="rounded-lg border border-border bg-surface px-4 py-2.5">
@@ -655,16 +708,34 @@ export default function SiteDetailPage({
 
             {/* Section F — Performance tables + Query Counting + Content Groups */}
             <section aria-label="Performance tables" className="space-y-4">
-              <h2 className="text-sm font-semibold text-foreground mb-2">Performance tables</h2>
+              {bandFilter && (
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-medium text-muted-foreground bg-muted/60 rounded px-2 py-0.5">
+                    Filtered by {bandFilter.min === 1 && bandFilter.max === 3 ? "Top 3" : bandFilter.min === 4 && bandFilter.max === 10 ? "Top 4–10" : bandFilter.min === 11 && bandFilter.max === 20 ? "Top 11–20" : bandFilter.min === 21 && bandFilter.max === 50 ? "Top 21–50" : "Top 50+"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBandFilter(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground underline focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground/80 mb-1" title="Shortcut coming soon">Press <kbd className="px-0.5 rounded bg-muted/50 font-mono text-[10px]">/</kbd> to search</p>
+            <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1">
+              Performance tables
+              <span className="text-muted-foreground cursor-help" title="Top queries and pages by clicks and impressions" aria-label="Help">?</span>
+            </h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-4 min-w-0">
+                <div className="flex flex-col gap-4 min-w-0 max-w-[600px]">
                   <DataTable
                     title="Queries"
                     rows={queriesRowsForTable}
                     trendFilter={trendFilter}
                     onTrendFilterChange={setTrendFilter}
                     showFilter
-                    onExportCsv={() => exportToCsv(queriesRowsForTable as unknown as Record<string, string | number | undefined>[], "queries")}
+                    onExportCsv={() => exportToCsv(queriesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "queries", startDate, endDate))}
                   />
                   <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 px-4 py-2.5">
                     <h3 className="text-sm font-semibold text-foreground mb-1.5">Query counting</h3>
@@ -685,14 +756,14 @@ export default function SiteDetailPage({
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-col gap-4 min-w-0">
+                <div className="flex flex-col gap-4 min-w-0 max-w-[600px]">
                   <DataTable
                     title="Pages"
                     rows={pagesRowsForTable}
                     trendFilter={trendFilter}
                     onTrendFilterChange={setTrendFilter}
                     showFilter
-                    onExportCsv={() => exportToCsv(pagesRowsForTable as unknown as Record<string, string | number | undefined>[], "pages")}
+                    onExportCsv={() => exportToCsv(pagesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "pages", startDate, endDate))}
                   />
                   {contentGroups.length > 0 && (() => {
                     const maxClicks = Math.max(...contentGroups.map((g) => g.clicks), 1);
@@ -701,14 +772,17 @@ export default function SiteDetailPage({
                     const sharePct = totalSiteClicks > 0 ? Math.round((totalGroupClicks / totalSiteClicks) * 100) : 0;
                     const siteTrend = data?.summary?.clicksChangePercent;
                     return (
-                      <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20">
+                      <div className="rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu">
                         <div className="border-b border-border px-4 py-2.5">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <h3 className="text-sm font-semibold text-foreground">Content groups</h3>
+                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">Content groups<span className="text-muted-foreground cursor-help" title="Group pages by path segment; filter by regex to analyse a subset" aria-label="Help">?</span></h3>
+                            {contentFilterPattern.trim() && !contentGroupsFilteredPages.error && (
+                              <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5">Segment mode</span>
+                            )}
                             <button
                               type="button"
-                              onClick={() => exportToCsv(contentGroups.map((g) => ({ label: g.label, clicks: g.clicks, impressions: g.impressions, avgChangePercent: g.avgChangePercent ?? "" })), "content-groups")}
-                              className="p-1 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150"
+                              onClick={() => exportToCsv(contentGroups.map((g) => ({ label: g.label, clicks: g.clicks, impressions: g.impressions, avgChangePercent: g.avgChangePercent ?? "" })), formatExportFilename(siteSlug, "content-groups", startDate, endDate))}
+                              className="p-1 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms]"
                               title="Export CSV"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -718,7 +792,7 @@ export default function SiteDetailPage({
                             {contentGroups.length} groups · {formatNum(totalGroupClicks)} clicks ({sharePct}% of total)
                             {siteTrend != null ? ` · Site trend ${siteTrend >= 0 ? "+" : ""}${siteTrend}%` : " · —"}
                           </p>
-                          <label className="block text-xs text-muted-foreground mt-2 mb-1">Filter by path or URL regex</label>
+                          <label className="block text-xs text-muted-foreground mt-2 mb-1">Filter by path or URL regex (comma = OR)</label>
                           <div className="flex flex-wrap items-center gap-2">
                             <input
                               type="text"
@@ -726,15 +800,31 @@ export default function SiteDetailPage({
                               value={contentFilterPattern}
                               onChange={(e) => setContentFilterPattern(e.target.value)}
                               className={cn(
-                                "flex-1 min-w-[140px] rounded border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring",
+                                "flex-1 min-w-[140px] rounded border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
                                 contentGroupsFilteredPages.error ? "border-negative" : "border-border"
                               )}
                             />
+                            <div className="flex rounded border border-border bg-muted/30 p-0.5">
+                              <button
+                                type="button"
+                                onClick={() => setContentFilterExclude(false)}
+                                className={cn("rounded px-2 py-0.5 text-xs font-medium transition-colors duration-[120ms]", !contentFilterExclude ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent")}
+                              >
+                                Include
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setContentFilterExclude(true)}
+                                className={cn("rounded px-2 py-0.5 text-xs font-medium transition-colors duration-[120ms]", contentFilterExclude ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent")}
+                              >
+                                Exclude
+                              </button>
+                            </div>
                             <button
                               type="button"
                               onClick={saveSegment}
                               disabled={!!contentGroupsFilteredPages.error || !contentFilterPattern.trim()}
-                              className="rounded border border-border bg-muted/30 px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50 disabled:pointer-events-none transition-colors duration-150"
+                              className="rounded border border-border bg-muted/30 px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50 disabled:pointer-events-none transition-colors duration-[120ms]"
                             >
                               Save as segment
                             </button>
@@ -751,9 +841,15 @@ export default function SiteDetailPage({
                             const matchedImpr = matched.reduce((s, p) => s + p.impressions, 0);
                             const pctClicks = totalClicks > 0 ? Math.round((matchedClicks / totalClicks) * 100) : 0;
                             const pctImpr = totalImpr > 0 ? Math.round((matchedImpr / totalImpr) * 100) : 0;
+                            const siteChanges = pagesRows.filter((p) => p.changePercent != null).map((p) => p.changePercent!);
+                            const matchedChanges = matched.filter((p) => p.changePercent != null).map((p) => p.changePercent!);
+                            const siteAvg = siteChanges.length ? Math.round(siteChanges.reduce((a, b) => a + b, 0) / siteChanges.length) : null;
+                            const matchedAvg = matchedChanges.length ? Math.round(matchedChanges.reduce((a, b) => a + b, 0) / matchedChanges.length) : null;
+                            const deltaVsSite = siteAvg != null && matchedAvg != null ? matchedAvg - siteAvg : null;
                             return (
                               <p className="text-xs text-muted-foreground mt-1">
                                 {n} pages matched · {pctClicks}% of clicks · {pctImpr}% of impressions
+                                {deltaVsSite != null ? ` · Matched Δ vs site: ${deltaVsSite >= 0 ? "+" : ""}${deltaVsSite}%` : " · Matched Δ vs site: —"}
                               </p>
                             );
                           })()}
@@ -768,7 +864,7 @@ export default function SiteDetailPage({
                                 key={label}
                                 type="button"
                                 onClick={() => setContentFilterPattern(pattern)}
-                                className="rounded border border-border bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150"
+                                className="rounded border border-border bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms]"
                               >
                                 {label}
                               </button>
@@ -782,7 +878,7 @@ export default function SiteDetailPage({
                                   key={seg.id}
                                   type="button"
                                   onClick={() => setContentFilterPattern(seg.pattern)}
-                                  className="rounded border border-border/50 bg-muted/20 px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150 truncate max-w-[120px]"
+                                  className="rounded border border-border/50 bg-muted/20 px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms] truncate max-w-[120px]"
                                   title={seg.pattern}
                                 >
                                   {seg.name || seg.pattern.slice(0, 15)}
@@ -790,6 +886,22 @@ export default function SiteDetailPage({
                               ))}
                             </div>
                           )}
+                          {contentFilterPattern.trim() && !contentGroupsFilteredPages.error && data?.daily?.length > 0 && (() => {
+                            const spark = (data.daily as { date: string; clicks: number }[]).slice(-14);
+                            const vals = spark.map((d) => d.clicks);
+                            const min = Math.min(...vals);
+                            const max = Math.max(...vals);
+                            const range = max - min || 1;
+                            const pts = vals.map((v, i) => `${(i / (vals.length - 1 || 1)) * 80},${24 - ((v - min) / range) * 20}`);
+                            return (
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="text-[10px] text-muted-foreground shrink-0">Site trend (proxy)</span>
+                                <svg width={80} height={24} className="shrink-0" aria-hidden>
+                                  <polyline fill="none" stroke="var(--chart-clicks)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" points={pts.join(" ")} />
+                                </svg>
+                              </div>
+                            );
+                          })()}
                           {contentFilterPattern.trim() && !contentGroupsFilteredPages.error && (
                             <p className="text-xs text-muted-foreground mt-1">Grouped by: path (filtered)</p>
                           )}

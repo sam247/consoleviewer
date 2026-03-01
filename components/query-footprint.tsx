@@ -58,7 +58,7 @@ export function QueryFootprint({ queries, daily, className, onBandSelect, select
   ];
 
   const rootClassName = cn(
-    "rounded-lg border border-border bg-surface transition-colors hover:border-foreground/20 overflow-hidden",
+    "rounded-lg border border-border bg-surface transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu overflow-hidden",
     className
   );
 

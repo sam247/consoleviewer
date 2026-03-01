@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, Legend } from "recharts";
 import { cn } from "@/lib/utils";
 import type { DataTableRow } from "@/components/data-table";
 
@@ -33,6 +33,7 @@ export function RankingBandChart({ queries, className }: RankingBandChartProps) 
     [withPosition]
   );
   const total = bandCounts.reduce((s, b) => s + b.count, 0);
+  const top10Pct = total > 0 ? Math.round(((bandCounts[0]?.count ?? 0) + (bandCounts[1]?.count ?? 0)) / total * 100) : 0;
 
   const chartData = useMemo(() => {
     if (total === 0) return [{ name: "Current", ...Object.fromEntries(BANDS.map((b) => [b.key, 0])) }];
@@ -62,7 +63,7 @@ export function RankingBandChart({ queries, className }: RankingBandChartProps) 
         <div>
           <h3 className="text-sm font-semibold text-foreground">Ranking band distribution</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {total} queries with position
+            {total} queries with position · {top10Pct}% of queries in Top 10
           </p>
         </div>
         <div className="flex gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
@@ -72,7 +73,7 @@ export function RankingBandChart({ queries, className }: RankingBandChartProps) 
               type="button"
               onClick={() => setViewMode(mode)}
               className={cn(
-                "rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-150",
+                "rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-[120ms]",
                 viewMode === mode ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"
               )}
             >
@@ -81,25 +82,27 @@ export function RankingBandChart({ queries, className }: RankingBandChartProps) 
           ))}
         </div>
       </div>
-      <div className="px-4 py-3" style={{ height: 120 }}>
+      <div className="px-4 py-3" style={{ height: 140 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 4, bottom: 4 }}>
+            <CartesianGrid horizontal vertical={false} strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
             <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => (viewMode === "percent" ? `${v}%` : String(v))} domain={viewMode === "percent" ? [0, 100] : undefined} />
             <YAxis type="category" dataKey="name" width={56} tick={{ fontSize: 10 }} />
             <Tooltip
               contentStyle={{
                 fontSize: 11,
-                padding: "6px 10px",
+                padding: "6px 8px",
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
                 borderRadius: 6,
               }}
-              formatter={(value: number | undefined) => [viewMode === "percent" ? `${value ?? 0}%` : (value ?? 0), undefined]}
+              formatter={(value: number | undefined, name: string) => [viewMode === "percent" ? `${value ?? 0}%` : (value ?? 0).toLocaleString(), name]}
               labelFormatter={() => "Current period"}
             />
             {BANDS.map((b) => (
               <Bar key={b.key} dataKey={b.key} stackId="stack" name={b.label} radius={0} fill={b.color} />
             ))}
+            <Legend wrapperStyle={{ fontSize: 10 }} formatter={(value) => <span style={{ color: "var(--muted-foreground)" }}>{value}</span>} />
           </BarChart>
         </ResponsiveContainer>
       </div>

@@ -1,4 +1,19 @@
 /**
+ * Build filename for exports: siteSlug_metric_startDate_endDate.ext (caller adds .csv or .png).
+ * Example: southyorkshirewindows-co-uk_performance-over-time_2025-01-01_2025-01-31
+ */
+export function formatExportFilename(
+  siteSlug: string,
+  metric: string,
+  startDate: string,
+  endDate: string
+): string {
+  const slug = siteSlug.replace(/[^a-z0-9-]/gi, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "site";
+  const metricSlug = metric.replace(/\s+/g, "-").toLowerCase();
+  return `${slug}_${metricSlug}_${startDate}_${endDate}`;
+}
+
+/**
  * Build a CSV string from rows and trigger download. Uses existing column keys.
  */
 export function exportToCsv(

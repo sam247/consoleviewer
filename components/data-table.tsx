@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export type TrendFilter = "all" | "growing" | "decaying" | "new" | "lost" | "highImprLowCtr";
@@ -89,24 +89,48 @@ function DataTableView({
   onRowClick,
   onExportCsv,
 }: DataTableViewProps) {
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) setExportMenuOpen(false);
+    };
+    if (exportMenuOpen) {
+      document.addEventListener("click", close);
+      return () => document.removeEventListener("click", close);
+    }
+  }, [exportMenuOpen]);
   const filterOptions: TrendFilter[] = hasPosition
     ? ["all", "growing", "decaying", "new", "lost", "highImprLowCtr"]
     : ["all", "growing", "decaying", "new", "lost"];
 
   return (
-    <div className={cn("min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 p-0", className)}>
+    <div className={cn("min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu p-0", className)}>
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap">
         <div className="flex items-center gap-2 shrink-0">
           <span className="font-semibold text-sm text-foreground">{title}</span>
           {onExportCsv && (
-            <button
-              type="button"
-              onClick={onExportCsv}
-              className="p-1 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150"
-              title="Export CSV"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            </button>
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                type="button"
+                onClick={() => setExportMenuOpen((o) => !o)}
+                className="p-1 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms]"
+                title="Export"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              </button>
+              {exportMenuOpen && (
+                <div className="absolute left-0 top-full mt-0.5 z-20 min-w-[100px] rounded border border-border bg-surface py-1 shadow-lg">
+                  <button
+                    type="button"
+                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                    onClick={() => { onExportCsv(); setExportMenuOpen(false); }}
+                  >
+                    Export CSV
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
         {showFilterBar && trend !== "new" && trend !== "lost" && (
@@ -117,7 +141,7 @@ function DataTableView({
                 type="button"
                 onClick={() => setTrend(t)}
                 className={cn(
-                  "rounded px-2 py-1 text-xs transition-colors duration-150 whitespace-nowrap",
+                  "rounded px-2 py-1 text-xs transition-colors duration-[120ms] whitespace-nowrap",
                   trend === t
                     ? "bg-foreground text-background font-medium"
                     : "text-muted-foreground hover:bg-accent"
@@ -133,7 +157,7 @@ function DataTableView({
             <button
               type="button"
               onClick={() => setTrend("all")}
-              className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent transition-colors duration-150"
+              className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent transition-colors duration-[120ms]"
             >
               ← All
             </button>
@@ -191,8 +215,8 @@ function DataTableView({
                 <tr
                   key={row.key}
                   className={cn(
-                    "border-b border-border/50 transition-colors duration-150",
-                    onRowClick && "cursor-pointer hover:border-l-2 hover:border-l-foreground/30",
+                    "border-b border-border/50 transition-all duration-[120ms]",
+                    onRowClick && "cursor-pointer hover:border-l-2 hover:border-l-chart-clicks border-l-transparent",
                     "hover:bg-accent/50"
                   )}
                   onClick={() => onRowClick?.(row)}

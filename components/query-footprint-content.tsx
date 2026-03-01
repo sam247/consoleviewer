@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -40,12 +41,21 @@ export function QueryFootprintContent({
   onBandSelect,
   selectedBand,
 }: QueryFootprintContentProps) {
+  const [barMounted, setBarMounted] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setBarMounted(true), 50);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <div className={rootClassName}>
       <div className="border-b border-border px-4 py-2.5">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Query footprint</h3>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">
+            Query footprint
+            <span className="text-muted-foreground cursor-help" title="Distribution of queries by ranking band (Top 3, 4–10, etc.)" aria-label="Help">?</span>
+          </h3>
             <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
               Top 10: {top10} · Top 3: {top3}
               <span className="ml-1.5 text-muted-foreground/80">· Trend: —</span>
@@ -58,7 +68,7 @@ export function QueryFootprintContent({
                 type="button"
                 onClick={() => setView(v)}
                 className={cn(
-                  "rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-150",
+                  "rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-[120ms]",
                   view === v ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"
                 )}
               >
@@ -76,19 +86,27 @@ export function QueryFootprintContent({
               {bands.map((b) => (
                 <div
                   key={b.label}
-                  className="h-full transition-colors duration-150 cursor-pointer hover:opacity-90"
+                  className="h-full overflow-hidden cursor-pointer hover:opacity-90 transition-opacity duration-[120ms]"
                   style={{
                     width: total ? `${(b.count / total) * 100}%` : "0%",
                     minWidth: b.count > 0 ? "4px" : 0,
-                    background: b.color,
-                    opacity: 0.85,
                   }}
                   title={`${b.label}: ${b.count} queries${total ? ` (${Math.round((b.count / total) * 100)}%)` : ""}`}
                   onClick={() => onBandSelect?.({ min: b.min, max: b.max })}
                   onKeyDown={(e) => e.key === "Enter" && onBandSelect?.({ min: b.min, max: b.max })}
                   role="button"
                   tabIndex={0}
-                />
+                >
+                  <div
+                    className="h-full transition-[transform] duration-300 ease-out"
+                    style={{
+                      transform: barMounted ? "scaleX(1)" : "scaleX(0)",
+                      transformOrigin: "left",
+                      background: b.color,
+                      opacity: 0.85,
+                    }}
+                  />
+                </div>
               ))}
             </div>
             <div className="flex flex-wrap items-start gap-4">
@@ -103,9 +121,9 @@ export function QueryFootprintContent({
                       key={stat.label}
                       type="button"
                       className={cn(
-                        "flex flex-col rounded px-2 py-1 text-left transition-colors duration-150",
+                        "flex flex-col rounded px-2 py-1 text-left transition-colors duration-[120ms]",
                         (onBandSelect != null) && "cursor-pointer hover:bg-accent/50",
-                        isSelected && "ring-1 ring-foreground/30 bg-accent/50"
+                        isSelected && "ring-2 ring-foreground/30 bg-accent/50"
                       )}
                       onClick={onBandSelect ? handleClick : undefined}
                       title={total ? `${stat.label}: ${stat.value} queries (${stat.label !== "Total" ? Math.round((stat.value / total) * 100) + "%" : "total"})` : undefined}
@@ -119,6 +137,7 @@ export function QueryFootprintContent({
                           </span>
                         )}
                       </span>
+                      <span className="text-[10px] text-muted-foreground/80 mt-0.5">— vs prior</span>
                     </button>
                   );
                 })}
@@ -161,19 +180,19 @@ export function QueryFootprintContent({
                   key={b.label}
                   type="button"
                   className={cn(
-                    "flex items-center gap-3 w-full rounded px-1 py-0.5 -mx-1 transition-colors duration-150 text-left",
-                    onBandSelect && "cursor-pointer hover:bg-accent/50",
-                    isSelected && "ring-1 ring-foreground/30 bg-accent/50"
+                    "flex items-center gap-3 w-full rounded px-1 py-0.5 -mx-1 transition-all duration-[120ms] text-left",
+                    onBandSelect && "cursor-pointer hover:bg-accent/60 hover:scale-[1.01]",
+                    isSelected && "ring-2 ring-foreground/30 bg-accent/50"
                   )}
                   onClick={() => onBandSelect?.({ min: b.min, max: b.max })}
                   title={`${b.label}: ${b.count} queries (${pct}%) — click to filter table`}
                 >
                   <span className="text-xs text-muted-foreground w-12 shrink-0">{b.label}</span>
-                  <div className="flex-1 h-5 rounded-sm bg-muted/40 overflow-hidden">
+                  <div className="flex-1 h-5 rounded-sm bg-muted/40 overflow-hidden min-w-0">
                     <div
-                      className="h-full rounded-sm transition-all duration-300"
+                      className="h-full rounded-sm transition-[width] duration-300 ease-out"
                       style={{
-                        width: `${(b.count / maxBandCount) * 100}%`,
+                        width: barMounted ? `${(b.count / maxBandCount) * 100}%` : "0%",
                         background: b.color,
                         opacity: 0.7,
                       }}
@@ -185,6 +204,7 @@ export function QueryFootprintContent({
                       {pct}%
                     </span>
                   )}
+                  <span className="text-[10px] text-muted-foreground/80 w-14 text-right shrink-0">— vs prior</span>
                 </button>
               );
             })}

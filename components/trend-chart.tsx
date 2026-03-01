@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import {
+  CartesianGrid,
+  Legend,
   LineChart,
   Line,
   XAxis,
@@ -48,12 +50,14 @@ const CHART_IMPRESSIONS = "var(--chart-impressions)";
 const CHART_CTR = "var(--chart-ctr)";
 const CHART_POSITION = "var(--chart-position)";
 
-const SERIES_CONFIG: { key: SparkSeriesKey; dataKey: keyof SparklineDataPoint; stroke: string }[] = [
-  { key: "clicks", dataKey: "clicks", stroke: CHART_CLICKS },
-  { key: "impressions", dataKey: "impressions", stroke: CHART_IMPRESSIONS },
-  { key: "ctr", dataKey: "ctr", stroke: CHART_CTR },
-  { key: "position", dataKey: "position", stroke: CHART_POSITION },
+const SERIES_CONFIG: { key: SparkSeriesKey; dataKey: keyof SparklineDataPoint; stroke: string; label: string }[] = [
+  { key: "clicks", dataKey: "clicks", stroke: CHART_CLICKS, label: "Clicks" },
+  { key: "impressions", dataKey: "impressions", stroke: CHART_IMPRESSIONS, label: "Impressions" },
+  { key: "ctr", dataKey: "ctr", stroke: CHART_CTR, label: "CTR" },
+  { key: "position", dataKey: "position", stroke: CHART_POSITION, label: "Avg position" },
 ];
+
+const CHART_MARGIN = { top: 8, right: 8, left: 40, bottom: 20 };
 
 /** Normalize a series to 0-1 range so multiple metrics are all visible (each uses full vertical scale) */
 function normalizeSeriesValues(values: number[]): number[] {
@@ -143,7 +147,8 @@ export function TrendChart({
     return (
       <div className={cn("w-full", className)} style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+          <LineChart data={chartData} margin={CHART_MARGIN}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 10 }}
@@ -152,7 +157,13 @@ export function TrendChart({
                 return `${d.getMonth() + 1}/${d.getDate()}`;
               }}
             />
-            <YAxis hide domain={[0, 1]} allowDataOverflow />
+            <YAxis
+              width={40}
+              domain={[0, 1]}
+              allowDataOverflow
+              tick={{ fontSize: 10 }}
+              tickFormatter={(v) => `${Math.round(Number(v) * 100)}%`}
+            />
             <Tooltip
               contentStyle={{
                 fontSize: 12,
@@ -208,6 +219,7 @@ export function TrendChart({
                 strokeWidth={s.key === "clicks" ? 2.5 : 1.5}
                 strokeOpacity={s.key === "impressions" ? 0.85 : 1}
                 dot={false}
+                name={s.label}
               />
             ))}
             {compareToPrior &&
@@ -225,16 +237,25 @@ export function TrendChart({
                   name="Prior"
                 />
               ))}
+            <Legend wrapperStyle={{ fontSize: 11 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
     );
   }
 
+  const yAxisTickFormatter = (value: number) => {
+    const v = Number(value);
+    if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+    if (v >= 1e3) return `${(v / 1e3).toFixed(1)}k`;
+    if (v < 1 && v > 0) return v.toFixed(2);
+    return String(Math.round(v));
+  };
   return (
     <div className={cn("w-full", className)} style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+        <LineChart data={chartData} margin={CHART_MARGIN}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis
             dataKey="date"
             tick={{ fontSize: 10 }}
@@ -243,7 +264,13 @@ export function TrendChart({
               return `${d.getMonth() + 1}/${d.getDate()}`;
             }}
           />
-          <YAxis hide domain={["auto", "auto"]} />
+          <YAxis
+            width={40}
+            hide={false}
+            domain={["auto", "auto"]}
+            tick={{ fontSize: 10 }}
+            tickFormatter={yAxisTickFormatter}
+          />
           <Tooltip
             contentStyle={{
               fontSize: 12,
@@ -256,7 +283,7 @@ export function TrendChart({
           />
           {showClicks && (
             <>
-              <Line type="monotone" dataKey="clicks" stroke={CHART_CLICKS} strokeWidth={2.5} dot={false} />
+              <Line type="monotone" dataKey="clicks" stroke={CHART_CLICKS} strokeWidth={2.5} dot={false} name="Clicks" />
               {compareToPrior && priorData?.length && (
                 <Line type="monotone" dataKey="clicksPrior" stroke={CHART_CLICKS} strokeWidth={1} dot={false} strokeDasharray="4 4" strokeOpacity={0.5} name="Prior" />
               )}
@@ -264,7 +291,7 @@ export function TrendChart({
           )}
           {showImpr && (
             <>
-              <Line type="monotone" dataKey="impressions" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} strokeDasharray="3 3" strokeOpacity={0.65} />
+              <Line type="monotone" dataKey="impressions" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} strokeDasharray="3 3" strokeOpacity={0.65} name="Impressions" />
               {compareToPrior && priorData?.length && (
                 <Line type="monotone" dataKey="impressionsPrior" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} strokeDasharray="5 5" strokeOpacity={0.4} name="Prior" />
               )}
@@ -272,7 +299,7 @@ export function TrendChart({
           )}
           {showCtr && (
             <>
-              <Line type="monotone" dataKey="ctr" stroke={CHART_CTR} strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="ctr" stroke={CHART_CTR} strokeWidth={1.5} dot={false} name="CTR" />
               {compareToPrior && priorData?.length && (
                 <Line type="monotone" dataKey="ctrPrior" stroke={CHART_CTR} strokeWidth={1} dot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
               )}
@@ -280,12 +307,13 @@ export function TrendChart({
           )}
           {showPosition && (
             <>
-              <Line type="monotone" dataKey="position" stroke={CHART_POSITION} strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="position" stroke={CHART_POSITION} strokeWidth={1.5} dot={false} name="Avg position" />
               {compareToPrior && priorData?.length && (
                 <Line type="monotone" dataKey="positionPrior" stroke={CHART_POSITION} strokeWidth={1} dot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
               )}
             </>
           )}
+          <Legend wrapperStyle={{ fontSize: 11 }} />
         </LineChart>
       </ResponsiveContainer>
     </div>

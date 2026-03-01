@@ -7,6 +7,8 @@ Minimal Google Search Console dashboard: overview grid (all sites) and drill-dow
 - **Overview**: Grid of site cards (3 columns), each with clicks, impressions, % change, and sparkline. Date range selector (7d / 28d / 3m / 6m) and optional search.
 - **Drill-down**: Per-site summary metrics, trend chart, and tables for Queries, Pages, Countries, Devices with All / Growing / Decaying filters; Branded vs non-branded breakdown.
 - **GSC**: Uses real Search Console API when `GOOGLE_REFRESH_TOKEN` is set; otherwise shows stub data.
+- **SerpRobot** (optional): Set `SERPROBOT_API_KEY` for real keyword tracking in the Tracked Keywords section. Only `rank_check` and `get_serps` consume credits; see [SerpRobot API docs](https://serprobot.com) for details.
+- **Share links & watchlist** (optional): Set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, then run the SQL migrations in `supabase/migrations/` to enable shareable read-only links and the index signals watchlist.
 
 ## Setup
 

@@ -36,6 +36,16 @@ export interface SiteOverviewMetrics {
   daily: { date: string; clicks: number; impressions: number; position?: number }[];
 }
 
+/** Single query–page pair from GSC searchAnalytics (dimensions query + page). */
+export interface QueryPagePair {
+  query: string;
+  page: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
 /** Dimension row with optional position (queries/pages from GSC). */
 export interface SiteDetailDimensionRow {
   key: string;

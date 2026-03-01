@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { cn } from "@/lib/utils";
 
@@ -11,9 +12,21 @@ function displayUrl(siteUrl: string): string {
   return siteUrl.replace(/\/$/, "") || siteUrl;
 }
 
+async function fetchSerprobotStatus(): Promise<{ configured: boolean; credits?: number }> {
+  const res = await fetch("/api/serprobot?action=credit");
+  if (!res.ok) return { configured: false };
+  const data = await res.json();
+  const credits = data.balance ?? data.credits ?? data.remaining;
+  return { configured: Boolean(data.configured), credits: typeof credits === "number" ? credits : undefined };
+}
+
 export default function SettingsPage() {
   const { hiddenSet, unhide } = useHiddenProjects();
   const hiddenList = Array.from(hiddenSet);
+  const { data: serpStatus } = useQuery({
+    queryKey: ["serprobotStatus"],
+    queryFn: fetchSerprobotStatus,
+  });
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -58,6 +71,22 @@ export default function SettingsPage() {
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-sm font-medium text-foreground mb-2">SerpRobot (keyword tracking)</h2>
+          <p className="text-sm text-muted-foreground mb-2">
+            Set <code className="rounded bg-muted px-1">SERPROBOT_API_KEY</code> in your environment to connect. Only <code className="rounded bg-muted px-1">rank_check</code> and <code className="rounded bg-muted px-1">get_serps</code> consume credits.
+          </p>
+          {serpStatus?.configured ? (
+            <p className="text-sm text-muted-foreground">
+              API credits: {typeof serpStatus.credits === "number" ? serpStatus.credits : "—"}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Not configured. Add <code className="rounded bg-muted px-1">SERPROBOT_API_KEY</code> to your environment variables.
+            </p>
           )}
         </section>
 

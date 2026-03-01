@@ -1,4 +1,4 @@
-import { createHmac } from "crypto";
+import { createHash, createHmac } from "crypto";
 import { cookies } from "next/headers";
 
 const COOKIE_NAME = "consoleview_app_session";
@@ -72,4 +72,24 @@ export async function hasValidSession(): Promise<boolean> {
 
 export function getCookieName(): string {
   return COOKIE_NAME;
+}
+
+/**
+ * Stable owner id for share_links and index_watchlist.
+ * Skeleton: uses SHARE_LINK_OWNER_ID env or hash of session cookie.
+ * Replace with real user id when auth is upgraded (e.g. Supabase Auth).
+ */
+export async function getOwnerUserId(): Promise<string | null> {
+  const envId = process.env.SHARE_LINK_OWNER_ID;
+  if (envId?.trim()) return envId.trim();
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(COOKIE_NAME);
+  if (!cookie?.value) return null;
+  try {
+    const secret = getSecret();
+    if (!verify(cookie.value, secret)) return null;
+    return createHash("sha256").update(cookie.value).digest("hex").slice(0, 16);
+  } catch {
+    return null;
+  }
 }

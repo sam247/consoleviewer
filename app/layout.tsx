@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { SiteFooter } from "@/components/site-footer";
 
 export const metadata: Metadata = {
   title: "Consoleview – GSC Dashboard",
@@ -21,8 +22,13 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased min-h-screen bg-background text-foreground">
-        <Providers>{children}</Providers>
+      <body className="antialiased min-h-screen bg-background text-foreground flex flex-col">
+        <Providers>
+          <div className="flex flex-col flex-1 min-h-0">
+            {children}
+            <SiteFooter />
+          </div>
+        </Providers>
       </body>
     </html>
   );

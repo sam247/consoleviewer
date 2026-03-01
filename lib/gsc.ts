@@ -6,6 +6,7 @@
 import { getAccessToken } from "@/lib/google-auth";
 import type {
   GCSSite,
+  QueryPagePair,
   SearchAnalyticsResponse,
   SiteOverviewMetrics,
   SiteDetailData,
@@ -86,6 +87,27 @@ function getStubSearchAnalytics(dimensions: string[]): SearchAnalyticsResponse {
       position: 5 + Math.random() * 20,
     })),
   };
+}
+
+/** Query–page pairs for cannibalisation (dimensions query + page). Returns empty on failure. */
+export async function getQueryPagePairs(
+  siteUrl: string,
+  startDate: string,
+  endDate: string
+): Promise<QueryPagePair[]> {
+  try {
+    const res = await querySearchAnalytics(siteUrl, startDate, endDate, ["query", "page"]);
+    return (res.rows ?? []).map((r) => ({
+      query: r.keys[0] ?? "",
+      page: r.keys[1] ?? "",
+      clicks: r.clicks,
+      impressions: r.impressions,
+      ctr: r.ctr,
+      position: r.position,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /** Overview metrics for all sites (aggregate + daily for sparklines). */

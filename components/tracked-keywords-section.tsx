@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, YAxis, ResponsiveContainer } from "recharts";
 import type { MockTrackedKeyword } from "@/lib/mock-rank";
 import { cn } from "@/lib/utils";
@@ -34,12 +35,35 @@ function MiniSparkline({ data }: { data: number[] }) {
 }
 
 interface TrackedKeywordsSectionProps {
+  /** Fallback mock keywords when SerpRobot is not configured or returns empty. */
   keywords: MockTrackedKeyword[];
 }
 
-export function TrackedKeywordsSection({ keywords }: TrackedKeywordsSectionProps) {
+async function fetchSerprobotKeywords(): Promise<{
+  configured: boolean;
+  keywords: MockTrackedKeyword[];
+  message?: string;
+}> {
+  const res = await fetch("/api/serprobot/keywords");
+  if (!res.ok) return { configured: false, keywords: [] };
+  return res.json();
+}
+
+export function TrackedKeywordsSection({ keywords: mockKeywords }: TrackedKeywordsSectionProps) {
   const [expanded, setExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const { data: serpData } = useQuery({
+    queryKey: ["serprobotKeywords"],
+    queryFn: fetchSerprobotKeywords,
+    enabled: expanded,
+  });
+
+  const keywords: MockTrackedKeyword[] =
+    serpData?.configured && (serpData.keywords?.length ?? 0) > 0
+      ? serpData.keywords
+      : mockKeywords;
+  const showConnectMessage = expanded && serpData?.configured === false;
 
   useEffect(() => {
     setMounted(true);
@@ -59,10 +83,15 @@ export function TrackedKeywordsSection({ keywords }: TrackedKeywordsSectionProps
     }
   };
 
-  if (!keywords.length) return null;
+  if (!keywords.length && !showConnectMessage) return null;
 
   return (
     <section aria-label="Tracked keywords" className="min-w-0">
+      {showConnectMessage && (
+        <p className="text-xs text-muted-foreground mb-2">
+          Connect SerpRobot in Settings to track keywords.
+        </p>
+      )}
       <button
         type="button"
         onClick={toggle}
@@ -88,6 +117,11 @@ export function TrackedKeywordsSection({ keywords }: TrackedKeywordsSectionProps
         )}
       >
         <div className="rounded-lg border border-border bg-surface min-w-0 overflow-hidden">
+          {keywords.length === 0 ? (
+            <div className="px-4 py-4 text-sm text-muted-foreground">
+              No keywords yet. Connect SerpRobot in Settings to track keywords.
+            </div>
+          ) : (
           <div className="overflow-x-auto min-w-0">
             <table className="w-full text-sm table-fixed border-collapse">
               <thead>
@@ -129,6 +163,7 @@ export function TrackedKeywordsSection({ keywords }: TrackedKeywordsSectionProps
               </tbody>
             </table>
           </div>
+          )}
         </div>
       </div>
     </section>

@@ -9,8 +9,14 @@ import { DataTable, type DataTableRow, type TrendFilter } from "@/components/dat
 import { BrandedChart } from "@/components/branded-chart";
 import { SparkToggles } from "@/components/spark-toggles";
 import { TrackedKeywordsSection } from "@/components/tracked-keywords-section";
+import { IndexSignalsCard } from "@/components/index-signals-card";
+import { CannibalisationCard } from "@/components/cannibalisation-card";
 import { QueryFootprint } from "@/components/query-footprint";
+import { RankingBandChart } from "@/components/ranking-band-chart";
+import { PositionVolatilityChart } from "@/components/position-volatility-chart";
+import { MomentumScoreCard } from "@/components/momentum-score-card";
 import { OpportunityIntelligence } from "@/components/opportunity-intelligence";
+import { OpportunityIndex } from "@/components/opportunity-index";
 import { useDateRange } from "@/contexts/date-range-context";
 import { decodePropertyId } from "@/types/gsc";
 import { getMockTrackedKeywords } from "@/lib/mock-rank";
@@ -273,6 +279,8 @@ export default function SiteDetailPage({
 
   const [trendFilter, setTrendFilter] = useState<TrendFilter>("all");
   const [compareToPrior, setCompareToPrior] = useState(false);
+  const [showPercentView, setShowPercentView] = useState(true);
+  const [contentFilterPattern, setContentFilterPattern] = useState("");
 
   const queriesRows = useMemo<DataTableRow[]>(
     () =>
@@ -342,9 +350,20 @@ export default function SiteDetailPage({
     };
   }, [data?.queries]);
 
+  const contentGroupsFilteredPages = useMemo(() => {
+    if (!contentFilterPattern.trim()) return { pages: pagesRows, error: null };
+    try {
+      const re = new RegExp(contentFilterPattern.trim());
+      return { pages: pagesRows.filter((p) => re.test(p.key)), error: null };
+    } catch {
+      return { pages: pagesRows, error: "Invalid regex" };
+    }
+  }, [pagesRows, contentFilterPattern]);
+
   const contentGroups = useMemo(() => {
+    const source = contentGroupsFilteredPages.pages;
     const groups = new Map<string, { clicks: number; impressions: number; changes: number[] }>();
-    for (const p of pagesRows) {
+    for (const p of source) {
       try {
         const pathname = p.key.startsWith("http") ? new URL(p.key).pathname : p.key;
         const segment = pathname.split("/").filter(Boolean)[0] ?? "/";
@@ -373,7 +392,7 @@ export default function SiteDetailPage({
       }))
       .sort((a, b) => b.clicks - a.clicks)
       .slice(0, 5);
-  }, [pagesRows]);
+  }, [contentGroupsFilteredPages.pages]);
 
   const countriesRows: DataTableRow[] = data?.countries?.map((r: { key: string; clicks: number; impressions: number; changePercent: number }) => ({
     key: r.key,
@@ -391,7 +410,7 @@ export default function SiteDetailPage({
   if (error) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <Header shareScope="project" shareScopeId={propertyId} />
         <main className="flex-1 p-4 md:p-6">
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
             {error instanceof Error ? error.message : "Something went wrong"}
@@ -406,10 +425,10 @@ export default function SiteDetailPage({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header shareScope="project" shareScopeId={propertyId} />
       <main className="flex-1 p-4 md:p-6">
         <div className="mx-auto max-w-[86rem]">
-        <div className="mb-6">
+        <div className="mb-4">
           <Link
             href="/"
             className="text-sm text-muted-foreground hover:text-foreground"
@@ -422,7 +441,7 @@ export default function SiteDetailPage({
         </div>
 
         {isLoading ? (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <SkeletonBox className="h-24 border-b border-border pb-4" />
             <SkeletonBox className="h-80" />
             <SkeletonBox className="h-20" />
@@ -438,15 +457,26 @@ export default function SiteDetailPage({
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* Section A — Header metric row + footprint summary */}
             <section aria-label="Overview" className="border-b border-border pb-4">
               <div className="flex flex-wrap items-baseline justify-between gap-4">
                 <HeaderMetricRow summary={data?.summary} formatNum={formatNum} />
-                <div className="shrink-0 text-right">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Queries in band</div>
-                  <div className="text-sm font-semibold tabular-nums text-foreground mt-0.5">
-                    Top 10: {queryCounting.top10} · Top 3: {queryCounting.top3}
+                <div className="flex flex-wrap items-center gap-3 shrink-0">
+                  {data?.summary && (
+                    <MomentumScoreCard
+                      summary={{
+                        clicksChangePercent: data.summary.clicksChangePercent,
+                        positionChangePercent: data.summary.positionChangePercent,
+                        queryCountChangePercent: data.summary.queryCountChangePercent,
+                      }}
+                    />
+                  )}
+                  <div className="text-right">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Queries in band</div>
+                    <div className="text-sm font-semibold tabular-nums text-foreground mt-0.5">
+                      Top 10: {queryCounting.top10} · Top 3: {queryCounting.top3}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -458,7 +488,7 @@ export default function SiteDetailPage({
                 <div className="rounded-lg border border-border bg-surface px-4 py-3 transition-colors hover:border-foreground/20">
                   <div className="flex items-center justify-between gap-4 mb-2 flex-wrap">
                     <h2 className="text-sm font-semibold text-foreground">Performance over time</h2>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-wrap">
                       <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-150">
                         <input
                           type="checkbox"
@@ -467,6 +497,15 @@ export default function SiteDetailPage({
                           className="rounded border-border transition-all duration-150"
                         />
                         Compare to previous
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-150">
+                        <input
+                          type="checkbox"
+                          checked={showPercentView}
+                          onChange={(e) => setShowPercentView(e.target.checked)}
+                          className="rounded border-border transition-all duration-150"
+                        />
+                        View as %
                       </label>
                       <SparkToggles />
                     </div>
@@ -478,7 +517,7 @@ export default function SiteDetailPage({
                     showImpressions
                     useSeriesContext
                     compareToPrior={compareToPrior}
-                    normalizeWhenMultiSeries
+                    normalizeWhenMultiSeries={showPercentView}
                   />
                 </div>
               </section>
@@ -490,6 +529,21 @@ export default function SiteDetailPage({
                 queries={queriesRows}
                 daily={data?.daily ?? []}
               />
+            )}
+
+            {/* Ranking band distribution */}
+            {queriesRows.length > 0 && (
+              <RankingBandChart queries={queriesRows} />
+            )}
+
+            {/* Position volatility (site-level avg position over time) */}
+            {data?.daily?.length > 0 && data.daily.some((d: { position?: number }) => d.position != null) && (
+              <PositionVolatilityChart daily={data.daily} />
+            )}
+
+            {/* Opportunity index (top 5 by score) */}
+            {queriesRows.length > 0 && (
+              <OpportunityIndex queries={queriesRows} />
             )}
 
             {/* Opportunity Intelligence */}
@@ -505,8 +559,24 @@ export default function SiteDetailPage({
               onTrendFilterChange={setTrendFilter}
             />
 
-            {/* Tracked Keywords (collapsible, mock) */}
-            <TrackedKeywordsSection keywords={getMockTrackedKeywords(siteUrl)} />
+            {/* Tracked Keywords (collapsible; SerpRobot when key set, else mock) */}
+            <div className="rounded-lg border border-border bg-surface px-4 py-2.5">
+              <TrackedKeywordsSection keywords={getMockTrackedKeywords(siteUrl)} />
+            </div>
+
+            {/* Index signals (watchlist + GSC-derived signals) */}
+            <div className="rounded-lg border border-border bg-surface px-4 py-2.5">
+              <IndexSignalsCard propertyId={propertyId} pagesRows={pagesRows} />
+            </div>
+
+            {/* Cannibalisation (query–page conflicts) */}
+            <div className="rounded-lg border border-border bg-surface px-4 py-2.5">
+              <CannibalisationCard
+                siteUrl={siteUrl}
+                startDate={startDate}
+                endDate={endDate}
+              />
+            </div>
 
             {/* Section F — Performance tables + Query Counting + Content Groups */}
             <section aria-label="Performance tables" className="space-y-5">
@@ -550,13 +620,32 @@ export default function SiteDetailPage({
                   {contentGroups.length > 0 && (() => {
                     const maxClicks = Math.max(...contentGroups.map((g) => g.clicks), 1);
                     const totalGroupClicks = contentGroups.reduce((s, g) => s + g.clicks, 0);
+                    const totalSiteClicks = pagesRows.reduce((s, p) => s + p.clicks, 0);
+                    const sharePct = totalSiteClicks > 0 ? Math.round((totalGroupClicks / totalSiteClicks) * 100) : 0;
+                    const siteTrend = data?.summary?.clicksChangePercent;
                     return (
                       <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20">
                         <div className="border-b border-border px-4 py-2.5">
                           <h3 className="text-sm font-semibold text-foreground">Content groups</h3>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {contentGroups.length} groups · {formatNum(totalGroupClicks)} clicks
+                            {contentGroups.length} groups · {formatNum(totalGroupClicks)} clicks ({sharePct}% of total)
+                            {siteTrend != null ? ` · Site trend ${siteTrend >= 0 ? "+" : ""}${siteTrend}%` : " · —"}
                           </p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <input
+                              type="text"
+                              placeholder="Filter by path regex (e.g. ^/blog/)"
+                              value={contentFilterPattern}
+                              onChange={(e) => setContentFilterPattern(e.target.value)}
+                              className="flex-1 min-w-0 rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                            {contentGroupsFilteredPages.error && (
+                              <span className="text-xs text-negative shrink-0">{contentGroupsFilteredPages.error}</span>
+                            )}
+                          </div>
+                          {contentFilterPattern.trim() && !contentGroupsFilteredPages.error && (
+                            <p className="text-xs text-muted-foreground mt-1">Grouped by: path (filtered)</p>
+                          )}
                         </div>
                         <div className="px-4 py-2.5 space-y-2">
                           {contentGroups.map((g) => (

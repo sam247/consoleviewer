@@ -79,6 +79,17 @@ export default function OverviewPage() {
     },
   });
 
+  const { data: serpKeywords } = useQuery({
+    queryKey: ["serprobotKeywords"],
+    queryFn: async () => {
+      const res = await fetch("/api/serprobot/keywords");
+      if (!res.ok) return { configured: false, keywords: [] };
+      return res.json() as Promise<{ configured: boolean; keywords: unknown[] }>;
+    },
+  });
+  const hasTrackedKeywords =
+    serpKeywords?.configured === true && (serpKeywords?.keywords?.length ?? 0) > 0;
+
   const { data: rawMetrics = [], isLoading, error } = useQuery({
     queryKey: ["overview", startDate, endDate, priorStartDate, priorEndDate],
     queryFn: () =>
@@ -127,6 +138,7 @@ export default function OverviewPage() {
         onSearchChange={setSearch}
         sortSelect={<SortSelect value={sortBy} onChange={setSortBy} />}
         filterSelect={<FilterSelect value={filterBy} onChange={setFilterBy} />}
+        shareScope="dashboard"
       />
       <main className="flex-1 p-4 md:p-6">
         <div className="mx-auto max-w-[86rem]">
@@ -160,7 +172,13 @@ export default function OverviewPage() {
                     <SiteCardSkeleton key={`suspense-${i}`} />
                   ))}
                 >
-                  {sorted.map((m) => <SiteCard key={m.siteUrl} metrics={m} />)}
+                  {sorted.map((m) => (
+                    <SiteCard
+                      key={m.siteUrl}
+                      metrics={m}
+                      hasKeywords={hasTrackedKeywords}
+                    />
+                  ))}
                 </Suspense>
               )}
         </div>

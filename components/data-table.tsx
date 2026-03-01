@@ -33,6 +33,141 @@ function formatNum(n: number): string {
   return String(n);
 }
 
+interface DataTableViewProps {
+  title: string;
+  className?: string;
+  showTrendToggles: boolean;
+  trend: TrendFilter;
+  setTrend: (t: TrendFilter) => void;
+  sortKey: SortKey;
+  sortDir: "asc" | "desc";
+  onSort: (key: SortKey) => void;
+  visibleRows: DataTableRow[];
+  hasMore: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
+}
+
+function DataTableView({
+  title,
+  className,
+  showTrendToggles,
+  trend,
+  setTrend,
+  sortKey,
+  sortDir,
+  onSort,
+  visibleRows,
+  hasMore,
+  expanded,
+  onToggleExpand,
+}: DataTableViewProps) {
+  return (
+    <div className={cn("min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 p-0", className)}>
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <span className="font-semibold text-sm text-foreground">{title}</span>
+        {showTrendToggles ? (
+          <div className="flex gap-1">
+            {(["all", "growing", "decaying"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTrend(t)}
+                className={cn(
+                  "rounded-md px-2 py-1 text-xs capitalize transition-colors",
+                  trend === t
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:bg-accent"
+                )}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      <div className="overflow-x-auto min-w-0">
+        <div className="overflow-y-auto" style={{ maxHeight: BODY_MAX_HEIGHT }}>
+          <table className="w-full text-sm table-fixed">
+            <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2 pb-2 font-semibold text-left min-w-0 w-[40%]">
+                  <button type="button" onClick={() => onSort("key")} className="hover:text-foreground transition-colors flex items-center gap-1">
+                    Name {sortKey === "key" && (sortDir === "asc" ? "↑" : "↓")}
+                  </button>
+                </th>
+                <th className="px-4 py-2 pb-2 font-semibold text-right w-[20%]">
+                  <button type="button" onClick={() => onSort("clicks")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
+                    Clicks {sortKey === "clicks" && (sortDir === "asc" ? "↑" : "↓")}
+                  </button>
+                </th>
+                <th className="px-4 py-2 pb-2 font-semibold text-right w-[20%]">
+                  <button type="button" onClick={() => onSort("impressions")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
+                    Impressions {sortKey === "impressions" && (sortDir === "asc" ? "↑" : "↓")}
+                  </button>
+                </th>
+                <th className="px-4 py-2 pb-2 font-semibold text-right w-16">
+                  <button type="button" onClick={() => onSort("changePercent")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
+                    Change {sortKey === "changePercent" && (sortDir === "asc" ? "↑" : "↓")}
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleRows.map((row) => (
+                <tr
+                  key={row.key}
+                  className="border-b border-border/50 hover:bg-accent/50 transition-colors duration-150"
+                >
+                  <td className="px-4 py-2 truncate min-w-0" title={row.key}>
+                    {row.key}
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums">
+                    {formatNum(row.clicks)}
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums">
+                    {formatNum(row.impressions)}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    {row.changePercent != null ? (
+                      <span
+                        className={cn(
+                          "tabular-nums",
+                          row.changePercent > 0
+                            ? "text-positive"
+                            : row.changePercent < 0
+                              ? "text-negative"
+                              : "text-muted-foreground"
+                        )}
+                      >
+                        {row.changePercent > 0 ? "+" : ""}
+                        {row.changePercent}%
+                      </span>
+                    ) : (
+                      "–"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {hasMore ? (
+          <div className="border-t border-border px-4 py-2 flex justify-center">
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {expanded ? "View less" : "View more"}
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function DataTable({
   title,
   rows,
@@ -82,107 +217,19 @@ export function DataTable({
   };
 
   return (
-    <div className={cn("min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 p-0", className)}>
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <span className="font-semibold text-sm text-foreground">{title}</span>
-        {showTrendToggles ? (
-          <div className="flex gap-1">
-            {(["all", "growing", "decaying"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTrend(t)}
-                className={cn(
-                  "rounded-md px-2 py-1 text-xs capitalize transition-colors",
-                  trend === t
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:bg-accent"
-                )}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="overflow-x-auto min-w-0">
-        <div className="overflow-y-auto" style={{ maxHeight: BODY_MAX_HEIGHT }}>
-          <table className="w-full text-sm table-fixed">
-            <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 pb-2 font-semibold text-left min-w-0 w-[40%]">
-                  <button type="button" onClick={() => handleSort("key")} className="hover:text-foreground transition-colors flex items-center gap-1">
-                    Name {sortKey === "key" && (sortDir === "asc" ? "↑" : "↓")}
-                  </button>
-                </th>
-                <th className="px-4 py-2 pb-2 font-semibold text-right w-[20%]">
-                  <button type="button" onClick={() => handleSort("clicks")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
-                    Clicks {sortKey === "clicks" && (sortDir === "asc" ? "↑" : "↓")}
-                  </button>
-                </th>
-                <th className="px-4 py-2 pb-2 font-semibold text-right w-[20%]">
-                  <button type="button" onClick={() => handleSort("impressions")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
-                    Impressions {sortKey === "impressions" && (sortDir === "asc" ? "↑" : "↓")}
-                  </button>
-                </th>
-                <th className="px-4 py-2 pb-2 font-semibold text-right w-16">
-                  <button type="button" onClick={() => handleSort("changePercent")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
-                    Change {sortKey === "changePercent" && (sortDir === "asc" ? "↑" : "↓")}
-                  </button>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map((row) => (
-                <tr
-                  key={row.key}
-                  className="border-b border-border/50 hover:bg-accent/50 transition-colors duration-150"
-                >
-                  <td className="px-4 py-2 truncate min-w-0" title={row.key}>
-                    {row.key}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums">
-                    {formatNum(row.clicks)}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums">
-                    {formatNum(row.impressions)}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {row.changePercent != null ? (
-                      <span
-                        className={cn(
-                          "tabular-nums",
-                          row.changePercent > 0
-                            ? "text-positive"
-                            : row.changePercent < 0
-                              ? "text-negative"
-                              : "text-muted-foreground"
-                        )}
-                      >
-                        {row.changePercent > 0 ? "+" : ""}
-                        {row.changePercent}%
-                      </span>
-                    ) : (
-                      "–"
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {hasMore && (
-          <div className="border-t border-border px-4 py-2 flex justify-center">
-            <button
-              type="button"
-              onClick={() => setExpanded((e) => !e)}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {expanded ? "View less" : "View more"}
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+    <DataTableView
+      title={title}
+      className={className}
+      showTrendToggles={showTrendToggles}
+      trend={trend}
+      setTrend={setTrend}
+      sortKey={sortKey}
+      sortDir={sortDir}
+      onSort={handleSort}
+      visibleRows={visibleRows}
+      hasMore={hasMore}
+      expanded={expanded}
+      onToggleExpand={() => setExpanded((e) => !e)}
+    />
   );
 }

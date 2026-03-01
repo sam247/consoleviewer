@@ -13,6 +13,7 @@ interface QueryFootprintProps {
   className?: string;
   onBandSelect?: (band: BandFilter) => void;
   selectedBand?: BandFilter;
+  compareToPrior?: boolean;
 }
 
 type FootprintView = "total" | "bands";
@@ -29,7 +30,7 @@ function countInBand(queries: DataTableRow[], min: number, max: number): number 
   return queries.filter((r) => r.position != null && r.position >= min && r.position <= max).length;
 }
 
-export function QueryFootprint({ queries, daily, className, onBandSelect, selectedBand = null }: QueryFootprintProps) {
+export function QueryFootprint({ queries, daily, className, onBandSelect, selectedBand = null, compareToPrior }: QueryFootprintProps) {
   const [view, setView] = useState<FootprintView>("total");
 
   const withPosition = useMemo(() => queries.filter((r) => r.position != null), [queries]);
@@ -76,6 +77,7 @@ export function QueryFootprint({ queries, daily, className, onBandSelect, select
       rootClassName={rootClassName}
       onBandSelect={onBandSelect}
       selectedBand={selectedBand}
+      compareToPrior={compareToPrior}
     />
   );
 }

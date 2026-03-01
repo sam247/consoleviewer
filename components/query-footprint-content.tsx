@@ -25,6 +25,7 @@ interface QueryFootprintContentProps {
   rootClassName: string;
   onBandSelect?: (band: BandFilter) => void;
   selectedBand: BandFilter;
+  compareToPrior?: boolean;
 }
 
 export function QueryFootprintContent({
@@ -40,6 +41,7 @@ export function QueryFootprintContent({
   rootClassName,
   onBandSelect,
   selectedBand,
+  compareToPrior,
 }: QueryFootprintContentProps) {
   const [barMounted, setBarMounted] = useState(false);
   useEffect(() => {
@@ -59,6 +61,9 @@ export function QueryFootprintContent({
             <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
               Top 10: {top10} · Top 3: {top3}
               <span className="ml-1.5 text-muted-foreground/80">· Trend: —</span>
+              {compareToPrior && (
+                <span className="ml-1.5 text-muted-foreground/80">· Comparing to prior period</span>
+              )}
             </p>
           </div>
           <div className="flex gap-1 rounded-md border border-border bg-muted/30 p-0.5">

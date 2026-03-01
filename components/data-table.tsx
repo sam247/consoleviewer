@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { classifyQuery } from "@/lib/ai-query-detection";
 
-export type TrendFilter = "all" | "growing" | "decaying" | "new" | "lost" | "highImprLowCtr";
+export type TrendFilter = "all" | "growing" | "decaying" | "new" | "lost" | "highImprLowCtr" | "longForm" | "conversational";
 
 export interface DataTableRow {
   key: string;
@@ -52,6 +53,8 @@ const FILTER_LABELS: Record<TrendFilter, string> = {
   new: "New",
   lost: "Lost",
   highImprLowCtr: "High impr / Low CTR",
+  longForm: "Long-form",
+  conversational: "Conversational",
 };
 
 interface DataTableViewProps {
@@ -101,8 +104,8 @@ function DataTableView({
     }
   }, [exportMenuOpen]);
   const filterOptions: TrendFilter[] = hasPosition
-    ? ["all", "growing", "decaying", "new", "lost", "highImprLowCtr"]
-    : ["all", "growing", "decaying", "new", "lost"];
+    ? ["all", "growing", "decaying", "new", "lost", "highImprLowCtr", "longForm", "conversational"]
+    : ["all", "growing", "decaying", "new", "lost", "longForm", "conversational"];
 
   return (
     <div className={cn("min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu p-0", className)}>
@@ -313,6 +316,17 @@ export function DataTable({
         const ctr = r.impressions > 0 ? r.clicks / r.impressions : 0;
         return ctr < 0.03;
       });
+    else if (trend === "longForm") {
+      list = list.filter((r) => {
+        const c = classifyQuery(r.key);
+        return c === "long" || c === "both";
+      });
+    } else if (trend === "conversational") {
+      list = list.filter((r) => {
+        const c = classifyQuery(r.key);
+        return c === "conversational" || c === "both";
+      });
+    }
     return list;
   }, [rows, trend, medianImpr]);
 

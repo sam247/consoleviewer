@@ -55,34 +55,41 @@ export function RankingBandChart({ queries, className }: RankingBandChartProps) 
     ];
   }, [bandCounts, total, viewMode]);
 
-  if (withPosition.length === 0) return null;
-
   return (
-    <div className={cn("rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20", className)}>
+    <div className={cn("rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 min-h-[140px]", className)}>
       <div className="border-b border-border px-4 py-2.5 flex items-center justify-between flex-wrap gap-2">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Ranking band distribution</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {total} queries with position · {top10Pct}% of queries in Top 10
+            {withPosition.length === 0
+              ? "No position data in this range"
+              : `${total} queries with position · ${top10Pct}% of queries in Top 10`}
           </p>
         </div>
-        <div className="flex gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
-          {(["absolute", "percent"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setViewMode(mode)}
-              className={cn(
-                "rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-[120ms]",
-                viewMode === mode ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"
-              )}
-            >
-              {mode === "percent" ? "%" : "Absolute"}
-            </button>
-          ))}
-        </div>
+        {withPosition.length > 0 && (
+          <div className="flex gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
+            {(["absolute", "percent"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                className={cn(
+                  "rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-[120ms]",
+                  viewMode === mode ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"
+                )}
+              >
+                {mode === "percent" ? "%" : "Absolute"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      <div className="px-4 py-3" style={{ height: 140 }}>
+      <div className="px-4 py-3 min-h-[140px]" style={{ height: withPosition.length === 0 ? undefined : 140 }}>
+        {withPosition.length === 0 ? (
+          <div className="flex items-center justify-center min-h-[120px] text-sm text-muted-foreground">
+            No position data in this range
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 4, bottom: 4 }}>
             <CartesianGrid horizontal vertical={false} strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
@@ -105,6 +112,7 @@ export function RankingBandChart({ queries, className }: RankingBandChartProps) 
             <Legend wrapperStyle={{ fontSize: 10 }} formatter={(value) => <span style={{ color: "var(--muted-foreground)" }}>{value}</span>} />
           </BarChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

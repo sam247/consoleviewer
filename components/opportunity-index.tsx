@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { classifyQuery } from "@/lib/ai-query-detection";
 import type { DataTableRow } from "@/components/data-table";
 
 const CTR_BENCHMARKS: Record<number, number> = {
@@ -27,6 +28,7 @@ function ctrDeficit(position: number, actualCtr: number): number {
 }
 
 /** Opportunity score = Impressions × Position Gap × CTR Deficit (raw; scale for display). */
+/** Optional boost (1.1×) for conversational queries in position 4–15 to surface them slightly higher. */
 function opportunityScore(row: DataTableRow): number {
   const pos = row.position;
   if (pos == null) return 0;
@@ -34,7 +36,12 @@ function opportunityScore(row: DataTableRow): number {
   const actualCtr = impr > 0 ? (row.clicks / impr) * 100 : 0;
   const gap = positionGap(pos);
   const deficit = ctrDeficit(pos, actualCtr);
-  return impr * gap * deficit;
+  let score = impr * gap * deficit;
+  const c = classifyQuery(row.key);
+  if ((c === "conversational" || c === "both") && pos >= 4 && pos <= 15) {
+    score *= 1.1;
+  }
+  return score;
 }
 
 interface OpportunityIndexProps {

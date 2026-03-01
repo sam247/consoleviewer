@@ -12,6 +12,7 @@ import { TrackedKeywordsSection } from "@/components/tracked-keywords-section";
 import { IndexSignalsCard } from "@/components/index-signals-card";
 import { CannibalisationCard } from "@/components/cannibalisation-card";
 import { QueryFootprint, type BandFilter } from "@/components/query-footprint";
+import { AiQuerySignalsCard } from "@/components/ai-query-signals-card";
 import { RankingBandChart } from "@/components/ranking-band-chart";
 import { PositionVolatilityChart } from "@/components/position-volatility-chart";
 import { MomentumScoreCard } from "@/components/momentum-score-card";
@@ -540,11 +541,21 @@ export default function SiteDetailPage({
               </div>
             </section>
 
-            {/* Section B — Trend + right column (Momentum, Query Footprint) */}
+            {/* Section B — Trend: Momentum strip + full-width graph + Query Footprint below */}
             {data?.daily?.length > 0 && (
-              <section aria-label="Trend" className="grid grid-cols-1 lg:grid-cols-[minmax(0,4fr)_minmax(220px,1fr)] gap-4">
-                <div className="rounded-lg border border-border bg-surface px-4 py-2.5 transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu min-w-0">
-                  <div className="flex items-center justify-between gap-4 mb-1.5 flex-wrap">
+              <section aria-label="Trend" className="space-y-4">
+                <div className="rounded-lg border border-border bg-surface transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu min-w-0 flex flex-col min-h-[320px]">
+                  {data?.summary && (
+                    <MomentumScoreCard
+                      variant="strip"
+                      summary={{
+                        clicksChangePercent: data.summary.clicksChangePercent,
+                        positionChangePercent: data.summary.positionChangePercent,
+                        queryCountChangePercent: data.summary.queryCountChangePercent,
+                      }}
+                    />
+                  )}
+                  <div className="px-4 py-2 flex items-center justify-between gap-4 flex-wrap border-b border-border">
                     <h2 className="text-sm font-semibold text-foreground flex items-center gap-1">
                       Performance over time
                       <span className="text-muted-foreground cursor-help" title="Clicks and impressions from Google Search Console for the selected date range" aria-label="Help">?</span>
@@ -611,63 +622,58 @@ export default function SiteDetailPage({
                       <SparkToggles />
                     </div>
                   </div>
-                  <div ref={trendChartContainerRef}>
-                  <TrendChart
-                    data={data.daily}
-                    priorData={data?.priorDaily}
-                    height={280}
-                    showImpressions
-                    useSeriesContext
-                    compareToPrior={compareToPrior}
-                    normalizeWhenMultiSeries={showPercentView}
-                  />
+                  <div ref={trendChartContainerRef} className="flex-1 min-h-0 px-4 py-2">
+                    <TrendChart
+                      data={data.daily}
+                      priorData={data?.priorDaily}
+                      height={280}
+                      showImpressions
+                      useSeriesContext
+                      compareToPrior={compareToPrior}
+                      normalizeWhenMultiSeries={showPercentView}
+                    />
                   </div>
                 </div>
-                <div className="flex flex-col gap-3 min-w-0">
-                  {data?.summary && (
-                    <MomentumScoreCard
-                      summary={{
-                        clicksChangePercent: data.summary.clicksChangePercent,
-                        positionChangePercent: data.summary.positionChangePercent,
-                        queryCountChangePercent: data.summary.queryCountChangePercent,
-                      }}
-                      className="py-2"
-                    />
-                  )}
-                  {queriesRows.length > 0 && (
+                {queriesRows.length > 0 && (
+                  <>
                     <QueryFootprint
                       queries={queriesRows}
                       daily={dailyForCharts}
-                      className="flex-1 min-h-0"
+                      className="flex-shrink-0"
                       onBandSelect={setBandFilter}
                       selectedBand={bandFilter}
+                      compareToPrior={compareToPrior}
                     />
-                  )}
-                </div>
+                    <AiQuerySignalsCard queries={queriesRows} daily={data?.daily} />
+                  </>
+                )}
               </section>
             )}
 
             {/* Query Footprint (full width when no daily data, so it still shows) */}
             {!data?.daily?.length && queriesRows.length > 0 && (
-              <QueryFootprint
-                queries={queriesRows}
-                daily={dailyForCharts}
-                onBandSelect={setBandFilter}
-                selectedBand={bandFilter}
-              />
+              <>
+                <QueryFootprint
+                  queries={queriesRows}
+                  daily={dailyForCharts}
+                  onBandSelect={setBandFilter}
+                  selectedBand={bandFilter}
+                />
+                <AiQuerySignalsCard queries={queriesRows} />
+              </>
             )}
 
-            {/* Ranking band distribution */}
-            {queriesRows.length > 0 && (
-              <RankingBandChart queries={queriesRows} />
-            )}
+            {/* Ranking band + Position volatility in one row */}
+            <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {queriesRows.length > 0 && (
+                <RankingBandChart queries={queriesRows} />
+              )}
+              {data?.daily?.length > 0 && data.daily.some((d: { position?: number }) => d.position != null) && (
+                <PositionVolatilityChart daily={data.daily} />
+              )}
+            </section>
 
             <div className="space-y-3">
-            {/* Position volatility (site-level avg position over time) */}
-            {data?.daily?.length > 0 && data.daily.some((d: { position?: number }) => d.position != null) && (
-              <PositionVolatilityChart daily={data.daily} />
-            )}
-
             {/* Opportunity index (top 5 by score) */}
             {queriesRows.length > 0 && (
               <OpportunityIndex queries={queriesRows} />
@@ -728,7 +734,7 @@ export default function SiteDetailPage({
               <span className="text-muted-foreground cursor-help" title="Top queries and pages by clicks and impressions" aria-label="Help">?</span>
             </h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-4 min-w-0 max-w-[600px]">
+                <div className="flex flex-col gap-4 flex-1 min-w-0">
                   <DataTable
                     title="Queries"
                     rows={queriesRowsForTable}
@@ -756,7 +762,7 @@ export default function SiteDetailPage({
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-col gap-4 min-w-0 max-w-[600px]">
+                <div className="flex flex-col gap-4 flex-1 min-w-0">
                   <DataTable
                     title="Pages"
                     rows={pagesRowsForTable}
@@ -941,17 +947,18 @@ export default function SiteDetailPage({
                   })()}
                 </div>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {countriesRows.length > 0 && <DataTable title="Countries" rows={countriesRows} showFilter={false} />}
                 {devicesRows.length > 0 && <DataTable title="Devices" rows={devicesRows} showFilter={false} />}
               </div>
             </section>
 
-            {/* Segmentation (Branded) */}
+            {/* Segmentation (Branded in 50% column) */}
             {data?.branded && (
-              <section aria-label="Segmentation">
-                <h2 className="text-sm font-semibold text-foreground mb-2">Segmentation</h2>
+              <section aria-label="Segmentation" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div />
                 <div className="rounded-lg border border-border bg-surface px-4 py-2.5 transition-colors hover:border-foreground/20">
+                  <h2 className="text-sm font-semibold text-foreground mb-2">Segmentation</h2>
                   <BrandedChart
                     brandedClicks={data.branded.brandedClicks}
                     nonBrandedClicks={data.branded.nonBrandedClicks}

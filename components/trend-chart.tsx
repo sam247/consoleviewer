@@ -142,6 +142,12 @@ export function TrendChart({
     });
   }, [data, priorData, useSeriesContext, compareToPrior, useNormalized, visibleSeries]);
 
+  const priorByDate = useMemo(() => {
+    const m = new Map<string, DataPoint>();
+    (priorData ?? []).forEach((d) => m.set(d.date, d));
+    return m;
+  }, [priorData]);
+
   if (!data?.length) return null;
 
   if (useNormalized) {
@@ -252,12 +258,6 @@ export function TrendChart({
     if (v < 1 && v > 0) return v.toFixed(2);
     return String(Math.round(v));
   };
-
-  const priorByDate = useMemo(() => {
-    const m = new Map<string, DataPoint>();
-    (priorData ?? []).forEach((d) => m.set(d.date, d));
-    return m;
-  }, [priorData]);
 
   return (
     <div className={cn("w-full", className)} style={{ height }}>

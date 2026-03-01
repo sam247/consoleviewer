@@ -9,14 +9,6 @@ import {
 import { cn } from "@/lib/utils";
 export type BandFilter = { min: number; max: number } | null;
 
-const BANDS = [
-  { label: "Top 3", min: 1, max: 3, color: "var(--chart-clicks)" },
-  { label: "4–10", min: 4, max: 10, color: "var(--chart-impressions)" },
-  { label: "11–20", min: 11, max: 20, color: "var(--chart-ctr)" },
-  { label: "21–50", min: 21, max: 50, color: "var(--chart-position)" },
-  { label: "50+", min: 51, max: Infinity, color: "var(--muted-foreground)" },
-];
-
 type FootprintView = "total" | "bands";
 
 interface QueryFootprintContentProps {

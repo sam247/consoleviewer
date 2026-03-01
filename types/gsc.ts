@@ -36,6 +36,22 @@ export interface SiteOverviewMetrics {
   daily: { date: string; clicks: number; impressions: number; position?: number }[];
 }
 
+/** Dimension row with optional position (queries/pages from GSC). */
+export interface SiteDetailDimensionRow {
+  key: string;
+  clicks: number;
+  impressions: number;
+  changePercent: number;
+  position?: number;
+}
+
+/** New = in current not prior; Lost = in prior not current (minimal for display). */
+export interface SiteDetailLostRow {
+  key: string;
+  clicks: number;
+  impressions: number;
+}
+
 /** Drill-down: summary + daily + dimension tables with prior-period change */
 export interface SiteDetailData {
   siteUrl: string;
@@ -44,12 +60,24 @@ export interface SiteDetailData {
     impressions: number;
     clicksChangePercent: number;
     impressionsChangePercent: number;
+    position?: number;
+    positionChangePercent?: number;
+    ctr?: number;
+    ctrChangePercent?: number;
+    queryCount?: number;
+    queryCountChangePercent?: number;
   };
-  daily: { date: string; clicks: number; impressions: number }[];
-  queries: { key: string; clicks: number; impressions: number; changePercent: number }[];
-  pages: { key: string; clicks: number; impressions: number; changePercent: number }[];
+  daily: { date: string; clicks: number; impressions: number; ctr?: number }[];
+  /** Prior period daily for chart overlay (compare mode). */
+  priorDaily?: { date: string; clicks: number; impressions: number; ctr?: number }[];
+  queries: SiteDetailDimensionRow[];
+  pages: SiteDetailDimensionRow[];
   countries: { key: string; clicks: number; impressions: number; changePercent: number }[];
   devices: { key: string; clicks: number; impressions: number; changePercent: number }[];
+  newQueries: SiteDetailDimensionRow[];
+  lostQueries: SiteDetailLostRow[];
+  newPages: SiteDetailDimensionRow[];
+  lostPages: SiteDetailLostRow[];
   branded: { brandedClicks: number; nonBrandedClicks: number; brandedChangePercent?: number; nonBrandedChangePercent?: number };
 }
 

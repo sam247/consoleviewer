@@ -23,14 +23,19 @@ interface DataPoint {
   date: string;
   clicks: number;
   impressions: number;
+  ctr?: number;
 }
 
 interface TrendChartProps {
   data: DataPoint[];
+  /** When set and compareToPrior is true, prior series are drawn as dashed/muted overlay */
+  priorData?: DataPoint[];
   height?: number;
   showImpressions?: boolean;
   /** When true, show which series (clicks/impressions) from SparkSeries context; overrides showImpressions when set */
   useSeriesContext?: boolean;
+  /** When true and priorData is provided, overlay prior period series */
+  compareToPrior?: boolean;
   className?: string;
 }
 
@@ -48,9 +53,11 @@ const SERIES_CONFIG: { key: SparkSeriesKey; dataKey: keyof SparklineDataPoint; s
 
 export function TrendChart({
   data,
+  priorData,
   height = 80,
   showImpressions = true,
   useSeriesContext = false,
+  compareToPrior = false,
   className,
 }: TrendChartProps) {
   const { series } = useSparkSeries();
@@ -59,11 +66,22 @@ export function TrendChart({
 
   const showClicks = useSeriesContext ? series?.clicks !== false : true;
   const showImpr = useSeriesContext ? series?.impressions === true : showImpressions;
+  const showCtr = useSeriesContext ? series?.ctr === true : false;
+  const showPosition = useSeriesContext ? series?.position === true : false;
+
+  const chartData = useSeriesContext && compareToPrior && priorData?.length
+    ? data.map((d, i) => ({
+        ...d,
+        clicksPrior: priorData[i]?.clicks,
+        impressionsPrior: priorData[i]?.impressions,
+        ctrPrior: priorData[i]?.ctr,
+      }))
+    : data;
 
   return (
     <div className={cn("w-full", className)} style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+        <LineChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
           <XAxis
             dataKey="date"
             tick={{ fontSize: 10 }}
@@ -84,24 +102,31 @@ export function TrendChart({
             labelFormatter={(v) => new Date(v).toLocaleDateString()}
           />
           {showClicks && (
-            <Line
-              type="monotone"
-              dataKey="clicks"
-              stroke={CHART_CLICKS}
-              strokeWidth={2.5}
-              dot={false}
-            />
+            <>
+              <Line type="monotone" dataKey="clicks" stroke={CHART_CLICKS} strokeWidth={2.5} dot={false} />
+              {compareToPrior && priorData?.length && (
+                <Line type="monotone" dataKey="clicksPrior" stroke={CHART_CLICKS} strokeWidth={1} dot={false} strokeDasharray="4 4" strokeOpacity={0.5} name="Prior" />
+              )}
+            </>
           )}
           {showImpr && (
-            <Line
-              type="monotone"
-              dataKey="impressions"
-              stroke={CHART_IMPRESSIONS}
-              strokeWidth={1}
-              dot={false}
-              strokeDasharray="3 3"
-              strokeOpacity={0.65}
-            />
+            <>
+              <Line type="monotone" dataKey="impressions" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} strokeDasharray="3 3" strokeOpacity={0.65} />
+              {compareToPrior && priorData?.length && (
+                <Line type="monotone" dataKey="impressionsPrior" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} strokeDasharray="5 5" strokeOpacity={0.4} name="Prior" />
+              )}
+            </>
+          )}
+          {showCtr && (
+            <>
+              <Line type="monotone" dataKey="ctr" stroke={CHART_CTR} strokeWidth={1.5} dot={false} />
+              {compareToPrior && priorData?.length && (
+                <Line type="monotone" dataKey="ctrPrior" stroke={CHART_CTR} strokeWidth={1} dot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
+              )}
+            </>
+          )}
+          {showPosition && (
+            <Line type="monotone" dataKey="position" stroke={CHART_POSITION} strokeWidth={1.5} dot={false} />
           )}
         </LineChart>
       </ResponsiveContainer>

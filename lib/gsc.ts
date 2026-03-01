@@ -9,6 +9,8 @@ import type {
   SearchAnalyticsResponse,
   SiteOverviewMetrics,
   SiteDetailData,
+  SiteDetailDimensionRow,
+  SiteDetailLostRow,
 } from "@/types/gsc";
 
 const GSC_BASE = "https://www.googleapis.com/webmasters/v3";
@@ -225,6 +227,27 @@ function mockDimensionRows(
   });
 }
 
+function mockDimensionRowsWithPosition(
+  keys: string[],
+  baseClicks: number,
+  baseImpressions: number
+): SiteDetailDimensionRow[] {
+  return keys.map((key, i) => {
+    const clicks = Math.floor(baseClicks / keys.length + (Math.random() - 0.3) * 200);
+    const impressions = Math.floor(baseImpressions / keys.length + (Math.random() - 0.3) * 2000);
+    const priorClicks = Math.floor(clicks * (0.4 + Math.random() * 0.6));
+    const changePercent =
+      priorClicks > 0 ? Math.round(((clicks - priorClicks) / priorClicks) * 100) : 0;
+    return {
+      key,
+      clicks: Math.max(0, clicks),
+      impressions: Math.max(0, impressions),
+      changePercent,
+      position: 2 + (i % 15) + Math.random() * 5,
+    };
+  });
+}
+
 /** Full drill-down data for one site. */
 export async function getSiteDetail(
   siteUrl: string,
@@ -238,10 +261,11 @@ export async function getSiteDetail(
     return getStubSiteDetail(siteUrl);
   }
   try {
-    const [summaryCur, summaryPrior, dailyRes, queriesCur, queriesPrior, pagesCur, pagesPrior, countriesCur, countriesPrior, devicesCur, devicesPrior] = await Promise.all([
+    const [summaryCur, summaryPrior, dailyRes, dailyPriorRes, queriesCur, queriesPrior, pagesCur, pagesPrior, countriesCur, countriesPrior, devicesCur, devicesPrior] = await Promise.all([
       querySearchAnalytics(siteUrl, startDate, endDate, []),
       querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, []),
       querySearchAnalytics(siteUrl, startDate, endDate, ["date"]),
+      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["date"]),
       querySearchAnalytics(siteUrl, startDate, endDate, ["query"]),
       querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["query"]),
       querySearchAnalytics(siteUrl, startDate, endDate, ["page"]),
@@ -257,11 +281,40 @@ export async function getSiteDetail(
     const impressions = cur?.impressions ?? 0;
     const priorClicks = prior?.clicks ?? 0;
     const priorImpressions = prior?.impressions ?? 0;
+    const position = cur?.position;
+    const priorPosition = prior?.position;
+    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+    const priorCtr = priorImpressions > 0 ? (priorClicks / priorImpressions) * 100 : 0;
+
     const daily = (dailyRes.rows ?? [])
-      .map((r) => ({ date: r.keys[0] ?? "", clicks: r.clicks, impressions: r.impressions }))
+      .map((r) => {
+        const imp = r.impressions ?? 0;
+        const c = r.clicks ?? 0;
+        return {
+          date: r.keys[0] ?? "",
+          clicks: c,
+          impressions: imp,
+          ctr: imp > 0 ? (c / imp) * 100 : 0,
+        };
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
+
+    const priorDaily = (dailyPriorRes.rows ?? [])
+      .map((r) => {
+        const imp = r.impressions ?? 0;
+        const c = r.clicks ?? 0;
+        return {
+          date: r.keys[0] ?? "",
+          clicks: c,
+          impressions: imp,
+          ctr: imp > 0 ? (c / imp) * 100 : 0,
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+
     const priorMap = (rows: SearchAnalyticsResponse["rows"], keyIndex: number) =>
       new Map((rows ?? []).map((r) => [r.keys[keyIndex] ?? "", { clicks: r.clicks, impressions: r.impressions }]));
+
     const toTable = (
       curRows: SearchAnalyticsResponse["rows"],
       priorRows: SearchAnalyticsResponse["rows"],
@@ -274,10 +327,57 @@ export async function getSiteDetail(
           prev && prev.clicks > 0 ? Math.round(((r.clicks - prev.clicks) / prev.clicks) * 100) : 0;
         return { key, clicks: r.clicks, impressions: r.impressions, changePercent };
       });
-    const queries = toTable(queriesCur.rows, queriesPrior.rows, 0);
-    const pages = toTable(pagesCur.rows, pagesPrior.rows, 0);
+
+    const toTableWithPosition = (
+      curRows: SearchAnalyticsResponse["rows"],
+      priorRows: SearchAnalyticsResponse["rows"],
+      keyIndex: number
+    ): SiteDetailDimensionRow[] =>
+      (curRows ?? []).map((r) => {
+        const key = r.keys[keyIndex] ?? "";
+        const prev = priorMap(priorRows, keyIndex).get(key);
+        const changePercent =
+          prev && prev.clicks > 0 ? Math.round(((r.clicks - prev.clicks) / prev.clicks) * 100) : 0;
+        return {
+          key,
+          clicks: r.clicks,
+          impressions: r.impressions,
+          changePercent,
+          position: r.position,
+        };
+      });
+
+    const queries = toTableWithPosition(queriesCur.rows, queriesPrior.rows, 0);
+    const pages = toTableWithPosition(pagesCur.rows, pagesPrior.rows, 0);
     const countries = toTable(countriesCur.rows, countriesPrior.rows, 0);
     const devices = toTable(devicesCur.rows, devicesPrior.rows, 0);
+
+    const curQueryKeys = new Set(queries.map((r) => r.key));
+    const priorQueryKeys = new Set((queriesPrior.rows ?? []).map((r) => r.keys[0] ?? ""));
+    const newQueries = queries.filter((r) => !priorQueryKeys.has(r.key));
+    const lostQueries: SiteDetailLostRow[] = (queriesPrior.rows ?? [])
+      .filter((r) => !curQueryKeys.has(r.keys[0] ?? ""))
+      .map((r) => ({ key: r.keys[0] ?? "", clicks: r.clicks, impressions: r.impressions }));
+
+    const curPageKeys = new Set(pages.map((r) => r.key));
+    const priorPageKeys = new Set((pagesPrior.rows ?? []).map((r) => r.keys[0] ?? ""));
+    const newPages = pages.filter((r) => !priorPageKeys.has(r.key));
+    const lostPages: SiteDetailLostRow[] = (pagesPrior.rows ?? [])
+      .filter((r) => !curPageKeys.has(r.keys[0] ?? ""))
+      .map((r) => ({ key: r.keys[0] ?? "", clicks: r.clicks, impressions: r.impressions }));
+
+    const queryCount = queries.length;
+    const priorQueryCount = queriesPrior.rows?.length ?? 0;
+    const queryCountChangePercent =
+      priorQueryCount > 0 ? Math.round(((queryCount - priorQueryCount) / priorQueryCount) * 100) : 0;
+
+    const positionChangePercent =
+      position != null && priorPosition != null && priorPosition > 0
+        ? Math.round(((position - priorPosition) / priorPosition) * 100)
+        : undefined;
+    const ctrChangePercent =
+      priorCtr > 0 ? Math.round(((ctr - priorCtr) / priorCtr) * 100) : undefined;
+
     return {
       siteUrl,
       summary: {
@@ -285,12 +385,23 @@ export async function getSiteDetail(
         impressions,
         clicksChangePercent: priorClicks > 0 ? Math.round(((clicks - priorClicks) / priorClicks) * 100) : 0,
         impressionsChangePercent: priorImpressions > 0 ? Math.round(((impressions - priorImpressions) / priorImpressions) * 100) : 0,
+        position,
+        positionChangePercent,
+        ctr,
+        ctrChangePercent,
+        queryCount,
+        queryCountChangePercent,
       },
       daily,
+      priorDaily,
       queries,
       pages,
       countries,
       devices,
+      newQueries,
+      lostQueries,
+      newPages,
+      lostPages,
       branded: {
         brandedClicks: 0,
         nonBrandedClicks: clicks,
@@ -313,10 +424,15 @@ function emptySiteDetail(siteUrl: string): Promise<SiteDetailData> {
       impressionsChangePercent: 0,
     },
     daily: [],
+    priorDaily: [],
     queries: [],
     pages: [],
     countries: [],
     devices: [],
+    newQueries: [],
+    lostQueries: [],
+    newPages: [],
+    lostPages: [],
     branded: {
       brandedClicks: 0,
       nonBrandedClicks: 0,
@@ -334,12 +450,28 @@ function getStubSiteDetail(siteUrl: string): Promise<SiteDetailData> {
   const daily = Array.from({ length: 28 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (27 - i));
+    const c = Math.floor(clicks / 28 + (Math.random() - 0.5) * 30);
+    const imp = Math.floor(impressions / 28 + (Math.random() - 0.5) * 500);
     return {
       date: d.toISOString().slice(0, 10),
-      clicks: Math.floor(clicks / 28 + (Math.random() - 0.5) * 30),
-      impressions: Math.floor(impressions / 28 + (Math.random() - 0.5) * 500),
+      clicks: c,
+      impressions: imp,
+      ctr: imp > 0 ? (c / imp) * 100 : 0,
     };
   });
+  const queriesStub = mockDimensionRowsWithPosition(MOCK_QUERIES, clicks * 0.8, impressions * 0.8);
+  const pagesStub = mockDimensionRowsWithPosition(MOCK_PAGES, clicks * 0.9, impressions * 0.9);
+  const priorQueryCount = Math.floor(queriesStub.length * 0.7);
+  const queryCountChangePercent =
+    priorQueryCount > 0 ? Math.round(((queriesStub.length - priorQueryCount) / priorQueryCount) * 100) : 0;
+  const position = 8 + Math.random() * 6;
+  const priorPosition = position * (0.9 + Math.random() * 0.2);
+  const positionChangePercent =
+    priorPosition > 0 ? Math.round(((position - priorPosition) / priorPosition) * 100) : 0;
+  const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+  const priorCtr = ctr * (0.85 + Math.random() * 0.2);
+  const ctrChangePercent = priorCtr > 0 ? Math.round(((ctr - priorCtr) / priorCtr) * 100) : 0;
+
   return Promise.resolve({
     siteUrl,
     summary: {
@@ -347,12 +479,23 @@ function getStubSiteDetail(siteUrl: string): Promise<SiteDetailData> {
       impressions,
       clicksChangePercent: priorClicks > 0 ? Math.round(((clicks - priorClicks) / priorClicks) * 100) : 0,
       impressionsChangePercent: priorImpressions > 0 ? Math.round(((impressions - priorImpressions) / priorImpressions) * 100) : 0,
+      position,
+      positionChangePercent,
+      ctr,
+      ctrChangePercent,
+      queryCount: queriesStub.length,
+      queryCountChangePercent,
     },
     daily,
-    queries: mockDimensionRows(MOCK_QUERIES, clicks * 0.8, impressions * 0.8),
-    pages: mockDimensionRows(MOCK_PAGES, clicks * 0.9, impressions * 0.9),
+    priorDaily: [],
+    queries: queriesStub,
+    pages: pagesStub,
     countries: mockDimensionRows(MOCK_COUNTRIES, clicks, impressions),
     devices: mockDimensionRows(MOCK_DEVICES, clicks, impressions),
+    newQueries: queriesStub.slice(0, 2),
+    lostQueries: [],
+    newPages: pagesStub.slice(0, 1),
+    lostPages: [],
     branded: {
       brandedClicks: 133,
       nonBrandedClicks: 590,

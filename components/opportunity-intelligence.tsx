@@ -58,7 +58,7 @@ function OppTable({
   const visible = expanded ? rows : rows.slice(0, 5);
 
   if (rows.length === 0) {
-    return <p className="text-xs text-muted-foreground px-4 pb-3">{emptyText}</p>;
+    return <p className="text-xs text-muted-foreground px-4 py-2">{emptyText}</p>;
   }
 
   return (
@@ -67,26 +67,26 @@ function OppTable({
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-border/60 text-muted-foreground">
-              <th className="px-4 py-2 text-left font-semibold">Query</th>
-              <th className="px-4 py-2 text-right font-semibold w-14">Pos</th>
-              <th className="px-4 py-2 text-right font-semibold w-20">Impressions</th>
-              <th className="px-4 py-2 text-right font-semibold w-16">CTR</th>
-              <th className="px-4 py-2 text-right font-semibold w-16">Change</th>
+              <th className="px-4 py-1.5 text-left font-semibold">Query</th>
+              <th className="px-4 py-1.5 text-right font-semibold w-14" title="Avg position">Pos</th>
+              <th className="px-4 py-1.5 text-right font-semibold w-20">Impressions</th>
+              <th className="px-4 py-1.5 text-right font-semibold w-16">CTR</th>
+              <th className="px-4 py-1.5 text-right font-semibold w-16">Change (vs prior)</th>
             </tr>
           </thead>
           <tbody>
             {visible.map((row) => (
-              <tr key={row.key} className="border-b border-border/40 last:border-0 hover:bg-accent/40 transition-colors">
-                <td className="px-4 py-2 truncate max-w-[220px]" title={row.key}>
+              <tr key={row.key} className="border-b border-border/40 last:border-0 hover:bg-accent/50 transition-colors duration-100">
+                <td className="px-4 py-1.5 truncate max-w-[220px]" title={row.key}>
                   {row.key}
                 </td>
-                <td className="px-4 py-2 text-right tabular-nums">{row.position.toFixed(1)}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{formatNum(row.impressions)}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{row.ctr.toFixed(2)}%</td>
-                <td className="px-4 py-2 text-right tabular-nums">
+                <td className="px-4 py-1.5 text-right tabular-nums" title="Avg position">{row.position.toFixed(1)}</td>
+                <td className="px-4 py-1.5 text-right tabular-nums">{formatNum(row.impressions)}</td>
+                <td className="px-4 py-1.5 text-right tabular-nums">{row.ctr.toFixed(2)}%</td>
+                <td className="px-4 py-1.5 text-right tabular-nums">
                   {row.changePercent != null ? (
                     <span className={cn(row.changePercent >= 0 ? "text-positive" : "text-negative")}>
-                      {row.changePercent >= 0 ? "+" : ""}{row.changePercent}%
+                      {row.changePercent >= 0 ? "↑" : "↓"} {row.changePercent >= 0 ? "+" : ""}{row.changePercent}%
                     </span>
                   ) : "—"}
                 </td>
@@ -100,7 +100,7 @@ function OppTable({
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150"
           >
             {expanded ? "View less" : `View ${rows.length - 5} more`}
           </button>
@@ -113,12 +113,14 @@ function OppTable({
 function SectionHeader({
   title,
   subtitle,
+  bandLabel,
   count,
   open,
   onToggle,
 }: {
   title: string;
   subtitle: string;
+  bandLabel: string;
   count: number;
   open: boolean;
   onToggle: () => void;
@@ -127,18 +129,19 @@ function SectionHeader({
     <button
       type="button"
       onClick={onToggle}
-      className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/30 transition-colors text-left"
+      className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-accent/30 transition-colors duration-150 text-left"
     >
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 flex-wrap">
         <span className="text-sm font-semibold text-foreground">{title}</span>
-        <span className="text-xs text-muted-foreground">{subtitle}</span>
+        <span className="text-xs text-muted-foreground">{bandLabel}</span>
+        <span className="text-xs text-muted-foreground/80">{subtitle}</span>
         {count > 0 && (
-          <span className="rounded-full bg-foreground/10 text-foreground px-1.5 py-0.5 text-xs tabular-nums font-medium">
+          <span className="rounded-full bg-foreground/15 text-foreground px-2 py-0.5 text-xs tabular-nums font-medium">
             {count}
           </span>
         )}
       </div>
-      <span className="text-muted-foreground text-xs">{open ? "▲" : "▼"}</span>
+      <span className="text-muted-foreground text-xs shrink-0">{open ? "▲" : "▼"}</span>
     </button>
   );
 }
@@ -220,7 +223,7 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
 
   return (
     <div className={cn("rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20", className)}>
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-foreground">Opportunity intelligence</span>
           {totalOpps > 0 && (
@@ -233,7 +236,8 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
       <div className="border-b border-border/60">
         <SectionHeader
           title="Page 1 push"
-          subtitle="Position 4–10, above-median impressions, stable or growing"
+          bandLabel="Pos 4–10"
+          subtitle="Above-median impressions, stable or growing"
           count={page1Push.length}
           open={open.page1Push}
           onToggle={() => setOpen((s) => ({ ...s, page1Push: !s.page1Push }))}
@@ -250,7 +254,8 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
       <div className="border-b border-border/60">
         <SectionHeader
           title="Page 2 opportunity"
-          subtitle="Position 11–20, high impressions"
+          bandLabel="Pos 11–20"
+          subtitle="High impressions"
           count={page2Opp.length}
           open={open.page2Opp}
           onToggle={() => setOpen((s) => ({ ...s, page2Opp: !s.page2Opp }))}
@@ -267,7 +272,8 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
       <div>
         <SectionHeader
           title="CTR leak"
-          subtitle="Position 1–5, high impressions, CTR below band benchmark"
+          bandLabel="Pos 1–5"
+          subtitle="High impressions, CTR below band benchmark"
           count={ctrLeak.length}
           open={open.ctrLeak}
           onToggle={() => setOpen((s) => ({ ...s, ctrLeak: !s.ctrLeak }))}

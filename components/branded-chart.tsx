@@ -27,9 +27,10 @@ export function BrandedChart({
 
   return (
     <div className={cn(className)}>
-      <div className="mb-2 font-semibold text-sm text-foreground">
+      <div className="mb-1.5 font-semibold text-sm text-foreground">
         Branded vs non‑branded
       </div>
+      <p className="text-xs text-muted-foreground mb-1.5">Compared to prior period</p>
       <div className="flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-1">
           <span className="text-muted-foreground">Branded</span>
@@ -65,7 +66,7 @@ export function BrandedChart({
           {brandedPct.toFixed(1)}% branded
         </div>
       </div>
-      <div className="mt-2 h-2 w-full rounded-full bg-muted overflow-hidden flex">
+      <div className="mt-1.5 h-2 w-full rounded-full bg-muted overflow-hidden flex">
         <div
           className="h-full bg-blue-500"
           style={{ width: `${brandedPct}%` }}

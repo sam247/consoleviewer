@@ -62,7 +62,7 @@ export function SparkToggles() {
           title={title}
           onClick={() => toggle(key)}
           className={cn(
-            "rounded-md p-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "rounded-md p-2 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             series[key]
               ? "bg-foreground text-background shadow-sm"
               : "text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/50"

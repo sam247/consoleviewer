@@ -51,44 +51,55 @@ export function QueryFootprint({ queries, daily, className }: QueryFootprintProp
     [daily]
   );
 
+  const pillStats = [
+    { label: "Top 3", value: top3 },
+    { label: "Top 10", value: top10 },
+    { label: "Top 20", value: top20 },
+    { label: "Total", value: total },
+  ];
+
   return (
     <div className={cn("rounded-lg border border-border bg-surface transition-colors hover:border-foreground/20 overflow-hidden", className)}>
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-foreground">Query footprint</span>
-          <span className="text-xs text-muted-foreground tabular-nums">{total} total queries</span>
-        </div>
-        <div className="flex gap-1">
-          {(["total", "bands"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setView(v)}
-              className={cn(
-                "rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors",
-                view === v ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"
-              )}
-            >
-              {v === "total" ? "Total" : "By ranking band"}
-            </button>
-          ))}
+      <div className="border-b border-border px-4 py-2.5">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Query footprint</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+              Top 10: {top10} · Top 3: {top3}
+            </p>
+          </div>
+          <div className="flex gap-1 rounded-md border border-border bg-muted/30 p-0.5">
+            {(["total", "bands"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={cn(
+                  "rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-150",
+                  view === v ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"
+                )}
+              >
+                {v === "total" ? "Total" : "By ranking band"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="px-4 py-4">
+      <div className="px-4 py-2.5">
         {view === "total" ? (
-          <div className="flex flex-wrap items-start gap-6">
-            <div className="flex gap-4 flex-wrap">
-              {[
-                { label: "Top 3", value: top3 },
-                { label: "Top 10", value: top10 },
-                { label: "Top 20", value: top20 },
-                { label: "Total", value: total },
-              ].map((stat) => (
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="flex gap-3 flex-wrap">
+              {pillStats.map((stat) => (
                 <div key={stat.label} className="flex flex-col">
                   <span className="text-xs text-muted-foreground">{stat.label}</span>
-                  <span className="text-2xl font-semibold tabular-nums text-foreground leading-tight">
+                  <span className="text-xl font-semibold tabular-nums text-foreground leading-tight">
                     {stat.value}
+                    {total > 0 && stat.label !== "Total" && (
+                      <span className="text-xs font-normal text-muted-foreground ml-1">
+                        ({Math.round((stat.value / total) * 100)}%)
+                      </span>
+                    )}
                   </span>
                 </div>
               ))}

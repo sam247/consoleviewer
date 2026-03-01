@@ -185,18 +185,30 @@ function MovementIntelligence({
     topDecayingPage && { direction: "decaying" as const, sentence: buildInsightSentence("page", "decaying", topDecayingPage) },
   ].filter(Boolean) as { direction: "growing" | "decaying"; sentence: string }[];
 
+  // Bold numeric parts in sentence: +N%, -N%, "top N", "pos N.N"
+  const boldMetrics = (sentence: string) => {
+    const parts = sentence.split(/([+-]?\d+(?:\.\d+)?%|top \d+|pos \d+(?:\.\d+)?)/gi);
+    return parts.map((part, i) =>
+      /^([+-]?\d+(?:\.\d+)?%|top \d+|pos \d+(?:\.\d+)?)$/i.test(part) ? (
+        <span key={i} className="font-semibold text-foreground">{part}</span>
+      ) : (
+        part
+      )
+    );
+  };
+
   return (
     <section aria-label="Movement intelligence" className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <h2 className="text-sm font-semibold text-foreground">Movement intelligence</h2>
-        <div className="flex gap-1">
+        <div className="flex gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
           {(["all", "growing", "decaying", "new", "lost"] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => onTrendFilterChange(t)}
               className={cn(
-                "rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors",
+                "rounded px-2 py-1 text-xs font-medium capitalize transition-colors duration-150",
                 trendFilter === t
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:bg-accent"
@@ -209,20 +221,20 @@ function MovementIntelligence({
       </div>
 
       {signals.length > 0 && (
-        <div className="px-4 py-3 space-y-1.5 border-b border-border/50">
+        <div className="px-4 py-2.5 space-y-1 border-b border-border/50">
           {signals.map((s, i) => (
             <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
               <span className={cn("mt-px shrink-0 text-xs", s.direction === "growing" ? "text-positive" : "text-negative")}>
                 {s.direction === "growing" ? "↑" : "↓"}
               </span>
-              <span>{s.sentence}</span>
+              <span>{boldMetrics(s.sentence)}</span>
             </div>
           ))}
         </div>
       )}
 
-      <div className="px-4 py-3">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1.5 font-medium">AI summary</p>
+      <div className="px-4 py-2.5 border-t border-border/40">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 font-medium">AI summary</p>
         <p className="text-sm text-muted-foreground/60 italic">
           Detailed opportunity and trend summary will appear here. Coming soon.
         </p>
@@ -410,41 +422,49 @@ export default function SiteDetailPage({
         </div>
 
         {isLoading ? (
-          <div className="space-y-8">
-            <SkeletonBox className="h-24 border-b border-border pb-6" />
+          <div className="space-y-6">
+            <SkeletonBox className="h-24 border-b border-border pb-4" />
             <SkeletonBox className="h-80" />
             <SkeletonBox className="h-20" />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="flex flex-col gap-5">
                 <SkeletonBox className="h-64" />
                 <SkeletonBox className="h-64" />
               </div>
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-5">
                 <SkeletonBox className="h-64" />
                 <SkeletonBox className="h-64" />
               </div>
             </div>
           </div>
         ) : (
-          <div className="space-y-8">
-            {/* Section A — Header metric row (compact) */}
-            <section aria-label="Overview" className="border-b border-border pb-6">
-              <HeaderMetricRow summary={data?.summary} formatNum={formatNum} />
+          <div className="space-y-6">
+            {/* Section A — Header metric row + footprint summary */}
+            <section aria-label="Overview" className="border-b border-border pb-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-4">
+                <HeaderMetricRow summary={data?.summary} formatNum={formatNum} />
+                <div className="shrink-0 text-right">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Queries in band</div>
+                  <div className="text-sm font-semibold tabular-nums text-foreground mt-0.5">
+                    Top 10: {queryCounting.top10} · Top 3: {queryCounting.top3}
+                  </div>
+                </div>
+              </div>
             </section>
 
             {/* Section B — Trend */}
             {data?.daily?.length > 0 && (
               <section aria-label="Trend">
-                <div className="rounded-lg border border-border bg-surface p-4 transition-colors hover:border-foreground/20">
-                  <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
+                <div className="rounded-lg border border-border bg-surface px-4 py-3 transition-colors hover:border-foreground/20">
+                  <div className="flex items-center justify-between gap-4 mb-2 flex-wrap">
                     <h2 className="text-sm font-semibold text-foreground">Performance over time</h2>
                     <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-150">
                         <input
                           type="checkbox"
                           checked={compareToPrior}
                           onChange={(e) => setCompareToPrior(e.target.checked)}
-                          className="rounded border-border"
+                          className="rounded border-border transition-all duration-150"
                         />
                         Compare to previous
                       </label>
@@ -489,10 +509,10 @@ export default function SiteDetailPage({
             <TrackedKeywordsSection keywords={getMockTrackedKeywords(siteUrl)} />
 
             {/* Section F — Performance tables + Query Counting + Content Groups */}
-            <section aria-label="Performance tables" className="space-y-6">
-              <h2 className="text-sm font-semibold text-foreground mb-3">Performance tables</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="flex flex-col gap-6 min-w-0">
+            <section aria-label="Performance tables" className="space-y-5">
+              <h2 className="text-sm font-semibold text-foreground mb-2">Performance tables</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div className="flex flex-col gap-5 min-w-0">
                   <DataTable
                     title="Queries"
                     rows={queriesRowsForTable}
@@ -500,9 +520,10 @@ export default function SiteDetailPage({
                     onTrendFilterChange={setTrendFilter}
                     showFilter
                   />
-                  <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 p-4">
-                    <h3 className="text-sm font-semibold text-foreground mb-3">Query counting</h3>
-                    <div className="flex flex-wrap gap-4 text-sm">
+                  <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 p-3">
+                    <h3 className="text-sm font-semibold text-foreground mb-1.5">Query counting</h3>
+                    <p className="text-xs text-muted-foreground mb-2">Queries in top 10</p>
+                    <div className="flex flex-wrap gap-3 text-sm">
                       <div>
                         <span className="text-muted-foreground">Total queries</span>
                         <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.total}</span>
@@ -518,7 +539,7 @@ export default function SiteDetailPage({
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-col gap-6 min-w-0">
+                <div className="flex flex-col gap-5 min-w-0">
                   <DataTable
                     title="Pages"
                     rows={pagesRowsForTable}
@@ -528,24 +549,27 @@ export default function SiteDetailPage({
                   />
                   {contentGroups.length > 0 && (() => {
                     const maxClicks = Math.max(...contentGroups.map((g) => g.clicks), 1);
+                    const totalGroupClicks = contentGroups.reduce((s, g) => s + g.clicks, 0);
                     return (
                       <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20">
-                        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                        <div className="border-b border-border px-4 py-2.5">
                           <h3 className="text-sm font-semibold text-foreground">Content groups</h3>
-                          <span className="text-xs text-muted-foreground">Top 5 by clicks</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {contentGroups.length} groups · {formatNum(totalGroupClicks)} clicks
+                          </p>
                         </div>
-                        <div className="px-4 py-3 space-y-3">
+                        <div className="px-4 py-2.5 space-y-2">
                           {contentGroups.map((g) => (
                             <div key={g.label}>
-                              <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center justify-between gap-3 mb-0.5">
                                 <span className="text-xs font-medium text-foreground truncate max-w-[120px]" title={g.label}>
                                   /{g.label}
                                 </span>
-                                <div className="flex items-center gap-2 text-xs tabular-nums shrink-0">
+                                <div className="flex items-center gap-2 text-xs tabular-nums shrink-0 text-right">
                                   <span className="text-foreground">{formatNum(g.clicks)}</span>
                                   {g.avgChangePercent != null && (
                                     <span className={cn(g.avgChangePercent >= 0 ? "text-positive" : "text-negative")}>
-                                      {g.avgChangePercent >= 0 ? "+" : ""}{g.avgChangePercent}%
+                                      Δ {g.avgChangePercent >= 0 ? "+" : ""}{g.avgChangePercent}%
                                     </span>
                                   )}
                                   <span className="text-muted-foreground">{formatNum(g.impressions)} impr.</span>
@@ -569,7 +593,7 @@ export default function SiteDetailPage({
                   })()}
                 </div>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-2">
                 {countriesRows.length > 0 && <DataTable title="Countries" rows={countriesRows} showFilter={false} />}
                 {devicesRows.length > 0 && <DataTable title="Devices" rows={devicesRows} showFilter={false} />}
               </div>
@@ -578,8 +602,8 @@ export default function SiteDetailPage({
             {/* Segmentation (Branded) */}
             {data?.branded && (
               <section aria-label="Segmentation">
-                <h2 className="text-sm font-semibold text-foreground mb-3">Segmentation</h2>
-                <div className="rounded-lg border border-border bg-surface p-4 transition-colors hover:border-foreground/20">
+                <h2 className="text-sm font-semibold text-foreground mb-2">Segmentation</h2>
+                <div className="rounded-lg border border-border bg-surface p-3 transition-colors hover:border-foreground/20">
                   <BrandedChart
                     brandedClicks={data.branded.brandedClicks}
                     nonBrandedClicks={data.branded.nonBrandedClicks}

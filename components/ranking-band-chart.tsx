@@ -96,7 +96,7 @@ export function RankingBandChart({ queries, className }: RankingBandChartProps) 
                 border: "1px solid var(--border)",
                 borderRadius: 6,
               }}
-              formatter={(value: number | undefined, name: string) => [viewMode === "percent" ? `${value ?? 0}%` : (value ?? 0).toLocaleString(), name]}
+              formatter={(value: number | undefined, name: string | undefined) => [viewMode === "percent" ? `${value ?? 0}%` : (value ?? 0).toLocaleString(), name ?? ""]}
               labelFormatter={() => "Current period"}
             />
             {BANDS.map((b) => (

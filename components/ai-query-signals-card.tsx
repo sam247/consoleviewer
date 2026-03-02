@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { classifyQuery } from "@/lib/ai-query-detection";
 import type { DataTableRow } from "@/components/data-table";
-import { cn } from "@/lib/utils";
 
 interface AiQuerySignalsCardProps {
   queries: DataTableRow[];
@@ -55,7 +55,7 @@ export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) 
       <div className="border-b border-border px-4 py-3 shrink-0">
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="text-sm font-semibold text-foreground">
-            AI-Style Query Signals
+            AI-style query signals
           </h3>
           <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5">
             Experimental
@@ -67,18 +67,10 @@ export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) 
         </p>
       </div>
       <div className="flex-1 min-h-0 flex flex-col gap-3 px-4 py-3 overflow-auto">
-        {stats.sparkData.length > 0 && (
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[10px] text-muted-foreground shrink-0">
-              Site trend (proxy)
-            </span>
-            <Sparkline values={stats.sparkData} className="shrink-0" />
-          </div>
-        )}
         {stats.top5.length > 0 && (
-          <div className="min-h-0 flex flex-col flex-1 w-full min-w-0">
-            <p className="text-xs text-muted-foreground mb-1 shrink-0">Top 5 LLM-style queries</p>
-            <ul className="text-xs space-y-1.5 flex-1 min-h-0 w-full min-w-0">
+          <div className="shrink-0">
+            <p className="text-xs text-muted-foreground mb-1">Top 5 LLM-style queries</p>
+            <ul className="text-xs space-y-1.5 w-full min-w-0">
               {stats.top5.map((r) => (
                 <li
                   key={r.key}
@@ -94,35 +86,39 @@ export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) 
             </ul>
           </div>
         )}
+        {stats.sparkData.length >= 2 && (
+          <div className="flex-1 min-h-[120px] w-full shrink-0">
+            <p className="text-[10px] text-muted-foreground mb-1">Site trend</p>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={(daily ?? []).slice(-28).map((d) => ({
+                  date: d.date,
+                  clicks: d.clicks ?? 0,
+                  impressions: d.impressions ?? 0,
+                }))}
+                margin={{ top: 2, right: 4, left: 0, bottom: 2 }}
+              >
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 9 }}
+                  tickFormatter={(v) => {
+                    const d = new Date(v);
+                    return `${d.getMonth() + 1}/${d.getDate()}`;
+                  }}
+                />
+                <YAxis width={24} tick={{ fontSize: 9 }} hide={false} />
+                <Tooltip
+                  contentStyle={{ fontSize: 10, padding: "4px 6px" }}
+                  labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  formatter={(value: number) => [value.toLocaleString(), ""]}
+                />
+                <Line type="monotone" dataKey="clicks" stroke="var(--chart-clicks)" strokeWidth={1.5} dot={false} name="Clicks" />
+                <Line type="monotone" dataKey="impressions" stroke="var(--chart-impressions)" strokeWidth={1} dot={false} strokeDasharray="3 2" name="Impr." />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
     </div>
-  );
-}
-
-function Sparkline({
-  values,
-  className,
-}: {
-  values: number[];
-  className?: string;
-}) {
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const pts = values.map(
-    (v, i) =>
-      `${(i / (values.length - 1 || 1)) * 80},${24 - ((v - min) / range) * 20}`
-  );
-  return (
-    <svg width={80} height={24} className={cn(className)} aria-hidden>
-      <polyline
-        fill="none"
-        stroke="var(--chart-impressions)"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points={pts.join(" ")}
-      />
-    </svg>
   );
 }

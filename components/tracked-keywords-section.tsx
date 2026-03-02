@@ -98,7 +98,7 @@ export function TrackedKeywordsSection({ keywords: mockKeywords }: TrackedKeywor
         className="flex w-full items-center gap-2 py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
         aria-expanded={expanded}
       >
-        <span className="text-sm font-semibold text-foreground">Tracked keywords</span>
+        <span className="text-sm font-semibold text-foreground">Keywords tracked</span>
         <svg
           className={cn("size-4 text-muted-foreground transition-transform duration-200", expanded && "rotate-180")}
           viewBox="0 0 24 24"

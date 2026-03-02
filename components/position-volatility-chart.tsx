@@ -58,7 +58,7 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
   if (dataWithPosition.length === 0) return null;
 
   return (
-    <div className={cn("rounded-lg border border-border bg-surface overflow-hidden flex flex-col min-h-0 transition-colors hover:border-foreground/20", className)}>
+    <div className={cn("rounded-lg border border-border bg-surface overflow-hidden flex flex-col min-h-[280px] transition-colors hover:border-foreground/20", className)}>
       <div className="border-b border-border px-4 py-3 shrink-0">
         <h3 className="text-sm font-semibold text-foreground">Position volatility</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
@@ -76,7 +76,7 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
           </p>
         )}
       </div>
-      <div className="flex-1 min-h-[160px] px-4 py-3 min-w-0 flex flex-col">
+      <div className="flex-1 min-h-[180px] h-[180px] px-4 py-3 min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={dataWithPosition} margin={{ top: 4, right: 8, left: 36, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />

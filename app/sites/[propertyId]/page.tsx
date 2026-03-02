@@ -765,19 +765,21 @@ export default function SiteDetailPage({
                       const top3 = queryCounting.top3;
                       const top4To10 = Math.max(0, queryCounting.top10 - queryCounting.top3);
                       const rest = Math.max(0, queryCounting.total - queryCounting.top10);
-                      const chartData = [
+                      let chartData = [
                         { name: "Top 3", value: top3, fill: "var(--chart-clicks)" },
                         { name: "4–10", value: top4To10, fill: "var(--chart-impressions)" },
                         { name: "11+", value: rest, fill: "var(--muted-foreground)" },
                       ].filter((d) => d.value > 0);
-                      if (chartData.length === 0) return null;
+                      if (chartData.length === 0) {
+                        chartData = [{ name: "Queries", value: queryCounting.total, fill: "var(--chart-clicks)" }];
+                      }
                       return (
-                        <div className="h-16 w-full min-w-0">
+                        <div className="h-20 w-full min-w-0 mt-1">
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData} layout="vertical" margin={{ top: 2, right: 8, left: 0, bottom: 2 }}>
                               <XAxis type="number" hide />
-                              <YAxis type="category" dataKey="name" width={36} tick={{ fontSize: 10 }} />
-                              <Bar dataKey="value" radius={0} barSize={12}>
+                              <YAxis type="category" dataKey="name" width={40} tick={{ fontSize: 10 }} />
+                              <Bar dataKey="value" radius={0} barSize={14}>
                                 {chartData.map((entry, i) => (
                                   <Cell key={i} fill={entry.fill} />
                                 ))}

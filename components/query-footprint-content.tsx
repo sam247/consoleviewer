@@ -85,10 +85,10 @@ export function QueryFootprintContent({
         </div>
       </div>
 
-      <div className="px-4 py-3">
+      <div className="flex-1 min-h-0 flex flex-col px-4 py-3">
         {view === "total" ? (
-          <div className="flex flex-col gap-3">
-            <div className="flex h-2 w-full rounded-sm overflow-hidden bg-muted/30">
+          <div className="flex flex-col gap-3 flex-1 min-h-0">
+            <div className="flex h-2 w-full rounded-sm overflow-hidden bg-muted/30 shrink-0">
               {bands.map((b) => (
                 <div
                   key={b.label}
@@ -115,8 +115,8 @@ export function QueryFootprintContent({
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap items-start gap-4">
-              <div className="flex gap-3 flex-wrap">
+            <div className="flex flex-1 min-h-0 gap-4 items-end flex-wrap content-start">
+              <div className="flex gap-3 flex-wrap shrink-0">
                 {pillStats.map((stat) => {
                   const isAll = stat.label === "Total";
                   const band: BandFilter = isAll ? null : stat.label === "Top 3" ? { min: 1, max: 3 } : stat.label === "Top 10" ? { min: 1, max: 10 } : stat.label === "Top 20" ? { min: 1, max: 20 } : null;
@@ -158,7 +158,7 @@ export function QueryFootprintContent({
                 })}
               </div>
               {sparkData.length > 0 && (
-                <div className="flex-1 min-w-[120px] h-14 self-end">
+                <div className="flex-1 min-w-[140px] min-h-[80px] w-full max-w-[200px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={sparkData} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
                       <Tooltip

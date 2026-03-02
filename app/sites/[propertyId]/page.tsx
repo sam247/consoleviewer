@@ -636,11 +636,11 @@ export default function SiteDetailPage({
                   </div>
                   </div>
                   {queriesRows.length > 0 && (
-                    <div className="w-full lg:w-[320px] lg:min-w-[280px] flex-shrink-0">
+                    <div className="w-full lg:w-[320px] lg:min-w-[280px] flex-shrink-0 flex flex-col min-h-0">
                       <QueryFootprint
                         queries={queriesRows}
                         daily={dailyForCharts}
-                        className="h-full"
+                        className="flex-1 min-h-0 flex flex-col"
                         onBandSelect={setBandFilter}
                         selectedBand={bandFilter}
                         compareToPrior={compareToPrior}
@@ -649,7 +649,7 @@ export default function SiteDetailPage({
                   )}
                 </div>
                 {/* AI-Style Query Signals + Position volatility in one row */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-h-[300px]">
                   {queriesRows.length > 0 && (
                     <AiQuerySignalsCard queries={queriesRows} daily={data?.daily} />
                   )}

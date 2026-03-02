@@ -57,6 +57,8 @@ export function DateRangeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const range = useMemo(() => getDateRange(rangeKey), [rangeKey]);
+
   const value = useMemo<DateRangeContextValue>(
     () => ({
       rangeKey,

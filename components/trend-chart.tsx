@@ -154,7 +154,7 @@ export function TrendChart({
   if (useNormalized) {
     const normKeys = visibleSeries.map((s) => `_norm_${s.key}`);
     const allNormValues = chartData.flatMap((d) =>
-      normKeys.map((k) => d[k] as number | undefined).filter((v): v is number => typeof v === "number")
+      normKeys.map((k) => (d as Record<string, unknown>)[k] as number | undefined).filter((v): v is number => typeof v === "number")
     );
     const dataMin = allNormValues.length ? Math.min(...allNormValues) : 0;
     const dataMax = allNormValues.length ? Math.max(...allNormValues) : 1;

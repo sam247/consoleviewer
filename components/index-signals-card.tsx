@@ -196,7 +196,7 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                         {visible.map((row) => (
                           <tr
                             key={row.id}
-                            className="border-b border-border/50 last:border-b-0 hover:bg-accent/50"
+                            className="border-b border-border/50 last:border-b-0 hover:bg-accent/60 transition-colors duration-100"
                           >
                             <td className="py-2.5 px-4 text-foreground truncate max-w-[200px]" title={row.url}>
                               {row.url}

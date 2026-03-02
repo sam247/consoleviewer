@@ -71,6 +71,7 @@ interface DataTableViewProps {
   hasMore: boolean;
   expanded: boolean;
   onToggleExpand: () => void;
+  moreCount: number;
   onRowClick?: (row: DataTableRow) => void;
   onExportCsv?: () => void;
 }
@@ -89,6 +90,7 @@ function DataTableView({
   hasMore,
   expanded,
   onToggleExpand,
+  moreCount,
   onRowClick,
   onExportCsv,
 }: DataTableViewProps) {
@@ -218,9 +220,9 @@ function DataTableView({
                 <tr
                   key={row.key}
                   className={cn(
-                    "border-b border-border/50 transition-all duration-[120ms]",
+                    "border-b border-border/50 transition-colors duration-100",
                     onRowClick && "cursor-pointer hover:border-l-2 hover:border-l-chart-clicks border-l-transparent",
-                    "hover:bg-accent/50"
+                    "hover:bg-accent/60"
                   )}
                   onClick={() => onRowClick?.(row)}
                   role={onRowClick ? "button" : undefined}
@@ -270,9 +272,9 @@ function DataTableView({
             <button
               type="button"
               onClick={onToggleExpand}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
             >
-              {expanded ? "View less" : `View ${INITIAL_VISIBLE} more`}
+              {expanded ? "View less" : `View ${moreCount} more`}
             </button>
           </div>
         ) : null}
@@ -340,8 +342,10 @@ export function DataTable({
     });
   }, [filtered, sortKey, sortDir]);
 
-  const visibleRows = expanded ? sorted : sorted.slice(0, INITIAL_VISIBLE);
-  const hasMore = sorted.length > INITIAL_VISIBLE;
+  const maxRows = _maxRows ?? INITIAL_VISIBLE;
+  const visibleRows = expanded ? sorted : sorted.slice(0, maxRows);
+  const hasMore = sorted.length > maxRows;
+  const moreCount = hasMore ? Math.min(maxRows, sorted.length - maxRows) : 0;
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -366,6 +370,7 @@ export function DataTable({
       hasMore={hasMore}
       expanded={expanded}
       onToggleExpand={() => setExpanded((e) => !e)}
+      moreCount={moreCount}
       onRowClick={onRowClick}
       onExportCsv={onExportCsv}
     />

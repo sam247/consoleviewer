@@ -23,6 +23,7 @@ import { getMockTrackedKeywords } from "@/lib/mock-rank";
 import { exportToCsv, exportChartToPng, formatExportFilename } from "@/lib/export-csv";
 import { cn } from "@/lib/utils";
 import { InfoTooltip } from "@/components/info-tooltip";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
 
 async function fetchSiteDetail(
   siteUrl: string,
@@ -314,6 +315,7 @@ export default function SiteDetailPage({
   const SEGMENTS_KEY = "consoleview_content_segments";
   type SavedSegment = { id: string; name: string; pattern: string };
   const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
+  const [countriesDevicesOpen, setCountriesDevicesOpen] = useState(false);
   useEffect(() => {
     try {
       const raw = typeof localStorage !== "undefined" ? localStorage.getItem(SEGMENTS_KEY) : null;
@@ -648,15 +650,19 @@ export default function SiteDetailPage({
                     </div>
                   )}
                 </div>
-                {/* AI-Style Query Signals + Position volatility in one row */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-h-[300px]">
+                {/* AI-Style Query Signals + Tracked Keywords: two-column cell-driven */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
                   {queriesRows.length > 0 && (
                     <AiQuerySignalsCard queries={queriesRows} daily={data?.daily} />
                   )}
-                  {data.daily.some((d: { position?: number }) => d.position != null) && (
-                    <PositionVolatilityChart daily={data.daily} />
-                  )}
+                  <div className="min-w-0">
+                    <TrackedKeywordsSection keywords={getMockTrackedKeywords(siteUrl)} />
+                  </div>
                 </div>
+                {/* Position volatility: full width */}
+                {data.daily.some((d: { position?: number }) => d.position != null) && (
+                  <PositionVolatilityChart daily={data.daily} />
+                )}
               </section>
             )}
 
@@ -691,11 +697,6 @@ export default function SiteDetailPage({
               trendFilter={trendFilter}
               onTrendFilterChange={setTrendFilter}
             />
-            </div>
-
-            {/* Tracked Keywords (collapsible; SerpRobot when key set, else mock) */}
-            <div className="rounded-lg border border-border bg-surface px-4 py-3">
-              <TrackedKeywordsSection keywords={getMockTrackedKeywords(siteUrl)} />
             </div>
 
             {/* Index signals (watchlist + GSC-derived signals) */}
@@ -743,10 +744,10 @@ export default function SiteDetailPage({
                     showFilter
                     onExportCsv={() => exportToCsv(queriesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "queries", startDate, endDate))}
                   />
-                  <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 px-4 py-2.5">
+                  <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 px-4 py-3">
                     <h3 className="text-sm font-semibold text-foreground mb-1.5">Query counting</h3>
                     <p className="text-xs text-muted-foreground mb-2">Queries in top 10</p>
-                    <div className="flex flex-wrap gap-3 text-sm">
+                    <div className="flex flex-wrap gap-3 text-sm mb-3">
                       <div>
                         <span className="text-muted-foreground">Total queries</span>
                         <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.total}</span>
@@ -760,6 +761,32 @@ export default function SiteDetailPage({
                         <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.top3}</span>
                       </div>
                     </div>
+                    {queryCounting.total > 0 && (() => {
+                      const top3 = queryCounting.top3;
+                      const top4To10 = Math.max(0, queryCounting.top10 - queryCounting.top3);
+                      const rest = Math.max(0, queryCounting.total - queryCounting.top10);
+                      const chartData = [
+                        { name: "Top 3", value: top3, fill: "var(--chart-clicks)" },
+                        { name: "4–10", value: top4To10, fill: "var(--chart-impressions)" },
+                        { name: "11+", value: rest, fill: "var(--muted-foreground)" },
+                      ].filter((d) => d.value > 0);
+                      if (chartData.length === 0) return null;
+                      return (
+                        <div className="h-16 w-full min-w-0">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData} layout="vertical" margin={{ top: 2, right: 8, left: 0, bottom: 2 }}>
+                              <XAxis type="number" hide />
+                              <YAxis type="category" dataKey="name" width={36} tick={{ fontSize: 10 }} />
+                              <Bar dataKey="value" radius={0} barSize={12}>
+                                {chartData.map((entry, i) => (
+                                  <Cell key={i} fill={entry.fill} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div className="flex flex-col gap-4 flex-1 min-w-0">
@@ -914,7 +941,7 @@ export default function SiteDetailPage({
                         </div>
                         <div className="px-4 py-2.5 space-y-2">
                           {contentGroups.map((g) => (
-                            <div key={g.label}>
+                            <div key={g.label} className="rounded px-2 py-1 -mx-2 transition-colors duration-100 hover:bg-accent/50">
                               <div className="flex items-center justify-between gap-3 mb-0.5">
                                 <span className="text-xs font-medium text-foreground truncate max-w-[120px]" title={g.label}>
                                   /{g.label}
@@ -947,10 +974,33 @@ export default function SiteDetailPage({
                   })()}
                 </div>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {countriesRows.length > 0 && <DataTable title="Countries" rows={countriesRows} showFilter={false} />}
-                {devicesRows.length > 0 && <DataTable title="Devices" rows={devicesRows} showFilter={false} />}
-              </div>
+              {(countriesRows.length > 0 || devicesRows.length > 0) && (
+                <div className="rounded-lg border border-border bg-surface overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setCountriesDevicesOpen((o) => !o)}
+                    className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-sm font-semibold text-foreground hover:bg-accent/50 transition-colors duration-100"
+                    aria-expanded={countriesDevicesOpen}
+                  >
+                    <span>Countries &amp; Devices</span>
+                    <svg
+                      className={cn("w-4 h-4 text-muted-foreground transition-transform duration-150", countriesDevicesOpen && "rotate-180")}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {countriesDevicesOpen && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 border-t border-border p-4">
+                      {countriesRows.length > 0 && <DataTable title="Countries" rows={countriesRows} showFilter={false} />}
+                      {devicesRows.length > 0 && <DataTable title="Devices" rows={devicesRows} showFilter={false} />}
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
 
             {/* Segmentation (Branded in 50% column) */}

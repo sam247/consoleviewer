@@ -137,7 +137,7 @@ export function TrackedKeywordsSection({ keywords: mockKeywords }: TrackedKeywor
                 {keywords.map((row, idx) => (
                   <tr
                     key={`${row.keyword}-${idx}`}
-                    className="border-b border-border/50 last:border-b-0 hover:bg-accent/50 transition-colors"
+                    className="border-b border-border/50 last:border-b-0 hover:bg-accent/60 transition-colors duration-100"
                   >
                     <td className="py-2.5 px-4 text-foreground truncate" title={row.keyword}>
                       {row.keyword}

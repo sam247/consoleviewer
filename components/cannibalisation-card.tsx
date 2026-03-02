@@ -135,7 +135,7 @@ export function CannibalisationCard({
                           <tr
                             key={c.query}
                             onClick={() => setDrawerConflict(c)}
-                            className="border-b border-border/50 last:border-b-0 hover:bg-accent/50 cursor-pointer transition-colors"
+                            className="border-b border-border/50 last:border-b-0 hover:bg-accent/60 cursor-pointer transition-colors duration-100"
                           >
                             <td className="py-2.5 px-4 text-foreground truncate max-w-[180px]" title={c.query}>
                               {c.query}

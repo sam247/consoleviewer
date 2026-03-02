@@ -4,12 +4,15 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 import type { DateRangeKey } from "@/types/gsc";
 import { getDateRange } from "@/lib/date-range";
+
+const STORAGE_KEY = "consoleview-date-range";
 
 type DateRangeContextValue = {
   rangeKey: DateRangeKey;
@@ -24,15 +27,34 @@ const DateRangeContext = createContext<DateRangeContextValue | null>(null);
 
 const DEFAULT_RANGE: DateRangeKey = "28d";
 
+const VALID_KEYS: DateRangeKey[] = ["7d", "28d", "30d", "3m", "6m", "12m", "16m", "qtd"];
+
+function readStoredKey(): DateRangeKey | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (raw && VALID_KEYS.includes(raw as DateRangeKey)) return raw as DateRangeKey;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 export function DateRangeProvider({ children }: { children: ReactNode }) {
   const [rangeKey, setRangeKeyState] = useState<DateRangeKey>(DEFAULT_RANGE);
-  const range = useMemo(
-    () => getDateRange(rangeKey),
-    [rangeKey]
-  );
+
+  useEffect(() => {
+    const stored = readStoredKey();
+    if (stored) setRangeKeyState(stored);
+  }, []);
 
   const setRangeKey = useCallback((key: DateRangeKey) => {
     setRangeKeyState(key);
+    try {
+      if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, key);
+    } catch {
+      // ignore
+    }
   }, []);
 
   const value = useMemo<DateRangeContextValue>(

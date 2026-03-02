@@ -54,21 +54,19 @@ export function Header({
                 />
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-4 md:gap-6">
+            <div className="flex shrink-0 items-center gap-3 md:gap-4 min-h-9">
               {sortSelect}
               {filterSelect}
               {showShare && (
                 <button
                   type="button"
                   onClick={() => setShareOpen(true)}
-                  className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="flex items-center rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground min-h-9"
                 >
                   Share
                 </button>
               )}
-              <div className="flex items-center justify-center">
-                <SparkToggles />
-              </div>
+              <SparkToggles />
               <ThemeToggle />
               <DateRangeSelect />
               <ProfileMenu />

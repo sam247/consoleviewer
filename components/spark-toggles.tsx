@@ -54,7 +54,7 @@ export function SparkToggles() {
   const { series, toggle } = useSparkSeries();
 
   return (
-    <div className="flex items-center gap-1 rounded-md border border-border bg-muted/30 p-0.5" role="group" aria-label="Sparkline metrics">
+    <div className="flex min-h-9 items-center gap-0.5 rounded-md border border-border bg-muted/30 p-0.5" role="group" aria-label="Sparkline metrics">
       {SERIES_CONFIG.map(({ key, label, title, icon }) => (
         <button
           key={key}
@@ -62,9 +62,9 @@ export function SparkToggles() {
           title={title}
           onClick={() => toggle(key)}
           className={cn(
-            "rounded-md p-2 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "flex size-9 shrink-0 items-center justify-center rounded-md transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             series[key]
-              ? "bg-foreground text-background shadow-sm"
+              ? "bg-muted text-foreground"
               : "text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/50"
           )}
           aria-pressed={series[key]}

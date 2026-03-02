@@ -1,12 +1,29 @@
 "use client";
 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import { cn } from "@/lib/utils";
+
+interface DailyPoint {
+  date: string;
+  clicks?: number;
+  impressions?: number;
+}
 
 interface BrandedChartProps {
   brandedClicks: number;
   nonBrandedClicks: number;
   brandedChangePercent?: number;
   nonBrandedChangePercent?: number;
+  /** Daily series for trend graph; uses clicks when present */
+  daily?: DailyPoint[];
   className?: string;
 }
 
@@ -20,13 +37,19 @@ export function BrandedChart({
   nonBrandedClicks,
   brandedChangePercent,
   nonBrandedChangePercent,
+  daily,
   className,
 }: BrandedChartProps) {
   const total = brandedClicks + nonBrandedClicks;
   const brandedPct = total > 0 ? (brandedClicks / total) * 100 : 0;
+  const chartData = (daily ?? []).map((d) => ({
+    date: d.date,
+    clicks: d.clicks ?? 0,
+    impressions: d.impressions ?? 0,
+  }));
 
   return (
-    <div className={cn(className)}>
+    <div className={cn("flex flex-col min-h-0", className)}>
       <div className="mb-1.5 font-semibold text-sm text-foreground">
         Branded vs non‑branded
       </div>
@@ -66,7 +89,7 @@ export function BrandedChart({
           {brandedPct.toFixed(1)}% branded
         </div>
       </div>
-      <div className="mt-1.5 h-2 w-full rounded-full bg-muted overflow-hidden flex">
+      <div className="mt-1.5 h-2 w-full rounded-full bg-muted overflow-hidden flex shrink-0">
         <div
           className="h-full bg-blue-500"
           style={{ width: `${brandedPct}%` }}
@@ -76,6 +99,51 @@ export function BrandedChart({
           style={{ width: `${100 - brandedPct}%` }}
         />
       </div>
+      {chartData.length >= 2 && (
+        <div className="mt-4 flex-1 min-h-[160px] w-full min-w-0">
+          <p className="text-[10px] text-muted-foreground mb-1">Clicks over time</p>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={chartData}
+              margin={{ top: 4, right: 8, left: 0, bottom: 18 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tickFormatter={(v) => {
+                  const d = new Date(v);
+                  return `${d.getMonth() + 1}/${d.getDate()}`;
+                }}
+              />
+              <YAxis
+                width={32}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tickFormatter={(v) => (Number(v) >= 1e3 ? `${(Number(v) / 1e3).toFixed(0)}k` : String(v))}
+              />
+              <Tooltip
+                contentStyle={{
+                  fontSize: 11,
+                  padding: "6px 10px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                }}
+                labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                formatter={(value: number | undefined) => [(value ?? 0).toLocaleString(), "Clicks"]}
+              />
+              <Line
+                type="monotone"
+                dataKey="clicks"
+                stroke="var(--chart-clicks)"
+                strokeWidth={2}
+                dot={false}
+                name="Clicks"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }

@@ -638,11 +638,11 @@ export default function SiteDetailPage({
                   </div>
                   </div>
                   {queriesRows.length > 0 && (
-                    <div className="w-full lg:w-[320px] lg:min-w-[280px] flex-shrink-0 flex flex-col min-h-0">
+                    <div className="w-full max-w-[320px] lg:w-[320px] lg:min-w-[280px] flex-shrink-0 flex flex-col min-h-0">
                       <QueryFootprint
                         queries={queriesRows}
                         daily={dailyForCharts}
-                        className="flex-1 min-h-0 flex flex-col"
+                        className="flex flex-col"
                         onBandSelect={setBandFilter}
                         selectedBand={bandFilter}
                         compareToPrior={compareToPrior}
@@ -744,51 +744,64 @@ export default function SiteDetailPage({
                     showFilter
                     onExportCsv={() => exportToCsv(queriesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "queries", startDate, endDate))}
                   />
-                  <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 px-4 py-3">
-                    <h3 className="text-sm font-semibold text-foreground mb-1.5">Query counting</h3>
-                    <p className="text-xs text-muted-foreground mb-2">Queries in top 10</p>
-                    <div className="flex flex-wrap gap-3 text-sm mb-3">
-                      <div>
-                        <span className="text-muted-foreground">Total queries</span>
-                        <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.total}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Top 10</span>
-                        <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.top10}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Top 3</span>
-                        <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.top3}</span>
-                      </div>
-                    </div>
-                    {queryCounting.total > 0 && (() => {
-                      const top3 = queryCounting.top3;
-                      const top4To10 = Math.max(0, queryCounting.top10 - queryCounting.top3);
-                      const rest = Math.max(0, queryCounting.total - queryCounting.top10);
-                      let chartData = [
-                        { name: "Top 3", value: top3, fill: "var(--chart-clicks)" },
-                        { name: "4–10", value: top4To10, fill: "var(--chart-impressions)" },
-                        { name: "11+", value: rest, fill: "var(--muted-foreground)" },
-                      ].filter((d) => d.value > 0);
-                      if (chartData.length === 0) {
-                        chartData = [{ name: "Queries", value: queryCounting.total, fill: "var(--chart-clicks)" }];
-                      }
-                      return (
-                        <div className="h-20 w-full min-w-0 mt-1">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} layout="vertical" margin={{ top: 2, right: 8, left: 0, bottom: 2 }}>
-                              <XAxis type="number" hide />
-                              <YAxis type="category" dataKey="name" width={40} tick={{ fontSize: 10 }} />
-                              <Bar dataKey="value" radius={0} barSize={14}>
-                                {chartData.map((entry, i) => (
-                                  <Cell key={i} fill={entry.fill} />
-                                ))}
-                              </Bar>
-                            </BarChart>
-                          </ResponsiveContainer>
+                  <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 flex flex-col min-h-0">
+                    <div className="px-4 py-3 shrink-0">
+                      <h3 className="text-sm font-semibold text-foreground mb-1.5">Query counting</h3>
+                      <p className="text-xs text-muted-foreground mb-2">Queries in top 10</p>
+                      <div className="flex flex-wrap gap-3 text-sm mb-3">
+                        <div>
+                          <span className="text-muted-foreground">Total queries</span>
+                          <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.total}</span>
                         </div>
-                      );
-                    })()}
+                        <div>
+                          <span className="text-muted-foreground">Top 10</span>
+                          <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.top10}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Top 3</span>
+                          <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.top3}</span>
+                        </div>
+                      </div>
+                      {queryCounting.total > 0 && (() => {
+                        const top3 = queryCounting.top3;
+                        const top4To10 = Math.max(0, queryCounting.top10 - queryCounting.top3);
+                        const rest = Math.max(0, queryCounting.total - queryCounting.top10);
+                        let chartData = [
+                          { name: "Top 3", value: top3, fill: "var(--chart-clicks)" },
+                          { name: "4–10", value: top4To10, fill: "var(--chart-impressions)" },
+                          { name: "11+", value: rest, fill: "var(--muted-foreground)" },
+                        ].filter((d) => d.value > 0);
+                        if (chartData.length === 0) {
+                          chartData = [{ name: "Queries", value: queryCounting.total, fill: "var(--chart-clicks)" }];
+                        }
+                        return (
+                          <div className="h-16 w-full min-w-0">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={chartData} layout="vertical" margin={{ top: 2, right: 8, left: 0, bottom: 2 }}>
+                                <XAxis type="number" hide />
+                                <YAxis type="category" dataKey="name" width={40} tick={{ fontSize: 10 }} />
+                                <Bar dataKey="value" radius={0} barSize={12}>
+                                  {chartData.map((entry, i) => (
+                                    <Cell key={i} fill={entry.fill} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    {dailyForCharts.length > 0 && (
+                      <div className="px-4 pb-3 pt-0 flex-1 min-h-[120px] border-t border-border/50">
+                        <p className="text-[10px] text-muted-foreground mb-1">Performance trend</p>
+                        <TrendChart
+                          data={dailyForCharts}
+                          height={120}
+                          showImpressions
+                          className="min-w-0"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col gap-4 flex-1 min-w-0">
@@ -1005,17 +1018,17 @@ export default function SiteDetailPage({
               )}
             </section>
 
-            {/* Segmentation (Branded in 50% column) */}
+            {/* Segmentation (Branded vs non-branded, full width) */}
             {data?.branded && (
-              <section aria-label="Segmentation" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div />
-                <div className="rounded-lg border border-border bg-surface px-4 py-2.5 transition-colors hover:border-foreground/20">
+              <section aria-label="Segmentation" className="w-full">
+                <div className="rounded-lg border border-border bg-surface px-4 py-4 transition-colors hover:border-foreground/20 flex flex-col min-h-0">
                   <h2 className="text-sm font-semibold text-foreground mb-2">Segmentation</h2>
                   <BrandedChart
                     brandedClicks={data.branded.brandedClicks}
                     nonBrandedClicks={data.branded.nonBrandedClicks}
                     brandedChangePercent={data.branded.brandedChangePercent}
                     nonBrandedChangePercent={data.branded.nonBrandedChangePercent}
+                    daily={data.daily}
                   />
                 </div>
               </section>

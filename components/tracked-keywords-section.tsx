@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, YAxis, ResponsiveContainer } from "recharts";
 import type { MockTrackedKeyword } from "@/lib/mock-rank";
-import { cn } from "@/lib/utils";
-
-const STORAGE_KEY = "consoleview-tracked-keywords-open";
 
 function MiniSparkline({ data }: { data: number[] }) {
   const chartData = useMemo(
@@ -50,78 +47,36 @@ async function fetchSerprobotKeywords(): Promise<{
 }
 
 export function TrackedKeywordsSection({ keywords: mockKeywords }: TrackedKeywordsSectionProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
   const { data: serpData } = useQuery({
     queryKey: ["serprobotKeywords"],
     queryFn: fetchSerprobotKeywords,
-    enabled: expanded,
   });
 
   const keywords: MockTrackedKeyword[] =
     serpData?.configured && (serpData.keywords?.length ?? 0) > 0
       ? serpData.keywords
       : mockKeywords;
-  const showConnectMessage = expanded && serpData?.configured === false;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-    const stored = typeof window !== "undefined" && window.localStorage.getItem(STORAGE_KEY);
-    setExpanded(stored === "true");
-  }, [mounted]);
-
-  const toggle = () => {
-    const next = !expanded;
-    setExpanded(next);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, String(next));
-    }
-  };
-
-  if (!keywords.length && !showConnectMessage) return null;
+  const showConnectMessage = serpData?.configured === false;
 
   return (
-    <section aria-label="Tracked keywords" className="min-w-0">
-      {showConnectMessage && (
-        <p className="text-xs text-muted-foreground mb-2">
-          Connect SerpRobot in Settings to track keywords.
-        </p>
-      )}
-      <button
-        type="button"
-        onClick={toggle}
-        className="flex w-full items-center gap-2 py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
-        aria-expanded={expanded}
-      >
-        <span className="text-sm font-semibold text-foreground">Keywords tracked</span>
-        <svg
-          className={cn("size-4 text-muted-foreground transition-transform duration-200", expanded && "rotate-180")}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          aria-hidden
-        >
-          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-      <div
-        className={cn(
-          "overflow-hidden transition-[max-height] duration-200 ease-out",
-          expanded ? "max-h-[500px]" : "max-h-0"
+    <div
+      className="rounded-lg border border-border bg-surface flex flex-col min-h-0 transition-colors hover:border-foreground/20 min-w-0"
+      aria-label="Keywords tracked"
+    >
+      <div className="border-b border-border px-4 py-3 shrink-0">
+        <h3 className="text-sm font-semibold text-foreground">Keywords tracked</h3>
+        {showConnectMessage && (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Connect SerpRobot in Settings to track keywords.
+          </p>
         )}
-      >
-        <div className="rounded-lg border border-border bg-surface min-w-0 overflow-hidden">
-          {keywords.length === 0 ? (
-            <div className="px-4 py-4 text-sm text-muted-foreground">
-              No keywords yet. Connect SerpRobot in Settings to track keywords.
-            </div>
-          ) : (
+      </div>
+      <div className="flex-1 min-h-0 overflow-auto px-4 py-3">
+        {keywords.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No keywords yet. Connect SerpRobot in Settings to track keywords.
+          </p>
+        ) : (
           <div className="overflow-x-auto min-w-0">
             <table className="w-full text-sm table-fixed border-collapse">
               <thead>
@@ -163,9 +118,8 @@ export function TrackedKeywordsSection({ keywords: mockKeywords }: TrackedKeywor
               </tbody>
             </table>
           </div>
-          )}
-        </div>
+        )}
       </div>
-    </section>
+    </div>
   );
 }

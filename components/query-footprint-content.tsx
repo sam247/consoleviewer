@@ -59,9 +59,8 @@ export function QueryFootprintContent({
             Query footprint
             <InfoTooltip title="Distribution of queries by ranking band (Top 3, 4–10, etc.)" />
           </h3>
-            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
-              Top 10: {top10} · Top 3: {top3}
-              <span className="ml-1.5 text-muted-foreground/80">· Trend: —</span>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Distribution by ranking band
               {compareToPrior && (
                 <span className="ml-1.5 text-muted-foreground/80">· Comparing to prior period</span>
               )}
@@ -85,9 +84,9 @@ export function QueryFootprintContent({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col px-4 py-3">
+      <div className="flex flex-col px-4 py-3 min-w-0 overflow-visible">
         {view === "total" ? (
-          <div className="flex flex-col gap-3 flex-1 min-h-0">
+          <div className="flex flex-col gap-3">
             <div className="flex h-2 w-full rounded-sm overflow-hidden bg-muted/30 shrink-0">
               {bands.map((b) => (
                 <div
@@ -115,8 +114,8 @@ export function QueryFootprintContent({
                 </div>
               ))}
             </div>
-            <div className="flex flex-1 min-h-0 gap-4 items-end flex-wrap content-start">
-              <div className="flex gap-3 flex-wrap shrink-0">
+            <div className="flex flex-wrap gap-x-4 gap-y-3 items-end">
+              <div className="flex flex-wrap gap-2 min-w-0">
                 {pillStats.map((stat) => {
                   const isAll = stat.label === "Total";
                   const band: BandFilter = isAll ? null : stat.label === "Top 3" ? { min: 1, max: 3 } : stat.label === "Top 10" ? { min: 1, max: 10 } : stat.label === "Top 20" ? { min: 1, max: 20 } : null;
@@ -158,7 +157,7 @@ export function QueryFootprintContent({
                 })}
               </div>
               {sparkData.length > 0 && (
-                <div className="flex-1 min-w-[140px] min-h-[80px] w-full max-w-[200px]">
+                <div className="min-w-[140px] h-[72px] w-full max-w-[200px] shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={sparkData} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
                       <Tooltip

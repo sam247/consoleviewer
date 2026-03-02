@@ -152,6 +152,15 @@ export function TrendChart({
   if (!data?.length) return null;
 
   if (useNormalized) {
+    const normKeys = visibleSeries.map((s) => `_norm_${s.key}`);
+    const allNormValues = chartData.flatMap((d) =>
+      normKeys.map((k) => d[k] as number | undefined).filter((v): v is number => typeof v === "number")
+    );
+    const dataMin = allNormValues.length ? Math.min(...allNormValues) : 0;
+    const dataMax = allNormValues.length ? Math.max(...allNormValues) : 1;
+    const padding = Math.max(0.02, (dataMax - dataMin) * 0.05);
+    const yDomain: [number, number] = [Math.max(0, dataMin - padding), Math.min(1, dataMax + padding)];
+
     return (
       <div className={cn("w-full", className)} style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -167,7 +176,7 @@ export function TrendChart({
             />
             <YAxis
               width={36}
-              domain={[0, 1]}
+              domain={yDomain}
               allowDataOverflow
               tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
               tickFormatter={(v) => `${Math.round(Number(v) * 100)}%`}

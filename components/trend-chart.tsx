@@ -299,19 +299,25 @@ export function TrendChart({
               const fmt = (v: number, isPct = false) =>
                 isPct ? `${v.toFixed(1)}%` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}k` : String(Math.round(v));
               const pctChange = (curr: number, prev: number) => (prev === 0 ? null : ((curr - prev) / prev) * 100);
-              const tooltipRows: { label: string; value: string; vsPrior: string | null; color: string }[] = [];
+              const tooltipRows: { label: string; value: string; vsPrior: string | null; vsPriorPct: number | null; color: string; positiveIsGood: boolean }[] = [];
               if (row?.clicks != null) {
                 const p = prior?.clicks != null ? pctChange(row.clicks, prior.clicks) : null;
-                tooltipRows.push({ label: "Clicks", value: fmt(row.clicks), vsPrior: p != null ? `${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior` : null, color: CHART_CLICKS });
+                tooltipRows.push({ label: "Clicks", value: fmt(row.clicks), vsPrior: p != null ? `${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior` : null, vsPriorPct: p ?? null, color: CHART_CLICKS, positiveIsGood: true });
               }
               if (row?.impressions != null) {
                 const p = prior?.impressions != null ? pctChange(row.impressions, prior.impressions) : null;
-                tooltipRows.push({ label: "Impressions", value: fmt(row.impressions), vsPrior: p != null ? `${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior` : null, color: CHART_IMPRESSIONS });
+                tooltipRows.push({ label: "Impressions", value: fmt(row.impressions), vsPrior: p != null ? `${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior` : null, vsPriorPct: p ?? null, color: CHART_IMPRESSIONS, positiveIsGood: true });
               }
               if (row?.position != null) {
                 const p = prior?.position != null ? pctChange(row.position, prior.position) : null;
-                tooltipRows.push({ label: "Position", value: row.position.toFixed(1), vsPrior: p != null ? `${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior` : null, color: CHART_POSITION });
+                tooltipRows.push({ label: "Position", value: row.position.toFixed(1), vsPrior: p != null ? `${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior` : null, vsPriorPct: p ?? null, color: CHART_POSITION, positiveIsGood: false });
               }
+              const deltaClass = (r: typeof tooltipRows[0]) => {
+                if (r.vsPriorPct == null) return "text-muted-foreground/90";
+                const good = r.positiveIsGood ? r.vsPriorPct > 0 : r.vsPriorPct < 0;
+                const bad = r.positiveIsGood ? r.vsPriorPct < 0 : r.vsPriorPct > 0;
+                return good ? "text-positive" : bad ? "text-negative" : "text-muted-foreground/90";
+              };
               return (
                 <div className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs shadow-lg min-w-[140px]" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
                   <div className="font-semibold text-foreground mb-1">{new Date(label).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
@@ -324,7 +330,7 @@ export function TrendChart({
                         </div>
                         <div className="flex flex-col">
                           <span className="tabular-nums">{r.value}</span>
-                          {r.vsPrior && <span className="text-[10px] text-muted-foreground/90">{r.vsPrior}</span>}
+                          {r.vsPrior && <span className={cn("text-[10px] tabular-nums", deltaClass(r))}>{r.vsPrior}</span>}
                         </div>
                       </Fragment>
                     ))}

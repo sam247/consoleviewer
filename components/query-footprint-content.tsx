@@ -8,6 +8,7 @@ import {
   Tooltip,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { InfoTooltip } from "@/components/info-tooltip";
 export type BandFilter = { min: number; max: number } | null;
 
 type FootprintView = "total" | "bands";
@@ -18,10 +19,10 @@ interface QueryFootprintContentProps {
   top10: number;
   top3: number;
   total: number;
-  bands: { label: string; min: number; max: number; count: number; color: string }[];
+  bands: { label: string; min: number; max: number; count: number; color: string; deltaPercent?: number }[];
   maxBandCount: number;
   sparkData: { date: string; clicks: number }[];
-  pillStats: { label: string; value: number }[];
+  pillStats: { label: string; value: number; deltaPercent?: number }[];
   rootClassName: string;
   onBandSelect?: (band: BandFilter) => void;
   selectedBand: BandFilter;
@@ -51,12 +52,12 @@ export function QueryFootprintContent({
 
   return (
     <div className={rootClassName}>
-      <div className="border-b border-border px-4 py-2.5">
+      <div className="border-b border-border px-4 py-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">
             Query footprint
-            <span className="text-muted-foreground cursor-help" title="Distribution of queries by ranking band (Top 3, 4–10, etc.)" aria-label="Help">?</span>
+            <InfoTooltip title="Distribution of queries by ranking band (Top 3, 4–10, etc.)" />
           </h3>
             <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
               Top 10: {top10} · Top 3: {top3}
@@ -84,7 +85,7 @@ export function QueryFootprintContent({
         </div>
       </div>
 
-      <div className="px-4 py-2.5">
+      <div className="px-4 py-3">
         {view === "total" ? (
           <div className="flex flex-col gap-3">
             <div className="flex h-2 w-full rounded-sm overflow-hidden bg-muted/30">
@@ -142,7 +143,16 @@ export function QueryFootprintContent({
                           </span>
                         )}
                       </span>
-                      <span className="text-[10px] text-muted-foreground/80 mt-0.5">— vs prior</span>
+                      <span className={cn(
+                        "text-[10px] mt-0.5 tabular-nums",
+                        stat.deltaPercent != null
+                          ? stat.deltaPercent >= 0
+                            ? "text-positive"
+                            : "text-negative"
+                          : "text-muted-foreground/80"
+                      )}>
+                        {stat.deltaPercent != null ? `${stat.deltaPercent >= 0 ? "+" : ""}${stat.deltaPercent}% vs prior` : "— vs prior"}
+                      </span>
                     </button>
                   );
                 })}
@@ -209,7 +219,12 @@ export function QueryFootprintContent({
                       {pct}%
                     </span>
                   )}
-                  <span className="text-[10px] text-muted-foreground/80 w-14 text-right shrink-0">— vs prior</span>
+                  <span className={cn(
+                    "text-[10px] w-14 text-right shrink-0 tabular-nums",
+                    b.deltaPercent != null ? (b.deltaPercent >= 0 ? "text-positive" : "text-negative") : "text-muted-foreground/80"
+                  )}>
+                    {b.deltaPercent != null ? `${b.deltaPercent >= 0 ? "+" : ""}${b.deltaPercent}% vs prior` : "— vs prior"}
+                  </span>
                 </button>
               );
             })}

@@ -13,7 +13,6 @@ import { IndexSignalsCard } from "@/components/index-signals-card";
 import { CannibalisationCard } from "@/components/cannibalisation-card";
 import { QueryFootprint, type BandFilter } from "@/components/query-footprint";
 import { AiQuerySignalsCard } from "@/components/ai-query-signals-card";
-import { RankingBandChart } from "@/components/ranking-band-chart";
 import { PositionVolatilityChart } from "@/components/position-volatility-chart";
 import { MomentumScoreCard } from "@/components/momentum-score-card";
 import { OpportunityIntelligence } from "@/components/opportunity-intelligence";
@@ -23,6 +22,7 @@ import { decodePropertyId } from "@/types/gsc";
 import { getMockTrackedKeywords } from "@/lib/mock-rank";
 import { exportToCsv, exportChartToPng, formatExportFilename } from "@/lib/export-csv";
 import { cn } from "@/lib/utils";
+import { InfoTooltip } from "@/components/info-tooltip";
 
 async function fetchSiteDetail(
   siteUrl: string,
@@ -541,25 +541,26 @@ export default function SiteDetailPage({
               </div>
             </section>
 
-            {/* Section B — Trend: Momentum strip + full-width graph + Query Footprint below */}
+            {/* Section B — Trend: graph + Query Footprint in one row; then AI-Style + Position volatility */}
             {data?.daily?.length > 0 && (
               <section aria-label="Trend" className="space-y-4">
-                <div className="rounded-lg border border-border bg-surface transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu min-w-0 flex flex-col min-h-[320px]">
-                  {data?.summary && (
-                    <MomentumScoreCard
-                      variant="strip"
-                      summary={{
-                        clicksChangePercent: data.summary.clicksChangePercent,
-                        positionChangePercent: data.summary.positionChangePercent,
-                        queryCountChangePercent: data.summary.queryCountChangePercent,
-                      }}
-                    />
-                  )}
-                  <div className="px-4 py-2 flex items-center justify-between gap-4 flex-wrap border-b border-border">
-                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-1">
-                      Performance over time
-                      <span className="text-muted-foreground cursor-help" title="Clicks and impressions from Google Search Console for the selected date range" aria-label="Help">?</span>
-                    </h2>
+                <div className="flex flex-col lg:flex-row gap-4 min-w-0">
+                  <div className="rounded-lg border border-border bg-surface transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu min-w-0 flex-1 flex flex-col min-h-[320px]">
+                    {data?.summary && (
+                      <MomentumScoreCard
+                        variant="strip"
+                        summary={{
+                          clicksChangePercent: data.summary.clicksChangePercent,
+                          positionChangePercent: data.summary.positionChangePercent,
+                          queryCountChangePercent: data.summary.queryCountChangePercent,
+                        }}
+                      />
+                    )}
+                    <div className="px-4 py-2 flex items-center justify-between gap-4 flex-wrap border-b border-border">
+                      <h2 className="text-sm font-semibold text-foreground flex items-center gap-1">
+                        Performance over time
+                        <InfoTooltip title="Clicks and impressions from Google Search Console for the selected date range" />
+                      </h2>
                     <div className="flex items-center gap-3 flex-wrap">
                       <div className="relative" ref={trendExportMenuRef}>
                         <button
@@ -633,20 +634,29 @@ export default function SiteDetailPage({
                       normalizeWhenMultiSeries={showPercentView}
                     />
                   </div>
+                  </div>
+                  {queriesRows.length > 0 && (
+                    <div className="w-full lg:w-[320px] lg:min-w-[280px] flex-shrink-0">
+                      <QueryFootprint
+                        queries={queriesRows}
+                        daily={dailyForCharts}
+                        className="h-full"
+                        onBandSelect={setBandFilter}
+                        selectedBand={bandFilter}
+                        compareToPrior={compareToPrior}
+                      />
+                    </div>
+                  )}
                 </div>
-                {queriesRows.length > 0 && (
-                  <>
-                    <QueryFootprint
-                      queries={queriesRows}
-                      daily={dailyForCharts}
-                      className="flex-shrink-0"
-                      onBandSelect={setBandFilter}
-                      selectedBand={bandFilter}
-                      compareToPrior={compareToPrior}
-                    />
+                {/* AI-Style Query Signals + Position volatility in one row */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {queriesRows.length > 0 && (
                     <AiQuerySignalsCard queries={queriesRows} daily={data?.daily} />
-                  </>
-                )}
+                  )}
+                  {data.daily.some((d: { position?: number }) => d.position != null) && (
+                    <PositionVolatilityChart daily={data.daily} />
+                  )}
+                </div>
               </section>
             )}
 
@@ -663,17 +673,7 @@ export default function SiteDetailPage({
               </>
             )}
 
-            {/* Ranking band + Position volatility in one row */}
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {queriesRows.length > 0 && (
-                <RankingBandChart queries={queriesRows} />
-              )}
-              {data?.daily?.length > 0 && data.daily.some((d: { position?: number }) => d.position != null) && (
-                <PositionVolatilityChart daily={data.daily} />
-              )}
-            </section>
-
-            <div className="space-y-3">
+            <div className="space-y-4">
             {/* Opportunity index (top 5 by score) */}
             {queriesRows.length > 0 && (
               <OpportunityIndex queries={queriesRows} />
@@ -694,17 +694,17 @@ export default function SiteDetailPage({
             </div>
 
             {/* Tracked Keywords (collapsible; SerpRobot when key set, else mock) */}
-            <div className="rounded-lg border border-border bg-surface px-4 py-2.5">
+            <div className="rounded-lg border border-border bg-surface px-4 py-3">
               <TrackedKeywordsSection keywords={getMockTrackedKeywords(siteUrl)} />
             </div>
 
             {/* Index signals (watchlist + GSC-derived signals) */}
-            <div className="rounded-lg border border-border bg-surface px-4 py-2.5">
+            <div className="rounded-lg border border-border bg-surface px-4 py-3">
               <IndexSignalsCard propertyId={propertyId} pagesRows={pagesRows} />
             </div>
 
             {/* Cannibalisation (query–page conflicts) */}
-            <div className="rounded-lg border border-border bg-surface px-4 py-2.5">
+            <div className="rounded-lg border border-border bg-surface px-4 py-3">
               <CannibalisationCard
                 siteUrl={siteUrl}
                 startDate={startDate}
@@ -731,7 +731,7 @@ export default function SiteDetailPage({
               <p className="text-[10px] text-muted-foreground/80 mb-1" title="Shortcut coming soon">Press <kbd className="px-0.5 rounded bg-muted/50 font-mono text-[10px]">/</kbd> to search</p>
             <h2 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1">
               Performance tables
-              <span className="text-muted-foreground cursor-help" title="Top queries and pages by clicks and impressions" aria-label="Help">?</span>
+              <InfoTooltip title="Top queries and pages by clicks and impressions" />
             </h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-4 flex-1 min-w-0">
@@ -781,7 +781,7 @@ export default function SiteDetailPage({
                       <div className="rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu">
                         <div className="border-b border-border px-4 py-2.5">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">Content groups<span className="text-muted-foreground cursor-help" title="Group pages by path segment; filter by regex to analyse a subset" aria-label="Help">?</span></h3>
+                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">Content groups<InfoTooltip title="Group pages by path segment; filter by regex to analyse a subset" /></h3>
                             {contentFilterPattern.trim() && !contentGroupsFilteredPages.error && (
                               <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5">Segment mode</span>
                             )}

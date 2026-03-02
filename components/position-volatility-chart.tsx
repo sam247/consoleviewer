@@ -21,7 +21,6 @@ interface DailyPoint {
 interface PositionVolatilityChartProps {
   daily: DailyPoint[];
   className?: string;
-  height?: number;
 }
 
 /** Detect dates where position crosses a threshold (e.g. 10 or 20) */
@@ -38,7 +37,7 @@ function findCrossings(daily: DailyPoint[], threshold: number): string[] {
   return out;
 }
 
-export function PositionVolatilityChart({ daily, className, height = 110 }: PositionVolatilityChartProps) {
+export function PositionVolatilityChart({ daily, className }: PositionVolatilityChartProps) {
   const dataWithPosition = useMemo(
     () => daily.filter((d) => d.position != null).map((d) => ({ ...d, position: d.position! })),
     [daily]
@@ -59,8 +58,8 @@ export function PositionVolatilityChart({ daily, className, height = 110 }: Posi
   if (dataWithPosition.length === 0) return null;
 
   return (
-    <div className={cn("rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20", className)}>
-      <div className="border-b border-border px-4 py-2.5">
+    <div className={cn("rounded-lg border border-border bg-surface overflow-hidden flex flex-col min-h-[200px] transition-colors hover:border-foreground/20", className)}>
+      <div className="border-b border-border px-4 py-3 shrink-0">
         <h3 className="text-sm font-semibold text-foreground">Position volatility</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
           Site avg position over time · Top 10 / Top 20 thresholds
@@ -77,7 +76,7 @@ export function PositionVolatilityChart({ daily, className, height = 110 }: Posi
           </p>
         )}
       </div>
-      <div className="px-4 py-2.5" style={{ height }}>
+      <div className="flex-1 min-h-[140px] px-4 py-3 min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={dataWithPosition} margin={{ top: 4, right: 8, left: 36, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />

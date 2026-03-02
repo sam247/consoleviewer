@@ -51,8 +51,8 @@ export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) 
   }, [queries, daily]);
 
   return (
-    <div className="rounded-lg border border-border bg-surface px-4 py-2.5 transition-colors hover:border-foreground/20">
-      <div className="border-b border-border pb-2.5 mb-2.5">
+    <div className="rounded-lg border border-border bg-surface flex flex-col min-h-0 transition-colors hover:border-foreground/20">
+      <div className="border-b border-border px-4 py-3 shrink-0">
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="text-sm font-semibold text-foreground">
             AI-Style Query Signals
@@ -66,33 +66,35 @@ export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) 
           of clicks · Conversational: {stats.pctConvQueries}% of queries
         </p>
       </div>
-      {stats.sparkData.length > 0 && (
-        <div className="flex items-center gap-2 mb-2.5">
-          <span className="text-[10px] text-muted-foreground shrink-0">
-            Site trend (proxy)
-          </span>
-          <Sparkline values={stats.sparkData} className="shrink-0" />
-        </div>
-      )}
-      {stats.top5.length > 0 && (
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">Top 5 LLM-style queries</p>
-          <ul className="text-xs space-y-0.5">
-            {stats.top5.map((r) => (
-              <li
-                key={r.key}
-                className="truncate text-foreground tabular-nums"
-                title={r.key}
-              >
-                <span className="text-muted-foreground mr-1">
-                  {r.impressions != null ? r.impressions.toLocaleString() : "—"} impr
-                </span>
-                {r.key}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="flex-1 min-h-0 flex flex-col gap-3 px-4 py-3 overflow-auto">
+        {stats.sparkData.length > 0 && (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] text-muted-foreground shrink-0">
+              Site trend (proxy)
+            </span>
+            <Sparkline values={stats.sparkData} className="shrink-0" />
+          </div>
+        )}
+        {stats.top5.length > 0 && (
+          <div className="min-h-0 flex flex-col">
+            <p className="text-xs text-muted-foreground mb-1 shrink-0">Top 5 LLM-style queries</p>
+            <ul className="text-xs space-y-1.5 flex-1 min-h-0">
+              {stats.top5.map((r) => (
+                <li
+                  key={r.key}
+                  className="truncate text-foreground tabular-nums"
+                  title={r.key}
+                >
+                  <span className="text-muted-foreground mr-1">
+                    {r.impressions != null ? r.impressions.toLocaleString() : "—"} impr
+                  </span>
+                  {r.key}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

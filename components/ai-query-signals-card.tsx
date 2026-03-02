@@ -110,7 +110,7 @@ export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) 
                 <Tooltip
                   contentStyle={{ fontSize: 10, padding: "4px 6px" }}
                   labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                  formatter={(value: number) => [value.toLocaleString(), ""]}
+                  formatter={(value: number | undefined) => [(value ?? 0).toLocaleString(), ""]}
                 />
                 <Line type="monotone" dataKey="clicks" stroke="var(--chart-clicks)" strokeWidth={1.5} dot={false} name="Clicks" />
                 <Line type="monotone" dataKey="impressions" stroke="var(--chart-impressions)" strokeWidth={1} dot={false} strokeDasharray="3 2" name="Impr." />

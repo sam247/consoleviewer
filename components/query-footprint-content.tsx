@@ -16,8 +16,6 @@ type FootprintView = "total" | "bands";
 interface QueryFootprintContentProps {
   view: FootprintView;
   setView: (v: FootprintView) => void;
-  top10: number;
-  top3: number;
   total: number;
   bands: { label: string; min: number; max: number; count: number; color: string; deltaPercent?: number }[];
   maxBandCount: number;
@@ -32,8 +30,6 @@ interface QueryFootprintContentProps {
 export function QueryFootprintContent({
   view,
   setView,
-  top10,
-  top3,
   total,
   bands,
   maxBandCount,

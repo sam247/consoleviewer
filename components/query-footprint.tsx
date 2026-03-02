@@ -67,8 +67,6 @@ export function QueryFootprint({ queries, daily, className, onBandSelect, select
     <QueryFootprintContent
       view={view}
       setView={setView}
-      top10={top10}
-      top3={top3}
       total={total}
       bands={bands}
       maxBandCount={maxBandCount}

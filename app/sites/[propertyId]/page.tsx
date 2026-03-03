@@ -894,11 +894,12 @@ export default function SiteDetailPage({
                     showFilter
                     onExportCsv={() => exportToCsv(pagesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "pages", startDate, endDate))}
                   />
-                  {contentGroups.length > 0 && (() => {
+                  {(contentFilterPattern.trim() || contentGroups.length > 0) && (() => {
                     const totalGroupClicks = contentGroups.reduce((s, g) => s + g.clicks, 0);
                     const totalSiteClicks = pagesRows.reduce((s, p) => s + p.clicks, 0);
                     const sharePct = totalSiteClicks > 0 ? Math.round((totalGroupClicks / totalSiteClicks) * 100) : 0;
                     const siteTrend = data?.summary?.clicksChangePercent;
+                    const hasGroups = contentGroups.length > 0;
                     return (
                       <div className="rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu flex flex-col flex-1 min-h-0">
                         <div className="border-b border-border px-4 py-2.5 shrink-0">
@@ -907,14 +908,16 @@ export default function SiteDetailPage({
                             {contentFilterPattern.trim() && !contentGroupsFilteredPages.error && (
                               <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5">Segment mode</span>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => exportToCsv(contentGroups.map((g) => ({ label: g.label, clicks: g.clicks, impressions: g.impressions, avgChangePercent: g.avgChangePercent ?? "" })), formatExportFilename(siteSlug, "content-groups", startDate, endDate))}
-                              className="p-1.5 rounded text-muted-foreground/80 hover:text-muted-foreground hover:bg-accent/50 transition-colors duration-[120ms] opacity-80 hover:opacity-100"
-                              title="Export CSV"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            </button>
+                            {hasGroups && (
+                              <button
+                                type="button"
+                                onClick={() => exportToCsv(contentGroups.map((g) => ({ label: g.label, clicks: g.clicks, impressions: g.impressions, avgChangePercent: g.avgChangePercent ?? "" })), formatExportFilename(siteSlug, "content-groups", startDate, endDate))}
+                                className="p-1.5 rounded text-muted-foreground/80 hover:text-muted-foreground hover:bg-accent/50 transition-colors duration-[120ms] opacity-80 hover:opacity-100"
+                                title="Export CSV"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                              </button>
+                            )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {contentGroups.length} groups · {formatNum(totalGroupClicks)} clicks ({sharePct}% of total)
@@ -1045,20 +1048,28 @@ export default function SiteDetailPage({
                               </tr>
                             </thead>
                             <tbody>
-                              {contentGroups.slice(0, 10).map((g) => (
-                                <tr key={g.label} className="border-b border-border/50 transition-colors duration-100 hover:bg-muted/50">
-                                  <td className="px-4 py-1.5 truncate min-w-0 text-foreground" title={g.label}>/{g.label}</td>
-                                  <td className="px-4 py-1.5 text-right tabular-nums">{formatNum(g.clicks)}</td>
-                                  <td className="px-4 py-1.5 text-right tabular-nums">{formatNum(g.impressions)}</td>
-                                  <td className="px-4 py-1.5 text-right">
-                                    {g.avgChangePercent != null ? (
-                                      <span className={cn("tabular-nums", g.avgChangePercent >= 0 ? "text-positive" : "text-negative")}>
-                                        {g.avgChangePercent >= 0 ? "+" : ""}{g.avgChangePercent}%
-                                      </span>
-                                    ) : "–"}
+                              {hasGroups ? (
+                                contentGroups.slice(0, 10).map((g) => (
+                                  <tr key={g.label} className="border-b border-border/50 transition-colors duration-100 hover:bg-muted/50">
+                                    <td className="px-4 py-1.5 truncate min-w-0 text-foreground" title={g.label}>/{g.label}</td>
+                                    <td className="px-4 py-1.5 text-right tabular-nums">{formatNum(g.clicks)}</td>
+                                    <td className="px-4 py-1.5 text-right tabular-nums">{formatNum(g.impressions)}</td>
+                                    <td className="px-4 py-1.5 text-right">
+                                      {g.avgChangePercent != null ? (
+                                        <span className={cn("tabular-nums", g.avgChangePercent >= 0 ? "text-positive" : "text-negative")}>
+                                          {g.avgChangePercent >= 0 ? "+" : ""}{g.avgChangePercent}%
+                                        </span>
+                                      ) : "–"}
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                                    No groups match the filter. Try a different path or regex.
                                   </td>
                                 </tr>
-                              ))}
+                              )}
                             </tbody>
                           </table>
                           {contentGroups.length > 10 && (

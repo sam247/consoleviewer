@@ -119,15 +119,15 @@ export function CannibalisationCard({
               ) : (
                 <>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse">
-                      <thead>
-                        <tr className="border-b border-border/50">
-                          <th className="text-left py-2.5 px-4 text-muted-foreground font-medium">Query</th>
-                          <th className="text-right py-2.5 px-4 text-muted-foreground font-medium w-20">Impr</th>
-                          <th className="text-right py-2.5 px-4 text-muted-foreground font-medium w-16">Clicks</th>
-                          <th className="text-right py-2.5 px-4 text-muted-foreground font-medium w-16">#URLs</th>
-                          <th className="text-right py-2.5 px-4 text-muted-foreground font-medium w-24">Best pos</th>
-                          <th className="text-right py-2.5 px-4 text-muted-foreground font-medium w-20">Score</th>
+                    <table className="w-full text-sm table-fixed border-collapse">
+                      <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+                        <tr>
+                          <th className="text-left px-4 py-1.5 pb-1.5 font-semibold min-w-0 w-[35%]">Query</th>
+                          <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-20">Impr</th>
+                          <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">Clicks</th>
+                          <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">#URLs</th>
+                          <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-24">Best pos</th>
+                          <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-20">Score</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -135,24 +135,24 @@ export function CannibalisationCard({
                           <tr
                             key={c.query}
                             onClick={() => setDrawerConflict(c)}
-                            className="border-b border-border/50 last:border-b-0 hover:bg-accent/60 cursor-pointer transition-colors duration-100"
+                            className="border-b border-border/50 last:border-b-0 hover:bg-muted/50 cursor-pointer transition-colors duration-100"
                           >
-                            <td className="py-2.5 px-4 text-foreground truncate max-w-[180px]" title={c.query}>
+                            <td className="py-1.5 px-4 text-foreground truncate min-w-0" title={c.query}>
                               {c.query}
                             </td>
-                            <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
+                            <td className="py-1.5 px-4 text-right tabular-nums text-muted-foreground">
                               {c.impressions.toLocaleString()}
                             </td>
-                            <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
+                            <td className="py-1.5 px-4 text-right tabular-nums text-muted-foreground">
                               {c.clicks}
                             </td>
-                            <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
+                            <td className="py-1.5 px-4 text-right tabular-nums text-muted-foreground">
                               {c.numUrls}
                             </td>
-                            <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
+                            <td className="py-1.5 px-4 text-right tabular-nums text-muted-foreground">
                               {c.bestPosition.toFixed(1)}
                             </td>
-                            <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
+                            <td className="py-1.5 px-4 text-right tabular-nums text-muted-foreground">
                               {Math.round(c.score)}
                             </td>
                           </tr>

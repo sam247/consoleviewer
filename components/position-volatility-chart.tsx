@@ -78,14 +78,14 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
         )}
         {(crossings10.length > 0 || crossings20.length > 0) && (
           <p className="text-xs text-muted-foreground mt-1">
-            {crossings10.length > 0 && `Entered top 10: ${crossings10.map((d) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" })).join(", ")}. `}
-            {crossings20.length > 0 && `Crossed pos 20: ${crossings20.map((d) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" })).join(", ")}.`}
+            {crossings10.length > 0 && `Top 10 crossings: ${crossings10.length}. `}
+            {crossings20.length > 0 && `Top 20 crossings: ${crossings20.length}.`}
           </p>
         )}
       </div>
-      <div className="shrink-0 min-w-0" style={{ height: 180 }}>
-        <ResponsiveContainer width="100%" height={180}>
-          <LineChart data={dataWithPosition} margin={{ top: 4, right: 8, left: 36, bottom: 20 }}>
+      <div className="shrink-0 min-w-0 pt-1" style={{ height: 220 }}>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={dataWithPosition} margin={{ top: 6, right: 8, left: 22, bottom: 14 }}>
             <CartesianGrid {...CHART_GRID_PROPS} />
             <XAxis
               dataKey="date"
@@ -96,7 +96,7 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
               }}
             />
             <YAxis
-              width={36}
+              width={34}
               domain={["dataMin", "dataMax"]}
               tick={CHART_AXIS_TICK}
               tickFormatter={(v) => String(Number(v).toFixed(1))}

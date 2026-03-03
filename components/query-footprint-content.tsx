@@ -56,7 +56,7 @@ export function QueryFootprintContent({
 
   return (
     <div className={rootClassName}>
-      <div className="border-b border-border px-4 py-2">
+      <div className="border-b border-border px-4 py-2.5">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">
@@ -88,7 +88,7 @@ export function QueryFootprintContent({
         </div>
       </div>
 
-      <div className="flex flex-col px-4 pt-2 pb-2 min-w-0 overflow-visible">
+      <div className="flex flex-col px-4 pt-3 pb-3 min-w-0 overflow-visible">
         {view === "total" ? (
           <div className="flex flex-col gap-3">
             <div className="flex h-2 w-full rounded-sm overflow-hidden bg-muted/30 shrink-0">
@@ -160,10 +160,10 @@ export function QueryFootprintContent({
               })}
             </div>
             {sparkData.length > 0 && (
-              <div className="min-w-0 w-full h-[72px] shrink-0">
+              <div className="min-w-0 w-full h-[92px] shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={sparkData} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
-                    <CartesianGrid {...CHART_GRID_PROPS} />
+                  <LineChart data={sparkData} margin={{ top: 6, right: 8, left: 6, bottom: 6 }}>
+                    <CartesianGrid {...CHART_GRID_PROPS} strokeOpacity={0.35} />
                     <XAxis dataKey="date" hide />
                     <YAxis hide tick={CHART_AXIS_TICK} />
                     <Tooltip
@@ -175,7 +175,7 @@ export function QueryFootprintContent({
                       type="monotone"
                       dataKey="clicks"
                       stroke="var(--chart-clicks)"
-                      strokeWidth={2}
+                      strokeWidth={1.8}
                       dot={false}
                     />
                   </LineChart>

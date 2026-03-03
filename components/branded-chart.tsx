@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  Bar,
+  BarChart,
+  Cell,
   LineChart,
   Line,
   XAxis,
@@ -52,12 +55,14 @@ export function BrandedChart({
     clicks: d.clicks ?? 0,
     impressions: d.impressions ?? 0,
   }));
+  const splitChartData = [
+    { label: "Branded", value: brandedClicks, color: "var(--chart-clicks)" },
+    { label: "Non-branded", value: nonBrandedClicks, color: "var(--chart-impressions)" },
+  ];
 
   return (
     <div className={cn("flex flex-col min-h-0", className)}>
-      <div className="mb-1.5 font-semibold text-sm text-foreground">Branded vs non-branded</div>
-      <p className="text-xs text-muted-foreground mb-1.5">Compared to prior period</p>
-      <div className="flex flex-wrap gap-4 text-sm">
+      <div className="flex flex-wrap gap-4 text-sm mb-2">
         <div className="flex items-center gap-1">
           <span className="text-muted-foreground">Branded</span>
           <span className="font-medium">{formatNum(brandedClicks)}</span>
@@ -103,13 +108,13 @@ export function BrandedChart({
         />
       </div>
       {chartData.length >= 2 && (
-        <div className="mt-4 w-full min-w-0 flex-1 min-h-0 flex flex-col">
+        <div className="mt-3 w-full min-w-0 flex-1 min-h-0 flex flex-col">
           <p className="text-[10px] text-muted-foreground mb-1 shrink-0">Clicks over time</p>
-          <div className="w-full flex-1 min-h-[140px]" style={{ height: 200 }}>
+          <div className="w-full flex-1 min-h-[180px]" style={{ height: 220 }}>
             <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
-              margin={{ top: 4, right: 8, left: 0, bottom: 18 }}
+              margin={{ top: 6, right: 8, left: 22, bottom: 14 }}
             >
               <CartesianGrid {...CHART_GRID_PROPS} />
               <XAxis
@@ -121,7 +126,7 @@ export function BrandedChart({
                 }}
               />
               <YAxis
-                width={32}
+                width={34}
                 domain={["dataMin", "dataMax"]}
                 tick={CHART_AXIS_TICK}
                 tickFormatter={(v) => (Number(v) >= 1e3 ? `${(Number(v) / 1e3).toFixed(0)}k` : String(v))}
@@ -141,6 +146,33 @@ export function BrandedChart({
               />
             </LineChart>
           </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+      {chartData.length < 2 && (
+        <div className="mt-3 w-full min-w-0 flex-1 min-h-[180px] flex flex-col">
+          <p className="text-[10px] text-muted-foreground mb-1 shrink-0">Branded share</p>
+          <div className="w-full flex-1 min-h-[180px]" style={{ height: 220 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={splitChartData} margin={{ top: 6, right: 8, left: 22, bottom: 14 }}>
+                <CartesianGrid {...CHART_GRID_PROPS} />
+                <XAxis dataKey="label" tick={CHART_AXIS_TICK} />
+                <YAxis
+                  width={34}
+                  tick={CHART_AXIS_TICK}
+                  tickFormatter={(v) => (Number(v) >= 1e3 ? `${(Number(v) / 1e3).toFixed(0)}k` : String(v))}
+                />
+                <Tooltip
+                  contentStyle={CHART_TOOLTIP_STYLE}
+                  formatter={(value: number | undefined) => [(value ?? 0).toLocaleString(), "Clicks"]}
+                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={38}>
+                  {splitChartData.map((entry) => (
+                    <Cell key={entry.label} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       )}

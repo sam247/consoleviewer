@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table-styles";
 
 const STORAGE_KEY = "consoleview-cannibalisation-open";
+const ROWS_INITIAL = 10;
 
 export type CannibalisationConflict = {
   query: string;
@@ -52,6 +53,7 @@ export function CannibalisationCard({
   endDate,
 }: CannibalisationCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [showAllRows, setShowAllRows] = useState(false);
   const [drawerConflict, setDrawerConflict] = useState<CannibalisationConflict | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -68,6 +70,7 @@ export function CannibalisationCard({
   const toggle = () => {
     const next = !expanded;
     setExpanded(next);
+    if (!next) setShowAllRows(false);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, String(next));
     }
@@ -81,6 +84,9 @@ export function CannibalisationCard({
 
   const conflicts = data?.conflicts ?? [];
   const count = conflicts.length;
+  const hasMoreRows = conflicts.length > ROWS_INITIAL;
+  const visibleConflicts = showAllRows ? conflicts : conflicts.slice(0, ROWS_INITIAL);
+  const moreCount = Math.max(0, conflicts.length - ROWS_INITIAL);
 
   return (
     <section aria-label="Cannibalisation" className="min-w-0">
@@ -91,9 +97,7 @@ export function CannibalisationCard({
         aria-expanded={expanded}
       >
         <span className="text-sm font-semibold text-foreground">Cannibalisation</span>
-        <span className="text-xs text-muted-foreground">
-          {count} conflict{count !== 1 ? "s" : ""}
-        </span>
+        <span className="text-xs text-muted-foreground tabular-nums">{count} conflicts</span>
         <svg
           className={cn("size-4 text-muted-foreground transition-transform duration-200 shrink-0", expanded && "rotate-180")}
           viewBox="0 0 24 24"
@@ -137,7 +141,7 @@ export function CannibalisationCard({
                         </tr>
                       </thead>
                       <tbody>
-                        {conflicts.map((c) => (
+                        {visibleConflicts.map((c) => (
                           <tr
                             key={c.query}
                             onClick={() => setDrawerConflict(c)}
@@ -166,6 +170,17 @@ export function CannibalisationCard({
                       </tbody>
                     </table>
                   </div>
+                  {hasMoreRows && (
+                    <div className="border-t border-border px-4 py-2 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllRows((s) => !s)}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
+                      >
+                        {showAllRows ? "View less" : `View ${moreCount} more`}
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </>

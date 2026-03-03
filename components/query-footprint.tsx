@@ -59,7 +59,7 @@ export function QueryFootprint({ queries, daily, className, onBandSelect, select
   ];
 
   const rootClassName = cn(
-    "rounded-lg border border-border bg-surface transition-colors duration-[120ms] hover:border-foreground/20 overflow-hidden flex flex-col min-h-0",
+    "rounded-lg border border-border bg-surface transition-colors duration-[120ms] hover:border-foreground/20 overflow-hidden flex flex-col min-h-[320px]",
     className
   );
 

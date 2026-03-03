@@ -686,7 +686,7 @@ export default function SiteDetailPage({
                       <SparkToggles />
                     </div>
                   </div>
-                  <div ref={trendChartContainerRef} className="flex-1 min-h-0 px-4 pb-1 pt-1">
+                  <div ref={trendChartContainerRef} className="flex-1 min-h-0 px-4 pb-3 pt-2">
                     <TrendChart
                       data={data.daily}
                       priorData={data?.priorDaily}
@@ -727,7 +727,7 @@ export default function SiteDetailPage({
                   {data.daily.some((d: { position?: number }) => d.position != null) && (
                     <PositionVolatilityChart daily={data.daily} />
                   )}
-                  <div className="rounded-lg border border-border bg-surface px-4 py-4 transition-colors hover:border-foreground/20 flex flex-col min-h-0 min-w-0">
+                  <div className="rounded-lg border border-border bg-surface px-4 py-4 transition-colors hover:border-foreground/20 flex flex-col min-h-[320px] min-w-0">
                     <h2 className="text-sm font-semibold text-foreground mb-2">Branded vs non-branded</h2>
                     <p className="text-xs text-muted-foreground mb-1.5">Branded terms (queries containing these count as branded)</p>
                     <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -763,7 +763,7 @@ export default function SiteDetailPage({
                         </span>
                       ))}
                     </div>
-                    <div className="flex-1 min-h-0 min-w-0">
+                    <div className="flex-1 min-h-[200px] min-w-0">
                       <BrandedChart
                         brandedClicks={brandedFromQueries?.brandedClicks ?? data?.branded?.brandedClicks ?? 0}
                         nonBrandedClicks={brandedFromQueries?.nonBrandedClicks ?? data?.branded?.nonBrandedClicks ?? (data?.summary?.clicks ?? 0)}

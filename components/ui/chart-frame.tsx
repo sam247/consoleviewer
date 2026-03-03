@@ -61,17 +61,17 @@ export const CHART_EMPTY_STATE_MIN_H = {
 } as const;
 
 export const CHART_MARGIN_PRIMARY = {
-  top: 8,
+  top: 12,
   right: 10,
   left: 6,
-  bottom: 4,
+  bottom: 8,
 } as const;
 
 export const CHART_MARGIN_SECONDARY = {
-  top: 8,
+  top: 10,
   right: 10,
   left: 4,
-  bottom: 4,
+  bottom: 8,
 } as const;
 
 export const CHART_MARGIN_SPARK = {
@@ -81,7 +81,7 @@ export const CHART_MARGIN_SPARK = {
   bottom: 4,
 } as const;
 
-export const CHART_Y_AXIS_WIDTH_PRIMARY = 40;
+export const CHART_Y_AXIS_WIDTH_PRIMARY = 34;
 export const CHART_Y_AXIS_WIDTH_SECONDARY = 34;
 
 export const CHART_GRID_PROPS = {
@@ -93,7 +93,7 @@ export const CHART_GRID_PROPS = {
 
 export const CHART_AXIS_TICK = {
   fill: "var(--muted-foreground)",
-  fontSize: 10,
+  fontSize: 9,
 } as const;
 
 export const CHART_TOOLTIP_STYLE = {

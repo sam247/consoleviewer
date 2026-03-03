@@ -254,7 +254,16 @@ export function TrendChart({
 
           <CartesianGrid {...CHART_GRID_PROPS} />
           <ReferenceLine y={0} stroke="var(--border)" strokeOpacity={0.55} />
-          <XAxis dataKey="date" tick={CHART_AXIS_TICK} tickFormatter={dateTickFormatter} minTickGap={14} />
+          <XAxis
+            dataKey="date"
+            tick={CHART_AXIS_TICK}
+            tickFormatter={dateTickFormatter}
+            minTickGap={14}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            padding={{ left: 8, right: 8 }}
+          />
 
           <YAxis
             width={yAxisWidth}
@@ -262,6 +271,9 @@ export function TrendChart({
             tick={CHART_AXIS_TICK}
             tickCount={5}
             tickFormatter={(value) => (useNormalized ? `${Math.round(Number(value) * 100)}%` : compactNumber(Number(value)))}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={6}
           />
 
           <Tooltip
@@ -274,6 +286,16 @@ export function TrendChart({
                 day: "numeric",
               })
             }
+            formatter={(value: number | string | undefined, name) => {
+              const n = typeof value === "number" ? value : Number(value ?? 0);
+              const key = String(name).toLowerCase();
+              if (useNormalized || key.includes("_norm_")) {
+                return [`${(n * 100).toFixed(1)}%`, String(name).replace(/^_norm_/, "")];
+              }
+              if (key.includes("ctr")) return [`${n.toFixed(2)}%`, "CTR"];
+              if (key.includes("position")) return [n.toFixed(1), "Avg position"];
+              return [compactNumber(n), String(name)];
+            }}
           />
 
           {useNormalized

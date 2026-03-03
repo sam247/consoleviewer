@@ -174,7 +174,16 @@ export function QueryFootprintContent({
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={sparkData} margin={CHART_MARGIN_SPARK}>
                   <CartesianGrid {...CHART_GRID_PROPS} />
-                  <XAxis dataKey="date" tick={CHART_AXIS_TICK} tickFormatter={sparkTickFormatter} minTickGap={12} />
+                  <XAxis
+                    dataKey="date"
+                    tick={CHART_AXIS_TICK}
+                    tickFormatter={sparkTickFormatter}
+                    minTickGap={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    padding={{ left: 6, right: 6 }}
+                  />
                   <YAxis hide tick={CHART_AXIS_TICK} />
                   <Tooltip
                     contentStyle={CHART_TOOLTIP_STYLE}

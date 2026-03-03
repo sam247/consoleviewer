@@ -131,11 +131,23 @@ export function BrandedChart({
           {hasBrandedTrend ? (
             <LineChart data={brandedTrend} margin={CHART_MARGIN_SECONDARY}>
               <CartesianGrid {...CHART_GRID_PROPS} />
-              <XAxis dataKey="date" tick={CHART_AXIS_TICK} tickFormatter={dateTickFormatter} minTickGap={14} />
+              <XAxis
+                dataKey="date"
+                tick={CHART_AXIS_TICK}
+                tickFormatter={dateTickFormatter}
+                minTickGap={14}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                padding={{ left: 8, right: 8 }}
+              />
               <YAxis
                 width={CHART_Y_AXIS_WIDTH_SECONDARY}
                 tick={CHART_AXIS_TICK}
                 tickFormatter={(v) => (Number(v) >= 1e3 ? `${(Number(v) / 1e3).toFixed(1)}k` : String(v))}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
               />
               <Tooltip
                 contentStyle={CHART_TOOLTIP_STYLE}
@@ -149,11 +161,14 @@ export function BrandedChart({
           ) : (
             <BarChart data={splitBars} margin={CHART_MARGIN_SECONDARY}>
               <CartesianGrid {...CHART_GRID_PROPS} />
-              <XAxis dataKey="label" tick={CHART_AXIS_TICK} />
+              <XAxis dataKey="label" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} tickMargin={8} />
               <YAxis
                 width={CHART_Y_AXIS_WIDTH_SECONDARY}
                 tick={CHART_AXIS_TICK}
                 tickFormatter={(v) => (Number(v) >= 1e3 ? `${(Number(v) / 1e3).toFixed(1)}k` : String(v))}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
               />
               <Tooltip
                 contentStyle={CHART_TOOLTIP_STYLE}

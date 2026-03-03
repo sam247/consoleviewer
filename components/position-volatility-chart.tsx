@@ -102,13 +102,25 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={dataWithPosition} margin={CHART_MARGIN_SECONDARY}>
             <CartesianGrid {...CHART_GRID_PROPS} />
-            <XAxis dataKey="date" tick={CHART_AXIS_TICK} tickFormatter={tickFormatter} minTickGap={14} />
+            <XAxis
+              dataKey="date"
+              tick={CHART_AXIS_TICK}
+              tickFormatter={tickFormatter}
+              minTickGap={14}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              padding={{ left: 8, right: 8 }}
+            />
             <YAxis
               width={CHART_Y_AXIS_WIDTH_SECONDARY}
               domain={["dataMin", "dataMax"]}
               tick={CHART_AXIS_TICK}
               tickFormatter={(v) => String(Number(v).toFixed(1))}
               reversed
+              tickLine={false}
+              axisLine={false}
+              tickMargin={6}
             />
             <Tooltip
               cursor={{ stroke: "var(--border)", strokeWidth: 1 }}

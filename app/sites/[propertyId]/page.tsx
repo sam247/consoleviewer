@@ -789,7 +789,10 @@ export default function SiteDetailPage({
             <div className="space-y-4">
             {/* Opportunity index (part of opportunities section) */}
             {queriesRows.length > 0 && (
-              <OpportunityIndex queries={queriesRows} />
+              <OpportunityIndex
+                queries={queriesRows}
+                exportFilename={formatExportFilename(siteSlug, "opportunity-index", startDate, endDate)}
+              />
             )}
             {/* Opportunity Intelligence */}
             {queriesRows.length > 0 && (

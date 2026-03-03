@@ -90,7 +90,7 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
             />
             <YAxis
               width={36}
-              domain={["auto", "auto"]}
+              domain={["dataMin", "dataMax"]}
               tick={{ fontSize: 10 }}
               tickFormatter={(v) => String(Number(v).toFixed(1))}
               reversed

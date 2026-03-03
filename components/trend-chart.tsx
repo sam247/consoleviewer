@@ -271,6 +271,24 @@ export function TrendChart({
     return String(Math.round(v));
   };
 
+  const yDomain = useMemo((): [number, number] | undefined => {
+    const keys: (keyof DataPoint)[] = ["clicks", "impressions", "ctr", "position"];
+    let min = Infinity;
+    let max = -Infinity;
+    chartData.forEach((d) => {
+      keys.forEach((k) => {
+        const v = d[k];
+        if (typeof v === "number" && Number.isFinite(v)) {
+          min = Math.min(min, v);
+          max = Math.max(max, v);
+        }
+      });
+    });
+    if (min === Infinity || max === -Infinity) return undefined;
+    const pad = Math.max(0, (max - min) * 0.05) || (max !== 0 ? Math.abs(max) * 0.05 : 1);
+    return [Math.max(0, min - pad), max + pad];
+  }, [chartData]);
+
   return (
     <div className={cn("w-full", className)} style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -295,7 +313,7 @@ export function TrendChart({
           <YAxis
             width={28}
             hide={false}
-            domain={["auto", "auto"]}
+            domain={yDomain ?? ["auto", "auto"]}
             tickCount={6}
             tick={{ fill: "var(--muted-foreground)", fontSize: 10, opacity: 0.9 }}
             tickFormatter={yAxisTickFormatter}

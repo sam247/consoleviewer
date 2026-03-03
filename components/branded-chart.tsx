@@ -100,10 +100,10 @@ export function BrandedChart({
         />
       </div>
       {chartData.length >= 2 && (
-        <div className="mt-4 w-full min-w-0">
-          <p className="text-[10px] text-muted-foreground mb-1">Clicks over time</p>
-          <div className="w-full min-w-0" style={{ height: 160 }}>
-            <ResponsiveContainer width="100%" height={160}>
+        <div className="mt-4 w-full min-w-0 flex-1 min-h-0 flex flex-col">
+          <p className="text-[10px] text-muted-foreground mb-1 shrink-0">Clicks over time</p>
+          <div className="w-full flex-1 min-h-[140px]" style={{ height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
               margin={{ top: 4, right: 8, left: 0, bottom: 18 }}
@@ -119,6 +119,7 @@ export function BrandedChart({
               />
               <YAxis
                 width={32}
+                domain={["dataMin", "dataMax"]}
                 tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                 tickFormatter={(v) => (Number(v) >= 1e3 ? `${(Number(v) / 1e3).toFixed(0)}k` : String(v))}
               />

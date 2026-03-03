@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { DataTableRow } from "@/components/data-table";
+import { TableFullViewModal } from "@/components/table-full-view-modal";
 
 interface OpportunityRow {
   key: string;
@@ -47,15 +48,32 @@ function formatNum(n: number): string {
   return String(Math.round(n));
 }
 
+const ROWS_INITIAL = 10;
+
+function oppRowToDataTableRow(r: OpportunityRow): DataTableRow {
+  return {
+    key: r.key,
+    clicks: Math.round((r.impressions * r.ctr) / 100),
+    impressions: r.impressions,
+    position: r.position,
+    changePercent: r.changePercent,
+  };
+}
+
 function OppTable({
   rows,
   emptyText,
+  sectionTitle,
+  onOpenFullView,
 }: {
   rows: OpportunityRow[];
   emptyText: string;
+  sectionTitle: string;
+  onOpenFullView?: (title: string, rows: OpportunityRow[]) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? rows : rows.slice(0, 5);
+  const visible = rows.slice(0, ROWS_INITIAL);
+  const hasMore = rows.length > ROWS_INITIAL;
+  const moreCount = hasMore ? rows.length - ROWS_INITIAL : 0;
 
   if (rows.length === 0) {
     return <p className="text-xs text-muted-foreground px-4 py-2">{emptyText}</p>;
@@ -64,25 +82,25 @@ function OppTable({
   return (
     <div>
       <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-border/60 text-muted-foreground">
-              <th className="px-4 py-1.5 text-left font-semibold">Query</th>
-              <th className="px-4 py-1.5 text-right font-semibold w-14" title="Avg position">Pos</th>
-              <th className="px-4 py-1.5 text-right font-semibold w-20">Impressions</th>
-              <th className="px-4 py-1.5 text-right font-semibold w-16">CTR</th>
-              <th className="px-4 py-1.5 text-right font-semibold w-16">Change (vs prior)</th>
+        <table className="w-full text-sm table-fixed border-collapse">
+          <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+            <tr>
+              <th className="text-left px-4 py-1.5 pb-1.5 font-semibold min-w-0 w-[35%]">Query</th>
+              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-14" title="Avg position">Pos</th>
+              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-20">Impr.</th>
+              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">CTR</th>
+              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">Change</th>
             </tr>
           </thead>
           <tbody>
             {visible.map((row) => (
-              <tr key={row.key} className="border-b border-border/40 last:border-0 hover:bg-accent/50 transition-colors duration-100">
-                <td className="px-4 py-1.5 truncate max-w-[220px]" title={row.key}>
+              <tr key={row.key} className="border-b border-border/50 last:border-b-0 hover:bg-muted/50 transition-colors duration-100">
+                <td className="px-4 py-1.5 truncate min-w-0" title={row.key}>
                   {row.key}
                 </td>
-                <td className="px-4 py-1.5 text-right tabular-nums" title="Avg position">{row.position.toFixed(1)}</td>
-                <td className="px-4 py-1.5 text-right tabular-nums">{formatNum(row.impressions)}</td>
-                <td className="px-4 py-1.5 text-right tabular-nums">{row.ctr.toFixed(2)}%</td>
+                <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground" title="Avg position">{row.position.toFixed(1)}</td>
+                <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">{formatNum(row.impressions)}</td>
+                <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">{row.ctr.toFixed(2)}%</td>
                 <td className="px-4 py-1.5 text-right tabular-nums">
                   {row.changePercent != null ? (
                     <span className={cn(row.changePercent >= 0 ? "text-positive" : "text-negative")}>
@@ -95,14 +113,14 @@ function OppTable({
           </tbody>
         </table>
       </div>
-      {rows.length > 5 && (
-        <div className="border-t border-border/50 px-4 py-2 flex justify-center">
+      {hasMore && onOpenFullView && (
+        <div className="border-t border-border px-4 py-2 flex justify-center">
           <button
             type="button"
-            onClick={() => setExpanded((e) => !e)}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150"
+            onClick={() => onOpenFullView(sectionTitle, rows)}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
           >
-            {expanded ? "View less" : `View ${rows.length - 5} more`}
+            View {moreCount} more
           </button>
         </div>
       )}
@@ -175,8 +193,7 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
         ctr: r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0,
         changePercent: r.changePercent,
       }))
-      .sort((a, b) => b.impressions - a.impressions)
-      .slice(0, 10);
+      .sort((a, b) => b.impressions - a.impressions);
   }, [queries, medianImpr]);
 
   const page2Opp = useMemo<OpportunityRow[]>(() => {
@@ -195,8 +212,7 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
         ctr: r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0,
         changePercent: r.changePercent,
       }))
-      .sort((a, b) => b.impressions - a.impressions)
-      .slice(0, 10);
+      .sort((a, b) => b.impressions - a.impressions);
   }, [queries, p75Impr]);
 
   const ctrLeak = useMemo<OpportunityRow[]>(() => {
@@ -215,9 +231,13 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
         ctr: r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0,
         changePercent: r.changePercent,
       }))
-      .sort((a, b) => b.impressions - a.impressions)
-      .slice(0, 10);
+      .sort((a, b) => b.impressions - a.impressions);
   }, [queries, medianImpr]);
+
+  const [fullView, setFullView] = useState<{ title: string; rows: OpportunityRow[] } | null>(null);
+  const handleOpenFullView = (title: string, rows: OpportunityRow[]) => {
+    setFullView({ title, rows });
+  };
 
   const totalOpps = page1Push.length + page2Opp.length + ctrLeak.length;
 
@@ -246,6 +266,8 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
           <OppTable
             rows={page1Push}
             emptyText="No page 1 push opportunities in the current date range."
+            sectionTitle="Page 1 push"
+            onOpenFullView={handleOpenFullView}
           />
         )}
       </div>
@@ -264,6 +286,8 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
           <OppTable
             rows={page2Opp}
             emptyText="No page 2 opportunities in the current date range."
+            sectionTitle="Page 2 opportunity"
+            onOpenFullView={handleOpenFullView}
           />
         )}
       </div>
@@ -282,9 +306,21 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
           <OppTable
             rows={ctrLeak}
             emptyText="No CTR leaks detected in the current date range."
+            sectionTitle="CTR leak"
+            onOpenFullView={handleOpenFullView}
           />
         )}
       </div>
+
+      {fullView && (
+        <TableFullViewModal
+          open={!!fullView}
+          onClose={() => setFullView(null)}
+          title={fullView.title}
+          rows={fullView.rows.map(oppRowToDataTableRow)}
+          hasPosition
+        />
+      )}
     </div>
   );
 }

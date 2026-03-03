@@ -10,6 +10,11 @@ import {
   CartesianGrid,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import {
+  CHART_AXIS_TICK,
+  CHART_GRID_PROPS,
+  CHART_TOOLTIP_STYLE,
+} from "@/components/ui/chart-frame";
 
 interface DailyPoint {
   date: string;
@@ -50,9 +55,7 @@ export function BrandedChart({
 
   return (
     <div className={cn("flex flex-col min-h-0", className)}>
-      <div className="mb-1.5 font-semibold text-sm text-foreground">
-        Branded vs non‑branded
-      </div>
+      <div className="mb-1.5 font-semibold text-sm text-foreground">Branded vs non-branded</div>
       <p className="text-xs text-muted-foreground mb-1.5">Compared to prior period</p>
       <div className="flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-1">
@@ -108,10 +111,10 @@ export function BrandedChart({
               data={chartData}
               margin={{ top: 4, right: 8, left: 0, bottom: 18 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <CartesianGrid {...CHART_GRID_PROPS} />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tick={CHART_AXIS_TICK}
                 tickFormatter={(v) => {
                   const d = new Date(v);
                   return `${d.getMonth() + 1}/${d.getDate()}`;
@@ -120,17 +123,11 @@ export function BrandedChart({
               <YAxis
                 width={32}
                 domain={["dataMin", "dataMax"]}
-                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tick={CHART_AXIS_TICK}
                 tickFormatter={(v) => (Number(v) >= 1e3 ? `${(Number(v) / 1e3).toFixed(0)}k` : String(v))}
               />
               <Tooltip
-                contentStyle={{
-                  fontSize: 11,
-                  padding: "6px 10px",
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 6,
-                }}
+                contentStyle={CHART_TOOLTIP_STYLE}
                 labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
                 formatter={(value: number | undefined) => [(value ?? 0).toLocaleString(), "Clicks"]}
               />

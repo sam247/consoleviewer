@@ -4,6 +4,12 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { DataTableRow } from "@/components/data-table";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
+import {
+  TABLE_BASE_CLASS,
+  TABLE_CELL_Y,
+  TABLE_HEAD_CLASS,
+  TABLE_ROW_CLASS,
+} from "@/components/ui/table-styles";
 
 interface OpportunityRow {
   key: string;
@@ -82,26 +88,26 @@ function OppTable({
   return (
     <div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm table-fixed border-collapse">
-          <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+        <table className={TABLE_BASE_CLASS}>
+          <thead className={TABLE_HEAD_CLASS}>
             <tr>
-              <th className="text-left px-4 py-1.5 pb-1.5 font-semibold min-w-0 w-[35%]">Query</th>
-              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-14" title="Avg position">Pos</th>
-              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-20">Impr.</th>
-              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">CTR</th>
-              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">Change</th>
+              <th className={cn("text-left px-4 font-semibold min-w-0 w-[35%]", TABLE_CELL_Y)}>Query</th>
+              <th className={cn("text-right px-4 font-semibold w-14", TABLE_CELL_Y)} title="Avg position">Pos</th>
+              <th className={cn("text-right px-4 font-semibold w-20", TABLE_CELL_Y)}>Impr.</th>
+              <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>CTR</th>
+              <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>Change</th>
             </tr>
           </thead>
           <tbody>
             {visible.map((row) => (
-              <tr key={row.key} className="border-b border-border/50 last:border-b-0 hover:bg-muted/50 transition-colors duration-100">
-                <td className="px-4 py-1.5 truncate min-w-0" title={row.key}>
+              <tr key={row.key} className={TABLE_ROW_CLASS}>
+                <td className={cn("px-4 truncate min-w-0", TABLE_CELL_Y)} title={row.key}>
                   {row.key}
                 </td>
-                <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground" title="Avg position">{row.position.toFixed(1)}</td>
-                <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">{formatNum(row.impressions)}</td>
-                <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">{row.ctr.toFixed(2)}%</td>
-                <td className="px-4 py-1.5 text-right tabular-nums">
+                <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)} title="Avg position">{row.position.toFixed(1)}</td>
+                <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>{formatNum(row.impressions)}</td>
+                <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>{row.ctr.toFixed(2)}%</td>
+                <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                   {row.changePercent != null ? (
                     <span className={cn(row.changePercent >= 0 ? "text-positive" : "text-negative")}>
                       {row.changePercent >= 0 ? "↑" : "↓"} {row.changePercent >= 0 ? "+" : ""}{row.changePercent}%

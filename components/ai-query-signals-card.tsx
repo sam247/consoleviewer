@@ -4,6 +4,13 @@ import { useMemo } from "react";
 import { classifyQuery } from "@/lib/ai-query-detection";
 import type { DataTableRow } from "@/components/data-table";
 import { InfoTooltip } from "@/components/info-tooltip";
+import {
+  TABLE_BASE_CLASS,
+  TABLE_CELL_Y,
+  TABLE_HEAD_CLASS,
+  TABLE_ROW_CLASS,
+} from "@/components/ui/table-styles";
+import { cn } from "@/lib/utils";
 
 interface AiQuerySignalsCardProps {
   queries: DataTableRow[];
@@ -50,7 +57,7 @@ export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
   }, [queries]);
 
   return (
-    <div className="min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu flex flex-col">
+    <div className="min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-colors duration-[120ms] hover:border-foreground/20 flex flex-col">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-semibold text-sm text-foreground flex items-center gap-1">
@@ -66,13 +73,13 @@ export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
         </p>
       </div>
       <div className="overflow-x-auto min-w-0 flex-1">
-        <table className="w-full text-sm table-fixed border-collapse">
-          <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+        <table className={TABLE_BASE_CLASS}>
+          <thead className={TABLE_HEAD_CLASS}>
             <tr>
-              <th className="text-left px-4 py-1.5 pb-1.5 font-semibold min-w-0 w-[35%]">Name</th>
-              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-[20%]">Clicks</th>
-              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-[20%]">Impr.</th>
-              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-14">Pos</th>
+              <th className={cn("text-left px-4 font-semibold min-w-0 w-[35%]", TABLE_CELL_Y)}>Name</th>
+              <th className={cn("text-right px-4 font-semibold w-[20%]", TABLE_CELL_Y)}>Clicks</th>
+              <th className={cn("text-right px-4 font-semibold w-[20%]", TABLE_CELL_Y)}>Impr.</th>
+              <th className={cn("text-right px-4 font-semibold w-14", TABLE_CELL_Y)}>Pos</th>
             </tr>
           </thead>
           <tbody>
@@ -80,18 +87,18 @@ export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
               stats.top5.map((r) => (
                 <tr
                   key={r.key}
-                  className="border-b border-border/50 last:border-b-0 hover:bg-muted/50 transition-colors duration-100"
+                  className={TABLE_ROW_CLASS}
                 >
-                  <td className="px-4 py-1.5 truncate min-w-0 text-foreground" title={r.key}>
+                  <td className={cn("px-4 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.key}>
                     {r.key}
                   </td>
-                  <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">
+                  <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                     {r.clicks.toLocaleString()}
                   </td>
-                  <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">
+                  <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                     {r.impressions != null ? r.impressions.toLocaleString() : "—"}
                   </td>
-                  <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">
+                  <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                     {r.position != null ? r.position.toFixed(1) : "—"}
                   </td>
                 </tr>

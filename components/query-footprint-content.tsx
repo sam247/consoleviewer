@@ -6,9 +6,17 @@ import {
   Line,
   ResponsiveContainer,
   Tooltip,
+  CartesianGrid,
+  XAxis,
+  YAxis,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { InfoTooltip } from "@/components/info-tooltip";
+import {
+  CHART_AXIS_TICK,
+  CHART_GRID_PROPS,
+  CHART_TOOLTIP_STYLE,
+} from "@/components/ui/chart-frame";
 export type BandFilter = { min: number; max: number } | null;
 
 type FootprintView = "total" | "bands";
@@ -155,14 +163,11 @@ export function QueryFootprintContent({
               <div className="min-w-0 w-full h-[72px] shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={sparkData} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
+                    <CartesianGrid {...CHART_GRID_PROPS} />
+                    <XAxis dataKey="date" hide />
+                    <YAxis hide tick={CHART_AXIS_TICK} />
                     <Tooltip
-                      contentStyle={{
-                        fontSize: 11,
-                        padding: "4px 8px",
-                        background: "var(--surface)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 4,
-                      }}
+                      contentStyle={CHART_TOOLTIP_STYLE}
                       labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                       formatter={(v: number | undefined) => [(v ?? 0).toLocaleString(), "Clicks"]}
                     />
@@ -189,7 +194,7 @@ export function QueryFootprintContent({
                   type="button"
                   className={cn(
                     "flex items-center gap-3 w-full rounded px-1 py-0.5 -mx-1 transition-all duration-[120ms] text-left",
-                    onBandSelect && "cursor-pointer hover:bg-accent/60 hover:scale-[1.01]",
+                    onBandSelect && "cursor-pointer hover:bg-accent/60",
                     isSelected && "ring-2 ring-foreground/30 bg-accent/50"
                   )}
                   onClick={() => onBandSelect?.({ min: b.min, max: b.max })}

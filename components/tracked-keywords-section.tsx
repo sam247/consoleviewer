@@ -6,6 +6,13 @@ import { LineChart, Line, YAxis, ResponsiveContainer } from "recharts";
 import type { MockTrackedKeyword } from "@/lib/mock-rank";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { exportToCsv } from "@/lib/export-csv";
+import { cn } from "@/lib/utils";
+import {
+  TABLE_BASE_CLASS,
+  TABLE_CELL_Y,
+  TABLE_HEAD_CLASS,
+  TABLE_ROW_CLASS,
+} from "@/components/ui/table-styles";
 
 function MiniSparkline({ data }: { data: number[] }) {
   const chartData = useMemo(
@@ -34,8 +41,8 @@ function MiniSparkline({ data }: { data: number[] }) {
 }
 
 interface TrackedKeywordsSectionProps {
-  /** Fallback mock keywords when SerpRobot is not configured or returns empty. */
-  keywords: MockTrackedKeyword[];
+  /** Optional fallback keywords; by default we only render real SerpRobot data. */
+  keywords?: MockTrackedKeyword[];
   /** Optional export filename (without .csv) for CSV export. */
   exportFilename?: string;
 }
@@ -52,7 +59,7 @@ async function fetchSerprobotKeywords(): Promise<{
 
 type KeywordRow = MockTrackedKeyword & { id?: string };
 
-export function TrackedKeywordsSection({ keywords: mockKeywords, exportFilename }: TrackedKeywordsSectionProps) {
+export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], exportFilename }: TrackedKeywordsSectionProps) {
   const queryClient = useQueryClient();
   const [addInput, setAddInput] = useState("");
   const [addLoading, setAddLoading] = useState(false);
@@ -63,10 +70,9 @@ export function TrackedKeywordsSection({ keywords: mockKeywords, exportFilename 
     queryFn: fetchSerprobotKeywords,
   });
 
-  const keywords: KeywordRow[] =
-    serpData?.configured && (serpData.keywords?.length ?? 0) > 0
-      ? (serpData.keywords as KeywordRow[])
-      : mockKeywords.map((k) => ({ ...k }));
+  const keywords: KeywordRow[] = serpData?.configured
+    ? ((serpData.keywords ?? []) as KeywordRow[])
+    : fallbackKeywords.map((k) => ({ ...k }));
   const showConnectMessage = serpData?.configured === false;
   const canAddDelete = serpData?.configured === true;
 
@@ -121,7 +127,7 @@ export function TrackedKeywordsSection({ keywords: mockKeywords, exportFilename 
 
   return (
     <div
-      className="min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu flex flex-col"
+      className="min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 flex flex-col"
       aria-label="Keywords tracked"
     >
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap shrink-0">
@@ -169,48 +175,50 @@ export function TrackedKeywordsSection({ keywords: mockKeywords, exportFilename 
       <div className="flex-1 min-h-0 overflow-auto min-w-0">
         {keywords.length === 0 ? (
           <p className="text-sm text-muted-foreground px-4 py-3">
-            No keywords yet. Connect SerpRobot in Settings to track keywords.
+            {showConnectMessage
+              ? "Connect SerpRobot in Settings to track keywords."
+              : "No tracked keywords yet. Add keywords to start tracking."}
           </p>
         ) : (
           <div className="overflow-x-auto min-w-0">
-            <table className="w-full text-sm table-fixed border-collapse">
-              <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+            <table className={TABLE_BASE_CLASS}>
+              <thead className={TABLE_HEAD_CLASS}>
                 <tr>
-                  <th className="text-left px-4 py-1.5 pb-1.5 font-semibold min-w-0 w-[35%]">Name</th>
-                  <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-20">Position</th>
-                  <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">1D Δ</th>
-                  <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">7D Δ</th>
-                  <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-20">Trend</th>
-                  {canAddDelete && <th className="w-10 px-2 py-1.5 pb-1.5" aria-label="Remove" />}
+                  <th className={cn("text-left px-4 font-semibold min-w-0 w-[35%]", TABLE_CELL_Y)}>Name</th>
+                  <th className={cn("text-right px-4 font-semibold w-20", TABLE_CELL_Y)}>Position</th>
+                  <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>1D Δ</th>
+                  <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>7D Δ</th>
+                  <th className={cn("text-right px-4 font-semibold w-20", TABLE_CELL_Y)}>Trend</th>
+                  {canAddDelete && <th className={cn("w-10 px-2", TABLE_CELL_Y)} aria-label="Remove" />}
                 </tr>
               </thead>
               <tbody>
                 {keywords.map((row, idx) => (
                   <tr
                     key={`${row.keyword}-${idx}`}
-                    className="border-b border-border/50 last:border-b-0 hover:bg-muted/50 transition-colors duration-100"
+                    className={TABLE_ROW_CLASS}
                   >
-                    <td className="py-1.5 px-4 text-foreground truncate min-w-0" title={row.keyword}>
+                    <td className={cn("px-4 text-foreground truncate min-w-0", TABLE_CELL_Y)} title={row.keyword}>
                       {row.keyword}
                     </td>
-                    <td className="py-1.5 px-4 text-right tabular-nums text-foreground">
+                    <td className={cn("px-4 text-right tabular-nums text-foreground", TABLE_CELL_Y)}>
                       {row.position.toFixed(1)}
                     </td>
-                    <td className="py-1.5 px-4 text-right tabular-nums">
+                    <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                       <span className={row.delta1d < 0 ? "text-positive" : row.delta1d > 0 ? "text-negative" : "text-muted-foreground"}>
                         {row.delta1d > 0 ? "+" : ""}{row.delta1d}
                       </span>
                     </td>
-                    <td className="py-1.5 px-4 text-right tabular-nums">
+                    <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                       <span className={row.delta7d < 0 ? "text-positive" : row.delta7d > 0 ? "text-negative" : "text-muted-foreground"}>
                         {row.delta7d > 0 ? "+" : ""}{row.delta7d}
                       </span>
                     </td>
-                    <td className="py-1.5 px-4 text-right">
+                    <td className={cn("px-4 text-right", TABLE_CELL_Y)}>
                       <MiniSparkline data={row.sparkData} />
                     </td>
                     {canAddDelete && (
-                      <td className="py-1.5 px-2 text-right">
+                      <td className={cn("px-2 text-right", TABLE_CELL_Y)}>
                         <button
                           type="button"
                           onClick={() => handleDelete(row)}

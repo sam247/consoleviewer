@@ -3,6 +3,12 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import {
+  TABLE_BASE_CLASS,
+  TABLE_CELL_Y,
+  TABLE_HEAD_CLASS,
+  TABLE_ROW_CLASS,
+} from "@/components/ui/table-styles";
 
 const STORAGE_KEY = "consoleview-cannibalisation-open";
 
@@ -119,15 +125,15 @@ export function CannibalisationCard({
               ) : (
                 <>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm table-fixed border-collapse">
-                      <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+                    <table className={TABLE_BASE_CLASS}>
+                      <thead className={TABLE_HEAD_CLASS}>
                         <tr>
-                          <th className="text-left px-4 py-1.5 pb-1.5 font-semibold min-w-0 w-[35%]">Query</th>
-                          <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-20">Impr</th>
-                          <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">Clicks</th>
-                          <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">#URLs</th>
-                          <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-24">Best pos</th>
-                          <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-20">Score</th>
+                          <th className={cn("text-left px-4 font-semibold min-w-0 w-[35%]", TABLE_CELL_Y)}>Query</th>
+                          <th className={cn("text-right px-4 font-semibold w-20", TABLE_CELL_Y)}>Impr</th>
+                          <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>Clicks</th>
+                          <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>#URLs</th>
+                          <th className={cn("text-right px-4 font-semibold w-24", TABLE_CELL_Y)}>Best pos</th>
+                          <th className={cn("text-right px-4 font-semibold w-20", TABLE_CELL_Y)}>Score</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -135,24 +141,24 @@ export function CannibalisationCard({
                           <tr
                             key={c.query}
                             onClick={() => setDrawerConflict(c)}
-                            className="border-b border-border/50 last:border-b-0 hover:bg-muted/50 cursor-pointer transition-colors duration-100"
+                            className={cn(TABLE_ROW_CLASS, "cursor-pointer")}
                           >
-                            <td className="py-1.5 px-4 text-foreground truncate min-w-0" title={c.query}>
+                            <td className={cn("px-4 text-foreground truncate min-w-0", TABLE_CELL_Y)} title={c.query}>
                               {c.query}
                             </td>
-                            <td className="py-1.5 px-4 text-right tabular-nums text-muted-foreground">
+                            <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                               {c.impressions.toLocaleString()}
                             </td>
-                            <td className="py-1.5 px-4 text-right tabular-nums text-muted-foreground">
+                            <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                               {c.clicks}
                             </td>
-                            <td className="py-1.5 px-4 text-right tabular-nums text-muted-foreground">
+                            <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                               {c.numUrls}
                             </td>
-                            <td className="py-1.5 px-4 text-right tabular-nums text-muted-foreground">
+                            <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                               {c.bestPosition.toFixed(1)}
                             </td>
-                            <td className="py-1.5 px-4 text-right tabular-nums text-muted-foreground">
+                            <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                               {Math.round(c.score)}
                             </td>
                           </tr>

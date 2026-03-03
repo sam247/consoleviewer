@@ -5,6 +5,13 @@ import { cn } from "@/lib/utils";
 import { classifyQuery } from "@/lib/ai-query-detection";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
+import {
+  TABLE_BASE_CLASS,
+  TABLE_CARD_CLASS,
+  TABLE_CELL_Y,
+  TABLE_HEAD_CLASS,
+  TABLE_ROW_CLASS,
+} from "@/components/ui/table-styles";
 
 export type TrendFilter = "all" | "growing" | "decaying" | "new" | "lost" | "highImprLowCtr" | "longForm" | "conversational";
 
@@ -121,7 +128,7 @@ function DataTableView({
     : ["all", "growing", "decaying", "new", "lost", "longForm", "conversational"];
 
   return (
-    <div className={cn("min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu p-0", className)}>
+    <div className={cn(TABLE_CARD_CLASS, "p-0", className)}>
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap">
         <div className="flex items-center gap-2 shrink-0 min-w-0">
           <span className="font-semibold text-sm text-foreground flex items-center gap-1">{title}{titleTooltip && <InfoTooltip title={titleTooltip} />}</span>
@@ -189,32 +196,32 @@ function DataTableView({
       </div>
       <div className="overflow-x-auto min-w-0">
         <div className="overflow-y-auto" style={{ maxHeight: BODY_MAX_HEIGHT }}>
-          <table className="w-full text-sm table-fixed">
-            <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+          <table className={TABLE_BASE_CLASS}>
+            <thead className={TABLE_HEAD_CLASS}>
               <tr>
-                <th className={cn("px-4 py-1.5 pb-1.5 font-semibold text-left min-w-0", hasPosition ? "w-[35%]" : "w-[40%]")}>
+                <th className={cn("px-4 font-semibold text-left min-w-0", TABLE_CELL_Y, hasPosition ? "w-[35%]" : "w-[40%]")}>
                   <button type="button" onClick={() => onSort("key")} className="hover:text-foreground transition-colors flex items-center gap-1">
                     Name {sortKey === "key" && (sortDir === "asc" ? "↑" : "↓")}
                   </button>
                 </th>
-                <th className={cn("px-4 py-1.5 pb-1.5 font-semibold text-right", hasPosition ? "w-[16%]" : "w-[20%]")}>
+                <th className={cn("px-4 font-semibold text-right", TABLE_CELL_Y, hasPosition ? "w-[16%]" : "w-[20%]")}>
                   <button type="button" onClick={() => onSort("clicks")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
                     Clicks {sortKey === "clicks" && (sortDir === "asc" ? "↑" : "↓")}
                   </button>
                 </th>
-                <th className={cn("px-4 py-1.5 pb-1.5 font-semibold text-right", hasPosition ? "w-[20%]" : "w-[20%]")}>
+                <th className={cn("px-4 font-semibold text-right", TABLE_CELL_Y, hasPosition ? "w-[20%]" : "w-[20%]")}>
                   <button type="button" onClick={() => onSort("impressions")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
                     Impr. {sortKey === "impressions" && (sortDir === "asc" ? "↑" : "↓")}
                   </button>
                 </th>
                 {hasPosition && (
-                  <th className="px-4 py-1.5 pb-1.5 font-semibold text-right w-14">
+                  <th className={cn("px-4 font-semibold text-right w-14", TABLE_CELL_Y)}>
                     <button type="button" onClick={() => onSort("position")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
                       Pos {sortKey === "position" && (sortDir === "asc" ? "↑" : "↓")}
                     </button>
                   </th>
                 )}
-                <th className="px-4 py-1.5 pb-1.5 font-semibold text-right w-16">
+                <th className={cn("px-4 font-semibold text-right w-16", TABLE_CELL_Y)}>
                   <button type="button" onClick={() => onSort("changePercent")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
                     Change {sortKey === "changePercent" && (sortDir === "asc" ? "↑" : "↓")}
                   </button>
@@ -233,30 +240,29 @@ function DataTableView({
                 <tr
                   key={row.key}
                   className={cn(
-                    "border-b border-border/50 transition-colors duration-100",
-                    onRowClick && "cursor-pointer hover:border-l-2 hover:border-l-chart-clicks border-l-transparent",
-                    "hover:bg-muted/50"
+                    TABLE_ROW_CLASS,
+                    onRowClick && "cursor-pointer border-l-2 border-l-transparent focus-visible:bg-accent/60 focus-visible:border-l-chart-clicks"
                   )}
                   onClick={() => onRowClick?.(row)}
                   role={onRowClick ? "button" : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
                   onKeyDown={onRowClick ? (e) => e.key === "Enter" && onRowClick(row) : undefined}
                 >
-                  <td className="px-4 py-1.5 truncate min-w-0" title={row.key}>
+                  <td className={cn("px-4 truncate min-w-0", TABLE_CELL_Y)} title={row.key}>
                     {row.key}
                   </td>
-                  <td className="px-4 py-1.5 text-right tabular-nums">
+                  <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                     {formatNum(row.clicks)}
                   </td>
-                  <td className="px-4 py-1.5 text-right tabular-nums">
+                  <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                     {formatNum(row.impressions)}
                   </td>
                   {hasPosition && (
-                    <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">
+                    <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                       {row.position != null ? row.position.toFixed(1) : "—"}
                     </td>
                   )}
-                  <td className="px-4 py-1.5 text-right">
+                  <td className={cn("px-4 text-right", TABLE_CELL_Y)}>
                     {row.changePercent != null ? (
                       <span
                         className={cn(
@@ -361,7 +367,7 @@ export function DataTable({
   const maxRows = _maxRows ?? INITIAL_VISIBLE;
   const visibleRows = expanded ? sorted : sorted.slice(0, maxRows);
   const hasMore = sorted.length > maxRows;
-  const moreCount = hasMore ? Math.min(maxRows, sorted.length - maxRows) : 0;
+  const moreCount = hasMore ? sorted.length - maxRows : 0;
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));

@@ -2,6 +2,12 @@
 
 import { cn } from "@/lib/utils";
 import type { DataTableRow } from "@/components/data-table";
+import {
+  TABLE_BASE_CLASS,
+  TABLE_CELL_Y,
+  TABLE_HEAD_CLASS,
+  TABLE_ROW_CLASS,
+} from "@/components/ui/table-styles";
 
 function formatNum(n: number): string {
   if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
@@ -67,22 +73,22 @@ export function TableFullViewModal({
           </div>
         </div>
         <div className="overflow-auto min-h-0 flex-1">
-          <table className="w-full text-sm table-fixed">
-            <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+          <table className={TABLE_BASE_CLASS}>
+            <thead className={TABLE_HEAD_CLASS}>
               <tr>
-                <th className={cn("px-4 py-1.5 pb-1.5 font-semibold text-left", hasPosition ? "w-[35%]" : "w-[40%]")}>
+                <th className={cn("px-4 font-semibold text-left", TABLE_CELL_Y, hasPosition ? "w-[35%]" : "w-[40%]")}>
                   Name
                 </th>
-                <th className={cn("px-4 py-1.5 pb-1.5 font-semibold text-right", hasPosition ? "w-[16%]" : "w-[20%]")}>
+                <th className={cn("px-4 font-semibold text-right", TABLE_CELL_Y, hasPosition ? "w-[16%]" : "w-[20%]")}>
                   Clicks
                 </th>
-                <th className={cn("px-4 py-1.5 pb-1.5 font-semibold text-right", hasPosition ? "w-[20%]" : "w-[20%]")}>
+                <th className={cn("px-4 font-semibold text-right", TABLE_CELL_Y, hasPosition ? "w-[20%]" : "w-[20%]")}>
                   Impr.
                 </th>
                 {hasPosition && (
-                  <th className="px-4 py-1.5 pb-1.5 font-semibold text-right w-14">Pos</th>
+                  <th className={cn("px-4 font-semibold text-right w-14", TABLE_CELL_Y)}>Pos</th>
                 )}
-                <th className="px-4 py-1.5 pb-1.5 font-semibold text-right w-16">Change</th>
+                <th className={cn("px-4 font-semibold text-right w-16", TABLE_CELL_Y)}>Change</th>
               </tr>
             </thead>
             <tbody>
@@ -96,23 +102,23 @@ export function TableFullViewModal({
                 rows.map((row) => (
                   <tr
                     key={row.key}
-                    className="border-b border-border/50 hover:bg-accent/60 transition-colors duration-100"
+                    className={TABLE_ROW_CLASS}
                   >
-                    <td className="px-4 py-1.5 truncate min-w-0" title={row.key}>
+                    <td className={cn("px-4 truncate min-w-0", TABLE_CELL_Y)} title={row.key}>
                       {row.key}
                     </td>
-                    <td className="px-4 py-1.5 text-right tabular-nums">
+                    <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                       {formatNum(row.clicks)}
                     </td>
-                    <td className="px-4 py-1.5 text-right tabular-nums">
+                    <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                       {formatNum(row.impressions)}
                     </td>
                     {hasPosition && (
-                      <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">
+                      <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                         {row.position != null ? row.position.toFixed(1) : "—"}
                       </td>
                     )}
-                    <td className="px-4 py-1.5 text-right">
+                    <td className={cn("px-4 text-right", TABLE_CELL_Y)}>
                       {row.changePercent != null ? (
                         <span
                           className={cn(

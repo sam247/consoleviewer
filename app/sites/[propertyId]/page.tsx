@@ -19,12 +19,17 @@ import { OpportunityIntelligence } from "@/components/opportunity-intelligence";
 import { OpportunityIndex } from "@/components/opportunity-index";
 import { useDateRange } from "@/contexts/date-range-context";
 import { decodePropertyId } from "@/types/gsc";
-import { getMockTrackedKeywords } from "@/lib/mock-rank";
 import { exportToCsv, exportChartToPng, formatExportFilename } from "@/lib/export-csv";
 import { cn } from "@/lib/utils";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
+import {
+  TABLE_BASE_CLASS,
+  TABLE_CELL_Y,
+  TABLE_HEAD_CLASS,
+  TABLE_ROW_CLASS,
+} from "@/components/ui/table-styles";
 
 async function fetchSiteDetail(
   siteUrl: string,
@@ -208,7 +213,7 @@ function MovementIntelligence({
   };
 
   return (
-    <section aria-label="Movement intelligence" className="rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu">
+    <section aria-label="Movement intelligence" className="rounded-lg border border-border bg-surface overflow-hidden transition-colors duration-[120ms] hover:border-foreground/20">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <h2 className="text-sm font-semibold text-foreground">Movement intelligence</h2>
         <div className="flex gap-0.5 rounded-md border border-input bg-background p-0.5">
@@ -603,7 +608,7 @@ export default function SiteDetailPage({
             {data?.daily?.length > 0 && (
               <section aria-label="Trend" className="space-y-4">
                 <div className="flex flex-col lg:flex-row gap-4 min-w-0">
-                  <div className="rounded-lg border border-border bg-surface transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu min-w-0 flex-1 flex flex-col min-h-[320px]">
+                  <div className="rounded-lg border border-border bg-surface transition-colors duration-[120ms] hover:border-foreground/20 min-w-0 flex-1 flex flex-col min-h-[320px]">
                     {data?.summary && (
                       <MomentumScoreCard
                         variant="strip"
@@ -713,7 +718,6 @@ export default function SiteDetailPage({
                   )}
                   <div className="min-w-0">
                     <TrackedKeywordsSection
-                      keywords={getMockTrackedKeywords(siteUrl)}
                       exportFilename={formatExportFilename(siteSlug, "keywords-tracked", startDate, endDate)}
                     />
                   </div>
@@ -951,7 +955,7 @@ export default function SiteDetailPage({
                     const siteTrend = data?.summary?.clicksChangePercent;
                     const hasGroups = contentGroups.length > 0;
                     return (
-                      <div className="rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu flex flex-col flex-1 min-h-0">
+                      <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors duration-[120ms] hover:border-foreground/20 flex flex-col flex-1 min-h-0">
                         <div className="border-b border-border px-4 py-2.5 shrink-0">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">Content groups<InfoTooltip title="Group pages by path segment; filter by regex to analyse a subset" /></h3>
@@ -1088,23 +1092,23 @@ export default function SiteDetailPage({
                           )}
                         </div>
                         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
-                          <table className="w-full text-sm table-fixed">
-                            <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+                          <table className={TABLE_BASE_CLASS}>
+                            <thead className={TABLE_HEAD_CLASS}>
                               <tr>
-                                <th className="px-4 py-1.5 pb-1.5 font-semibold text-left min-w-0 w-[40%]">Name</th>
-                                <th className="px-4 py-1.5 pb-1.5 font-semibold text-right w-[20%]">Clicks</th>
-                                <th className="px-4 py-1.5 pb-1.5 font-semibold text-right w-[20%]">Impr.</th>
-                                <th className="px-4 py-1.5 pb-1.5 font-semibold text-right w-[20%]">Change</th>
+                                <th className={cn("px-4 font-semibold text-left min-w-0 w-[40%]", TABLE_CELL_Y)}>Name</th>
+                                <th className={cn("px-4 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Clicks</th>
+                                <th className={cn("px-4 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Impr.</th>
+                                <th className={cn("px-4 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Change</th>
                               </tr>
                             </thead>
                             <tbody>
                               {hasGroups ? (
                                 contentGroups.slice(0, 10).map((g) => (
-                                  <tr key={g.label} className="border-b border-border/50 transition-colors duration-100 hover:bg-muted/50">
-                                    <td className="px-4 py-1.5 truncate min-w-0 text-foreground" title={g.label}>/{g.label}</td>
-                                    <td className="px-4 py-1.5 text-right tabular-nums">{formatNum(g.clicks)}</td>
-                                    <td className="px-4 py-1.5 text-right tabular-nums">{formatNum(g.impressions)}</td>
-                                    <td className="px-4 py-1.5 text-right">
+                                  <tr key={g.label} className={TABLE_ROW_CLASS}>
+                                    <td className={cn("px-4 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={g.label}>/{g.label}</td>
+                                    <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>{formatNum(g.clicks)}</td>
+                                    <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>{formatNum(g.impressions)}</td>
+                                    <td className={cn("px-4 text-right", TABLE_CELL_Y)}>
                                       {g.avgChangePercent != null ? (
                                         <span className={cn("tabular-nums", g.avgChangePercent >= 0 ? "text-positive" : "text-negative")}>
                                           {g.avgChangePercent >= 0 ? "+" : ""}{g.avgChangePercent}%

@@ -12,9 +12,7 @@ import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
 import { useSparkSeries } from "@/contexts/spark-series-context";
 import { getAiFooterLine } from "@/lib/ai-footer-insight";
-import { getMockTrackedKeywords } from "@/lib/mock-rank";
 import { cn } from "@/lib/utils";
-import { RankPopover } from "./rank-popover";
 
 interface SiteCardProps {
   metrics: SiteOverviewMetrics;
@@ -251,19 +249,19 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
   const domain = faviconDomain(metrics.siteUrl);
   const recent = getRecentDaySummary(metrics.daily);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [rankPopoverOpen, setRankPopoverOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const rankTriggerRef = useRef<HTMLButtonElement>(null);
 
   const aiFooterLine = useMemo(
     () =>
-      getAiFooterLine({
-        clicksChangePercent: metrics.clicksChangePercent,
-        impressionsChangePercent: metrics.impressionsChangePercent,
-        avgTrackedRankDelta: metrics.avgTrackedRankDelta ?? null,
-        keywords: getMockTrackedKeywords(metrics.siteUrl).map((k) => ({ keyword: k.keyword, delta7d: k.delta7d })),
-      }),
-    [metrics.siteUrl, metrics.clicksChangePercent, metrics.impressionsChangePercent, metrics.avgTrackedRankDelta]
+      hasKeywords
+        ? getAiFooterLine({
+            clicksChangePercent: metrics.clicksChangePercent,
+            impressionsChangePercent: metrics.impressionsChangePercent,
+            avgTrackedRankDelta: metrics.avgTrackedRankDelta ?? null,
+            keywords: [],
+          })
+        : null,
+    [hasKeywords, metrics.clicksChangePercent, metrics.impressionsChangePercent, metrics.avgTrackedRankDelta]
   );
 
   useEffect(() => {
@@ -305,8 +303,8 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
       onMouseEnter={prefetchDetail}
       title={metrics.siteUrl}
       className={cn(
-        "block rounded-lg border border-border bg-surface p-5 transition-all duration-150 cursor-pointer",
-        "hover:border-foreground/20 hover:shadow-sm hover:-translate-y-0.5",
+        "block rounded-lg border border-border bg-surface p-5 transition-colors duration-150 cursor-pointer",
+        "hover:border-foreground/20 hover:shadow-sm",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       )}
     >
@@ -402,16 +400,7 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
           <div className="mt-1">
             {/* Line 2: Avg rank */}
             {hasKeywords && metrics.avgTrackedRank != null ? (
-              <button
-                ref={rankTriggerRef}
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setRankPopoverOpen(true);
-                }}
-                className="text-left text-xs text-muted-foreground cursor-pointer block hover:text-foreground transition-colors"
-              >
+              <p className="text-left text-xs text-muted-foreground block">
                 Avg rank: {metrics.avgTrackedRank.toFixed(1)}
                 {metrics.avgTrackedRankDelta != null && (
                   <span className={metrics.avgTrackedRankDelta < 0 ? " text-positive" : metrics.avgTrackedRankDelta > 0 ? " text-negative" : ""}>
@@ -419,7 +408,7 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
                     {Math.abs(metrics.avgTrackedRankDelta).toFixed(1)})
                   </span>
                 )}
-              </button>
+              </p>
             ) : (
               <p className="text-xs text-muted-foreground">Avg rank: —</p>
             )}
@@ -435,24 +424,18 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
                   }}
                   className="text-muted-foreground hover:text-foreground hover:underline transition-colors"
                 >
-                  Add keywords +
+                  Connect SerpRobot to add keywords
                 </button>
               ) : aiFooterLine ? (
                 aiFooterLine
               ) : (
-                "Rank stable; traffic flat."
+                "No keyword data yet."
               )}
             </p>
           </div>
         </div>
         <StarButton siteUrl={metrics.siteUrl} />
       </div>
-      <RankPopover
-        keywords={getMockTrackedKeywords(metrics.siteUrl).slice(0, 5)}
-        anchorRef={rankTriggerRef}
-        open={rankPopoverOpen}
-        onClose={() => setRankPopoverOpen(false)}
-      />
     </Link>
   );
 }

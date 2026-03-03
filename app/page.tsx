@@ -10,7 +10,6 @@ import { FilterSelect, type FilterKey } from "@/components/filter-select";
 import { useDateRange } from "@/contexts/date-range-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
-import { attachMockRankToMetrics } from "@/lib/mock-rank";
 import type { SiteOverviewMetrics } from "@/types/gsc";
 
 async function fetchOverview(
@@ -96,10 +95,7 @@ export default function OverviewPage() {
       fetchOverview(startDate, endDate, priorStartDate, priorEndDate),
   });
 
-  const metrics = useMemo(
-    () => attachMockRankToMetrics(rawMetrics, 12),
-    [rawMetrics]
-  );
+  const metrics = useMemo(() => rawMetrics, [rawMetrics]);
 
   const notHidden = useMemo(
     () => metrics.filter((m) => !hiddenSet.has(m.siteUrl)),

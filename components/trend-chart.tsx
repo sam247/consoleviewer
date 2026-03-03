@@ -14,6 +14,11 @@ import {
 } from "recharts";
 import { useSparkSeries, type SparkSeriesKey } from "@/contexts/spark-series-context";
 import { cn } from "@/lib/utils";
+import {
+  CHART_AXIS_TICK,
+  CHART_GRID_PROPS,
+  CHART_TOOLTIP_STYLE,
+} from "@/components/ui/chart-frame";
 
 export interface SparklineDataPoint {
   date: string;
@@ -187,10 +192,10 @@ export function TrendChart({
       <div className={cn("w-full", className)} style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={chartMargin}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} vertical horizontal />
+            <CartesianGrid {...CHART_GRID_PROPS} />
             <XAxis
               dataKey="date"
-              tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
+              tick={CHART_AXIS_TICK}
               tickFormatter={(v) => {
                 const d = new Date(v);
                 return `${d.getMonth() + 1}/${d.getDate()}`;
@@ -200,17 +205,11 @@ export function TrendChart({
               width={28}
               domain={yDomain}
               allowDataOverflow
-              tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
+              tick={CHART_AXIS_TICK}
               tickFormatter={(v) => `${Math.round(Number(v) * 100)}%`}
             />
             <Tooltip
-              contentStyle={{
-                fontSize: 12,
-                padding: "8px 12px",
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-              }}
+              contentStyle={CHART_TOOLTIP_STYLE}
               labelFormatter={(v) => new Date(v).toLocaleDateString()}
               content={({ active, payload, label }) => {
                 if (!active || !label || !payload?.length) return null;
@@ -255,7 +254,7 @@ export function TrendChart({
                 type="monotone"
                 dataKey={`_norm_${s.key}`}
                 stroke={s.stroke}
-                strokeWidth={s.key === "clicks" ? 2.5 : 1.5}
+                strokeWidth={s.key === "clicks" ? 2 : 1.2}
                 strokeOpacity={s.key === "impressions" ? 0.85 : 1}
                 dot={false}
                 name={s.label}
@@ -300,12 +299,12 @@ export function TrendChart({
               <stop offset="100%" stopColor={CHART_CLICKS} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} vertical horizontal />
+          <CartesianGrid {...CHART_GRID_PROPS} />
           <ReferenceLine y={0} stroke="var(--border)" strokeOpacity={0.6} />
           <XAxis
             dataKey="date"
             axisLine={{ stroke: "var(--border)", strokeOpacity: 0.7 }}
-            tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
+            tick={CHART_AXIS_TICK}
             tickFormatter={(v) => {
               const d = new Date(v);
               return `${d.getMonth() + 1}/${d.getDate()}`;
@@ -316,7 +315,7 @@ export function TrendChart({
             hide={false}
             domain={yDomain ?? ["auto", "auto"]}
             tickCount={6}
-            tick={{ fill: "var(--muted-foreground)", fontSize: 10, opacity: 0.9 }}
+            tick={{ ...CHART_AXIS_TICK, opacity: 0.9 }}
             tickFormatter={yAxisTickFormatter}
             label={{ value: "Clicks / Impressions", angle: -90, position: "insideLeft", style: { fill: "var(--muted-foreground)", fontSize: 9 } }}
           />
@@ -372,7 +371,7 @@ export function TrendChart({
           {showClicks && (
             <>
               <Area type="monotone" dataKey="clicks" fill="url(#trend-fill-clicks)" stroke="none" />
-              <Line type="monotone" dataKey="clicks" stroke={CHART_CLICKS} strokeWidth={2.5} dot={false} activeDot={{ r: 5, strokeWidth: 2, fill: CHART_CLICKS, stroke: "var(--surface)" }} name="Clicks" />
+              <Line type="monotone" dataKey="clicks" stroke={CHART_CLICKS} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, fill: CHART_CLICKS, stroke: "var(--surface)" }} name="Clicks" />
               {compareToPrior && priorData?.length && (
                 <Line type="monotone" dataKey="clicksPrior" stroke={CHART_CLICKS} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="4 4" strokeOpacity={0.5} name="Prior" />
               )}
@@ -380,7 +379,7 @@ export function TrendChart({
           )}
           {showImpr && (
             <>
-              <Line type="monotone" dataKey="impressions" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} activeDot={{ r: 4 }} strokeDasharray="3 3" strokeOpacity={0.65} name="Impressions" />
+              <Line type="monotone" dataKey="impressions" stroke={CHART_IMPRESSIONS} strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} strokeDasharray="3 3" strokeOpacity={0.7} name="Impressions" />
               {compareToPrior && priorData?.length && (
                 <Line type="monotone" dataKey="impressionsPrior" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="5 5" strokeOpacity={0.4} name="Prior" />
               )}
@@ -388,7 +387,7 @@ export function TrendChart({
           )}
           {showCtr && (
             <>
-              <Line type="monotone" dataKey="ctr" stroke={CHART_CTR} strokeWidth={1.5} dot={false} activeDot={{ r: 4 }} name="CTR" />
+              <Line type="monotone" dataKey="ctr" stroke={CHART_CTR} strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} name="CTR" />
               {compareToPrior && priorData?.length && (
                 <Line type="monotone" dataKey="ctrPrior" stroke={CHART_CTR} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
               )}
@@ -396,7 +395,7 @@ export function TrendChart({
           )}
           {showPosition && (
             <>
-              <Line type="monotone" dataKey="position" stroke={CHART_POSITION} strokeWidth={1.5} dot={false} activeDot={{ r: 4 }} name="Avg position" />
+              <Line type="monotone" dataKey="position" stroke={CHART_POSITION} strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} name="Avg position" />
               {compareToPrior && priorData?.length && (
                 <Line type="monotone" dataKey="positionPrior" stroke={CHART_POSITION} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
               )}

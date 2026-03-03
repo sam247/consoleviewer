@@ -12,6 +12,12 @@ import {
   CartesianGrid,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import {
+  ChartFrame,
+  CHART_AXIS_TICK,
+  CHART_GRID_PROPS,
+  CHART_TOOLTIP_STYLE,
+} from "@/components/ui/chart-frame";
 
 interface DailyPoint {
   date: string;
@@ -58,12 +64,13 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
   if (dataWithPosition.length === 0) return null;
 
   return (
-    <div className={cn("rounded-lg border border-border bg-surface overflow-hidden flex flex-col min-h-[280px] transition-colors hover:border-foreground/20", className)}>
-      <div className="border-b border-border px-4 py-3 shrink-0">
-        <h3 className="text-sm font-semibold text-foreground">Position volatility</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Site avg position over time · Top 10 / Top 20 thresholds
-        </p>
+    <ChartFrame
+      title="Position volatility"
+      subtitle="Site avg position over time · Top 10 / Top 20 thresholds"
+      className={cn("flex flex-col min-h-[280px]", className)}
+      bodyClassName="shrink-0"
+    >
+      <div>
         {summaryStats && (
           <p className="text-xs text-muted-foreground mt-1 tabular-nums">
             Avg position drift: {summaryStats.max - summaryStats.min} (range {summaryStats.min.toFixed(1)}–{summaryStats.max.toFixed(1)}) · Max spike: {summaryStats.maxSpike.toFixed(1)}
@@ -76,13 +83,13 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
           </p>
         )}
       </div>
-      <div className="shrink-0 px-4 py-3 min-w-0" style={{ height: 180 }}>
+      <div className="shrink-0 min-w-0" style={{ height: 180 }}>
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={dataWithPosition} margin={{ top: 4, right: 8, left: 36, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <CartesianGrid {...CHART_GRID_PROPS} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10 }}
+              tick={CHART_AXIS_TICK}
               tickFormatter={(v) => {
                 const d = new Date(v);
                 return `${d.getMonth() + 1}/${d.getDate()}`;
@@ -91,29 +98,23 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
             <YAxis
               width={36}
               domain={["dataMin", "dataMax"]}
-              tick={{ fontSize: 10 }}
+              tick={CHART_AXIS_TICK}
               tickFormatter={(v) => String(Number(v).toFixed(1))}
               reversed
             />
             <Tooltip
               cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
-              contentStyle={{
-                fontSize: 11,
-                padding: "6px 10px",
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-              }}
+              contentStyle={CHART_TOOLTIP_STYLE}
               labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
               formatter={(value: number | undefined) => [(value ?? 0).toFixed(1), "Position"]}
             />
-            <ReferenceLine y={10} stroke="var(--chart-ctr)" strokeDasharray="3 3" strokeOpacity={0.8} />
-            <ReferenceLine y={20} stroke="var(--muted-foreground)" strokeDasharray="3 3" strokeOpacity={0.6} />
+            <ReferenceLine y={10} stroke="var(--chart-ctr)" strokeDasharray="2 3" strokeOpacity={0.75} strokeWidth={1} />
+            <ReferenceLine y={20} stroke="var(--muted-foreground)" strokeDasharray="2 3" strokeOpacity={0.55} strokeWidth={1} />
             <Line
               type="monotone"
               dataKey="position"
               stroke="var(--chart-position)"
-              strokeWidth={2}
+              strokeWidth={1.8}
               strokeOpacity={1}
               dot={false}
               name="Avg position"
@@ -121,6 +122,6 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
           </LineChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </ChartFrame>
   );
 }

@@ -6,10 +6,18 @@ export interface MomentumInput {
   top10ChangePercent?: number;
 }
 
+export interface MomentumSegment {
+  text: string;
+  positiveIsGood?: boolean;
+  delta?: number;
+}
+
 export interface MomentumResult {
   score: number;
   label: "Strong" | "Moderate" | "Neutral" | "Declining";
   subline: string;
+  /** For strip variant: segments with delta coloring (green/red) */
+  segments: MomentumSegment[];
 }
 
 const W_CLICKS = 0.4;
@@ -37,14 +45,24 @@ export function computeMomentumScore(input: MomentumInput): MomentumResult {
   else if (score < -10) label = "Declining";
 
   const parts: string[] = [];
-  if (input.clicksChangePercent != null) parts.push(`Clicks ${input.clicksChangePercent >= 0 ? "+" : ""}${input.clicksChangePercent}%`);
+  const segments: MomentumSegment[] = [];
+  if (input.clicksChangePercent != null) {
+    const t = `Clicks ${input.clicksChangePercent >= 0 ? "+" : ""}${input.clicksChangePercent}%`;
+    parts.push(t);
+    segments.push({ text: t, delta: input.clicksChangePercent, positiveIsGood: true });
+  }
   if (input.positionChangePercent != null) {
-    parts.push(input.positionChangePercent <= 0 ? "position improving" : "position down");
+    const improving = input.positionChangePercent <= 0;
+    const t = improving ? "position improving" : "position down";
+    parts.push(t);
+    segments.push({ text: t, positiveIsGood: improving });
   }
   if (input.queryCountChangePercent != null) {
-    parts.push(`Queries ${input.queryCountChangePercent >= 0 ? "+" : ""}${input.queryCountChangePercent}%`);
+    const t = `Queries ${input.queryCountChangePercent >= 0 ? "+" : ""}${input.queryCountChangePercent}%`;
+    parts.push(t);
+    segments.push({ text: t, delta: input.queryCountChangePercent, positiveIsGood: true });
   }
   const subline = parts.length > 0 ? parts.join(" · ") : "No change data";
 
-  return { score, label, subline };
+  return { score, label, subline, segments };
 }

@@ -59,7 +59,7 @@ const SERIES_CONFIG: { key: SparkSeriesKey; dataKey: keyof SparklineDataPoint; s
   { key: "position", dataKey: "position", stroke: CHART_POSITION, label: "Avg position" },
 ];
 
-const CHART_MARGIN = { top: 6, right: 6, left: 36, bottom: 18 };
+const CHART_MARGIN = { top: 4, right: 4, left: 28, bottom: 12 };
 
 /** Normalize a series to 0-1 range so multiple metrics are all visible (each uses full vertical scale) */
 function normalizeSeriesValues(values: number[]): number[] {
@@ -175,7 +175,7 @@ export function TrendChart({
               }}
             />
             <YAxis
-              width={36}
+              width={28}
               domain={yDomain}
               allowDataOverflow
               tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
@@ -291,7 +291,7 @@ export function TrendChart({
             }}
           />
           <YAxis
-            width={36}
+            width={28}
             hide={false}
             domain={["auto", "auto"]}
             tickCount={6}

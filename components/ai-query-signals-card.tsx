@@ -52,7 +52,7 @@ export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) 
 
   return (
     <div className="rounded-lg border border-border bg-surface flex flex-col min-h-0 transition-colors hover:border-foreground/20">
-      <div className="border-b border-border px-4 py-3 shrink-0">
+      <div className="border-b border-border px-4 py-2 shrink-0">
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="text-sm font-semibold text-foreground">
             AI-style query signals
@@ -66,7 +66,7 @@ export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) 
           of clicks · Conversational: {stats.pctConvQueries}% of queries
         </p>
       </div>
-      <div className="flex-1 min-h-0 flex flex-col gap-3 px-4 py-3 overflow-auto">
+      <div className="flex-1 min-h-0 flex flex-col gap-3 px-4 py-2 overflow-auto">
         {stats.top5.length > 0 && (
           <div className="shrink-0">
             <p className="text-xs text-muted-foreground mb-1">Top 5 LLM-style queries</p>

@@ -12,7 +12,7 @@ interface MomentumScoreCardProps {
 }
 
 export function MomentumScoreCard({ summary, className, variant = "card" }: MomentumScoreCardProps) {
-  const { score, label, subline } = useMemo(() => computeMomentumScore(summary), [summary]);
+  const { score, label, subline, segments } = useMemo(() => computeMomentumScore(summary), [summary]);
 
   const labelStyle =
     label === "Strong"
@@ -36,8 +36,33 @@ export function MomentumScoreCard({ summary, className, variant = "card" }: Mome
           <span>Momentum</span>
         </div>
         <div className={cn("text-sm font-semibold tabular-nums shrink-0", labelStyle)}>{label}</div>
-        <div className="text-xs text-muted-foreground/90 truncate min-w-0" title={subline}>
-          {subline}
+        <div className="flex items-center gap-1.5 text-xs truncate min-w-0 flex-wrap" title={subline}>
+          {segments.length > 0
+            ? segments.map((seg, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "tabular-nums",
+                    seg.delta != null && seg.positiveIsGood !== undefined
+                      ? seg.positiveIsGood
+                        ? seg.delta >= 0
+                          ? "text-positive"
+                          : "text-negative"
+                        : seg.delta <= 0
+                          ? "text-positive"
+                          : "text-negative"
+                      : seg.positiveIsGood !== undefined
+                        ? seg.positiveIsGood
+                          ? "text-positive"
+                          : "text-negative"
+                        : "text-muted-foreground/90"
+                  )}
+                >
+                  {segments.length > 1 && i > 0 ? " · " : ""}
+                  {seg.text}
+                </span>
+              ))
+            : subline}
         </div>
         <div className="text-xs text-muted-foreground/80 tabular-nums shrink-0 ml-auto">
           Score {score > 0 ? "+" : ""}{score}

@@ -625,7 +625,7 @@ export default function SiteDetailPage({
                       <SparkToggles />
                     </div>
                   </div>
-                  <div ref={trendChartContainerRef} className="flex-1 min-h-0 px-4 py-2">
+                  <div ref={trendChartContainerRef} className="flex-1 min-h-0 px-4 pb-1 pt-1">
                     <TrendChart
                       data={data.daily}
                       priorData={data?.priorDaily}
@@ -650,8 +650,8 @@ export default function SiteDetailPage({
                     </div>
                   )}
                 </div>
-                {/* AI-Style Query Signals + Tracked Keywords: two-column cell-driven */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+                {/* AI-Style Query Signals + Tracked Keywords: align columns with row above (left flex, right 320px) */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-stretch min-w-0">
                   {queriesRows.length > 0 && (
                     <AiQuerySignalsCard queries={queriesRows} daily={data?.daily} />
                   )}

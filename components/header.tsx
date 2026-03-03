@@ -54,14 +54,14 @@ export function Header({
                 />
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-3 md:gap-4 min-h-9">
+            <div className="flex shrink-0 items-center gap-2 md:gap-3 min-h-9 h-9">
               {sortSelect}
               {filterSelect}
               {showShare && (
                 <button
                   type="button"
                   onClick={() => setShareOpen(true)}
-                  className="flex items-center rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground min-h-9"
+                  className="flex h-9 items-center rounded-md border border-border px-3 py-0 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   Share
                 </button>

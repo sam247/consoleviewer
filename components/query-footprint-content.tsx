@@ -48,7 +48,7 @@ export function QueryFootprintContent({
 
   return (
     <div className={rootClassName}>
-      <div className="border-b border-border px-4 py-3">
+      <div className="border-b border-border px-4 py-2">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">
@@ -80,7 +80,7 @@ export function QueryFootprintContent({
         </div>
       </div>
 
-      <div className="flex flex-col px-4 py-3 min-w-0 overflow-visible">
+      <div className="flex flex-col px-4 pt-2 pb-2 min-w-0 overflow-visible">
         {view === "total" ? (
           <div className="flex flex-col gap-3">
             <div className="flex h-2 w-full rounded-sm overflow-hidden bg-muted/30 shrink-0">

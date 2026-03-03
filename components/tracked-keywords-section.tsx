@@ -63,7 +63,7 @@ export function TrackedKeywordsSection({ keywords: mockKeywords }: TrackedKeywor
       className="rounded-lg border border-border bg-surface flex flex-col min-h-0 transition-colors hover:border-foreground/20 min-w-0"
       aria-label="Keywords tracked"
     >
-      <div className="border-b border-border px-4 py-3 shrink-0">
+      <div className="border-b border-border px-4 py-2 shrink-0">
         <h3 className="text-sm font-semibold text-foreground">Keywords tracked</h3>
         {showConnectMessage && (
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -71,7 +71,7 @@ export function TrackedKeywordsSection({ keywords: mockKeywords }: TrackedKeywor
           </p>
         )}
       </div>
-      <div className="flex-1 min-h-0 overflow-auto px-4 py-3">
+      <div className="flex-1 min-h-0 overflow-auto px-4 py-2">
         {keywords.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No keywords yet. Connect SerpRobot in Settings to track keywords.

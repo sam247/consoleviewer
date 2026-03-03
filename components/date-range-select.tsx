@@ -35,7 +35,7 @@ export function DateRangeSelect() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex min-h-9 items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm",
+          "flex h-9 items-center gap-1 rounded-md border border-input bg-background px-3 py-0 text-sm",
           "hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
         )}
       >

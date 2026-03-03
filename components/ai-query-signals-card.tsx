@@ -76,7 +76,7 @@ export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) 
               {stats.top5.map((r) => (
                 <li
                   key={r.key}
-                  className="truncate text-foreground tabular-nums min-w-0"
+                  className="truncate text-foreground tabular-nums min-w-0 rounded px-2 py-1 -mx-2 transition-colors duration-100 hover:bg-muted/50"
                   title={r.key}
                 >
                   <span className="text-muted-foreground mr-1">

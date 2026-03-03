@@ -174,14 +174,14 @@ export function TrackedKeywordsSection({ keywords: mockKeywords, exportFilename 
         ) : (
           <div className="overflow-x-auto min-w-0">
             <table className="w-full text-sm table-fixed border-collapse">
-              <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left py-3 px-4 text-muted-foreground font-medium">Keyword</th>
-                  <th className="text-right py-3 px-4 text-muted-foreground font-medium w-20">Position</th>
-                  <th className="text-right py-3 px-4 text-muted-foreground font-medium w-16">1D Δ</th>
-                  <th className="text-right py-3 px-4 text-muted-foreground font-medium w-16">7D Δ</th>
-                  <th className="text-right py-3 px-4 text-muted-foreground font-medium w-20">Trend</th>
-                  {canAddDelete && <th className="w-10" aria-label="Remove" />}
+              <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+                <tr>
+                  <th className="text-left px-4 py-1.5 pb-1.5 font-semibold min-w-0 w-[35%]">Keyword</th>
+                  <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-20">Position</th>
+                  <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">1D Δ</th>
+                  <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">7D Δ</th>
+                  <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-20">Trend</th>
+                  {canAddDelete && <th className="w-10 px-2 py-1.5 pb-1.5" aria-label="Remove" />}
                 </tr>
               </thead>
               <tbody>
@@ -190,27 +190,27 @@ export function TrackedKeywordsSection({ keywords: mockKeywords, exportFilename 
                     key={`${row.keyword}-${idx}`}
                     className="border-b border-border/50 last:border-b-0 hover:bg-muted/50 transition-colors duration-100"
                   >
-                    <td className="py-2.5 px-4 text-foreground truncate" title={row.keyword}>
+                    <td className="py-1.5 px-4 text-foreground truncate min-w-0" title={row.keyword}>
                       {row.keyword}
                     </td>
-                    <td className="py-2.5 px-4 text-right tabular-nums text-foreground">
+                    <td className="py-1.5 px-4 text-right tabular-nums text-foreground">
                       {row.position.toFixed(1)}
                     </td>
-                    <td className="py-2.5 px-4 text-right tabular-nums">
+                    <td className="py-1.5 px-4 text-right tabular-nums">
                       <span className={row.delta1d < 0 ? "text-positive" : row.delta1d > 0 ? "text-negative" : "text-muted-foreground"}>
                         {row.delta1d > 0 ? "+" : ""}{row.delta1d}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 text-right tabular-nums">
+                    <td className="py-1.5 px-4 text-right tabular-nums">
                       <span className={row.delta7d < 0 ? "text-positive" : row.delta7d > 0 ? "text-negative" : "text-muted-foreground"}>
                         {row.delta7d > 0 ? "+" : ""}{row.delta7d}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 text-right">
+                    <td className="py-1.5 px-4 text-right">
                       <MiniSparkline data={row.sparkData} />
                     </td>
                     {canAddDelete && (
-                      <td className="py-2.5 px-2 text-right">
+                      <td className="py-1.5 px-2 text-right">
                         <button
                           type="button"
                           onClick={() => handleDelete(row)}

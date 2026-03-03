@@ -23,6 +23,7 @@ import { getMockTrackedKeywords } from "@/lib/mock-rank";
 import { exportToCsv, exportChartToPng, formatExportFilename } from "@/lib/export-csv";
 import { cn } from "@/lib/utils";
 import { InfoTooltip } from "@/components/info-tooltip";
+import { TableFullViewModal } from "@/components/table-full-view-modal";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
 
 async function fetchSiteDetail(
@@ -324,6 +325,7 @@ export default function SiteDetailPage({
   const [addedMetrics, setAddedMetrics] = useState<[AddMetricId, AddMetricId]>([null, null]);
   const [addMetricModalOpen, setAddMetricModalOpen] = useState(false);
   const [addMetricSlotTarget, setAddMetricSlotTarget] = useState<0 | 1 | null>(null);
+  const [contentGroupsFullViewOpen, setContentGroupsFullViewOpen] = useState(false);
   useEffect(() => {
     try {
       const raw = typeof localStorage !== "undefined" ? localStorage.getItem(SEGMENTS_KEY) : null;
@@ -867,15 +869,17 @@ export default function SiteDetailPage({
                       </button>
                     </div>
                     {dailyForCharts.length > 0 && (
-                      <div className="px-4 pb-3 pt-0 flex-1 min-h-[120px] w-full min-w-0 border-t border-border/50">
-                        <p className="text-[10px] text-muted-foreground mb-1">Performance trend</p>
-                        <TrendChart
-                          data={dailyForCharts}
-                          height={120}
-                          showImpressions
-                          className="min-w-0 w-full"
-                          margin={{ right: 2, left: 20 }}
-                        />
+                      <div className="flex-1 min-h-[120px] w-full min-w-0 border-t border-border/50 flex flex-col">
+                        <p className="text-[10px] text-muted-foreground mb-1 px-4 pt-2">Performance trend</p>
+                        <div className="flex-1 min-h-0 px-4 pb-3 w-full" style={{ minWidth: 0 }}>
+                          <TrendChart
+                            data={dailyForCharts}
+                            height={120}
+                            showImpressions
+                            className="min-w-0 w-full"
+                            margin={{ top: 4, right: 0, left: 22, bottom: 12 }}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -933,14 +937,14 @@ export default function SiteDetailPage({
                               <button
                                 type="button"
                                 onClick={() => setContentFilterExclude(false)}
-                                className={cn("rounded px-2 py-0.5 text-xs font-medium transition-colors duration-[120ms]", !contentFilterExclude ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent")}
+                                className={cn("rounded px-2 py-0.5 text-xs font-medium transition-colors duration-[120ms]", !contentFilterExclude ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent")}
                               >
                                 Include
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setContentFilterExclude(true)}
-                                className={cn("rounded px-2 py-0.5 text-xs font-medium transition-colors duration-[120ms]", contentFilterExclude ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent")}
+                                className={cn("rounded px-2 py-0.5 text-xs font-medium transition-colors duration-[120ms]", contentFilterExclude ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent")}
                               >
                                 Exclude
                               </button>
@@ -1031,35 +1035,52 @@ export default function SiteDetailPage({
                             <p className="text-xs text-muted-foreground mt-1">Grouped by: path (filtered)</p>
                           )}
                         </div>
-                        <div className="px-4 py-2.5 space-y-2 flex-1 min-h-0 overflow-y-auto">
-                          {contentGroups.map((g) => (
-                            <div key={g.label} className="rounded px-2 py-1 -mx-2 transition-colors duration-100 hover:bg-accent/50">
-                              <div className="flex items-center justify-between gap-3 mb-0.5">
-                                <span className="text-xs font-medium text-foreground truncate max-w-[120px]" title={g.label}>
-                                  /{g.label}
-                                </span>
-                                <div className="flex items-center gap-2 text-xs tabular-nums shrink-0 text-right">
-                                  <span className="text-foreground">{formatNum(g.clicks)}</span>
-                                  {g.avgChangePercent != null && (
-                                    <span className={cn(g.avgChangePercent >= 0 ? "text-positive" : "text-negative")}>
-                                      Δ {g.avgChangePercent >= 0 ? "+" : ""}{g.avgChangePercent}%
-                                    </span>
-                                  )}
-                                  <span className="text-muted-foreground">{formatNum(g.impressions)} impr.</span>
-                                </div>
-                              </div>
-                              <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
-                                <div
-                                  className="h-full rounded-full transition-all duration-300"
-                                  style={{
-                                    width: `${(g.clicks / maxClicks) * 100}%`,
-                                    background: "var(--chart-clicks)",
-                                    opacity: 0.65,
-                                  }}
-                                />
-                              </div>
+                        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
+                          <table className="w-full text-sm table-fixed">
+                            <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+                              <tr>
+                                <th className="px-4 py-1.5 pb-1.5 font-semibold text-left min-w-0 w-[40%]">Name</th>
+                                <th className="px-4 py-1.5 pb-1.5 font-semibold text-right w-[20%]">Clicks</th>
+                                <th className="px-4 py-1.5 pb-1.5 font-semibold text-right w-[20%]">Impr.</th>
+                                <th className="px-4 py-1.5 pb-1.5 font-semibold text-right w-[20%]">Change</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {contentGroups.slice(0, 10).map((g) => (
+                                <tr key={g.label} className="border-b border-border/50 transition-colors duration-100 hover:bg-muted/50">
+                                  <td className="px-4 py-1.5 truncate min-w-0 text-foreground" title={g.label}>/{g.label}</td>
+                                  <td className="px-4 py-1.5 text-right tabular-nums">{formatNum(g.clicks)}</td>
+                                  <td className="px-4 py-1.5 text-right tabular-nums">{formatNum(g.impressions)}</td>
+                                  <td className="px-4 py-1.5 text-right">
+                                    {g.avgChangePercent != null ? (
+                                      <span className={cn("tabular-nums", g.avgChangePercent >= 0 ? "text-positive" : "text-negative")}>
+                                        {g.avgChangePercent >= 0 ? "+" : ""}{g.avgChangePercent}%
+                                      </span>
+                                    ) : "–"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {contentGroups.length > 10 && (
+                            <div className="border-t border-border px-4 py-2 flex justify-center">
+                              <button
+                                type="button"
+                                onClick={() => setContentGroupsFullViewOpen(true)}
+                                className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
+                              >
+                                View {contentGroups.length - 10} more
+                              </button>
                             </div>
-                          ))}
+                          )}
+                          <TableFullViewModal
+                            open={contentGroupsFullViewOpen}
+                            onClose={() => setContentGroupsFullViewOpen(false)}
+                            title="Content groups"
+                            rows={contentGroups.map((g) => ({ key: g.label, clicks: g.clicks, impressions: g.impressions, changePercent: g.avgChangePercent ?? undefined }))}
+                            hasPosition={false}
+                            onExportCsv={() => exportToCsv(contentGroups.map((g) => ({ label: g.label, clicks: g.clicks, impressions: g.impressions, avgChangePercent: g.avgChangePercent ?? "" })), formatExportFilename(siteSlug, "content-groups", startDate, endDate))}
+                          />
                         </div>
                       </div>
                     );

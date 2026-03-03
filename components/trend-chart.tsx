@@ -43,6 +43,8 @@ interface TrendChartProps {
   compareToPrior?: boolean;
   /** When true with useSeriesContext, normalize each series to 0-1 so multiple metrics are visible (dashboard sparkline style) */
   normalizeWhenMultiSeries?: boolean;
+  /** Optional chart margin override (e.g. tighter for small cards) */
+  margin?: { top?: number; right?: number; left?: number; bottom?: number };
   className?: string;
 }
 
@@ -76,8 +78,10 @@ export function TrendChart({
   useSeriesContext = false,
   compareToPrior = false,
   normalizeWhenMultiSeries = false,
+  margin: marginOverride,
   className,
 }: TrendChartProps) {
+  const chartMargin = marginOverride ? { ...CHART_MARGIN, ...marginOverride } : CHART_MARGIN;
   const { series } = useSparkSeries();
 
   const showClicks = useSeriesContext ? series?.clicks !== false : true;
@@ -163,7 +167,7 @@ export function TrendChart({
     return (
       <div className={cn("w-full", className)} style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={CHART_MARGIN}>
+          <LineChart data={chartData} margin={chartMargin}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} vertical horizontal />
             <XAxis
               dataKey="date"
@@ -270,7 +274,7 @@ export function TrendChart({
   return (
     <div className={cn("w-full", className)} style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={CHART_MARGIN}>
+        <LineChart data={chartData} margin={chartMargin}>
           <defs>
             <linearGradient id="trend-fill-clicks" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={CHART_CLICKS} stopOpacity={0.25} />

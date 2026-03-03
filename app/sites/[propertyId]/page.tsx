@@ -219,7 +219,7 @@ function MovementIntelligence({
               className={cn(
                 "rounded px-2 py-1 text-xs font-medium capitalize transition-colors duration-[120ms]",
                 trendFilter === t
-                  ? "bg-foreground text-background"
+                  ? "bg-muted text-foreground"
                   : "text-muted-foreground hover:bg-accent"
               )}
             >
@@ -280,7 +280,8 @@ export default function SiteDetailPage({
       ),
   });
 
-  const [trendFilter, setTrendFilter] = useState<TrendFilter>("all");
+  const [queriesTrendFilter, setQueriesTrendFilter] = useState<TrendFilter>("all");
+  const [pagesTrendFilter, setPagesTrendFilter] = useState<TrendFilter>("all");
   const [compareToPrior, setCompareToPrior] = useState(false);
   const [showPercentView, setShowPercentView] = useState(true);
   const [contentFilterPattern, setContentFilterPattern] = useState("");
@@ -313,8 +314,11 @@ export default function SiteDetailPage({
   }, []);
 
   const SEGMENTS_KEY = "consoleview_content_segments";
+  const BRANDED_TERMS_KEY = `consoleview_branded_terms_${propertyId}`;
   type SavedSegment = { id: string; name: string; pattern: string };
   const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
+  const [brandedTerms, setBrandedTerms] = useState<string[]>([]);
+  const [brandedTermInput, setBrandedTermInput] = useState("");
   const [countriesDevicesOpen, setCountriesDevicesOpen] = useState(false);
   type AddMetricId = "countries" | "devices" | null;
   const [addedMetrics, setAddedMetrics] = useState<[AddMetricId, AddMetricId]>([null, null]);
@@ -328,6 +332,38 @@ export default function SiteDetailPage({
       // ignore
     }
   }, []);
+  useEffect(() => {
+    try {
+      const raw = typeof localStorage !== "undefined" ? localStorage.getItem(BRANDED_TERMS_KEY) : null;
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.every((t) => typeof t === "string")) setBrandedTerms(parsed);
+      }
+    } catch {
+      // ignore
+    }
+  }, [BRANDED_TERMS_KEY]);
+  const addBrandedTerm = () => {
+    const t = brandedTermInput.trim().toLowerCase();
+    if (!t || brandedTerms.includes(t)) return;
+    const next = [...brandedTerms, t];
+    setBrandedTerms(next);
+    setBrandedTermInput("");
+    try {
+      localStorage.setItem(BRANDED_TERMS_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
+  const removeBrandedTerm = (term: string) => {
+    const next = brandedTerms.filter((x) => x !== term);
+    setBrandedTerms(next);
+    try {
+      localStorage.setItem(BRANDED_TERMS_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
   const saveSegment = () => {
     if (contentGroupsFilteredPages.error || !contentFilterPattern.trim()) return;
     const next: SavedSegment[] = [
@@ -390,17 +426,17 @@ export default function SiteDetailPage({
     changePercent: undefined,
   }));
   const queriesRowsForTable = useMemo(() => {
-    let rows = trendFilter === "new" ? newQueriesRows : trendFilter === "lost" ? lostQueriesRows : queriesRows;
+    let rows = queriesTrendFilter === "new" ? newQueriesRows : queriesTrendFilter === "lost" ? lostQueriesRows : queriesRows;
     if (bandFilter) {
       rows = rows.filter((r) => r.position != null && r.position >= bandFilter.min && r.position <= bandFilter.max);
     }
     return rows;
-  }, [trendFilter, queriesRows, newQueriesRows, lostQueriesRows, bandFilter]);
+  }, [queriesTrendFilter, queriesRows, newQueriesRows, lostQueriesRows, bandFilter]);
   const pagesRowsForTable = useMemo(() => {
-    if (trendFilter === "new") return newPagesRows;
-    if (trendFilter === "lost") return lostPagesRows;
+    if (pagesTrendFilter === "new") return newPagesRows;
+    if (pagesTrendFilter === "lost") return lostPagesRows;
     return pagesRows;
-  }, [trendFilter, pagesRows, newPagesRows, lostPagesRows]);
+  }, [pagesTrendFilter, pagesRows, newPagesRows, lostPagesRows]);
 
   const queryCounting = useMemo(() => {
     const q = data?.queries ?? [];
@@ -413,6 +449,20 @@ export default function SiteDetailPage({
   }, [data?.queries]);
 
   const dailyForCharts = useMemo(() => data?.daily ?? [], [data?.daily]);
+
+  const brandedFromQueries = useMemo(() => {
+    if (brandedTerms.length === 0) return null;
+    const queries = data?.queries ?? [];
+    let brandedClicks = 0;
+    let nonBrandedClicks = 0;
+    for (const r of queries as { key: string; clicks: number }[]) {
+      const q = (r.key ?? "").toLowerCase();
+      const isBranded = brandedTerms.some((t) => q.includes(t));
+      if (isBranded) brandedClicks += r.clicks ?? 0;
+      else nonBrandedClicks += r.clicks ?? 0;
+    }
+    return { brandedClicks, nonBrandedClicks };
+  }, [data?.queries, brandedTerms]);
 
   const contentGroupsFilteredPages = useMemo(() => {
     const raw = contentFilterPattern.trim();
@@ -660,7 +710,10 @@ export default function SiteDetailPage({
                     <AiQuerySignalsCard queries={queriesRows} daily={data?.daily} />
                   )}
                   <div className="min-w-0">
-                    <TrackedKeywordsSection keywords={getMockTrackedKeywords(siteUrl)} />
+                    <TrackedKeywordsSection
+                      keywords={getMockTrackedKeywords(siteUrl)}
+                      exportFilename={formatExportFilename(siteSlug, "keywords-tracked", startDate, endDate)}
+                    />
                   </div>
                 </div>
                 {/* Position volatility: full width */}
@@ -698,23 +751,23 @@ export default function SiteDetailPage({
             <MovementIntelligence
               queriesRows={queriesRows}
               pagesRows={pagesRows}
-              trendFilter={trendFilter}
-              onTrendFilterChange={setTrendFilter}
+              trendFilter={queriesTrendFilter}
+              onTrendFilterChange={setQueriesTrendFilter}
             />
             </div>
 
-            {/* Index signals (watchlist + GSC-derived signals) */}
-            <div className="rounded-lg border border-border bg-surface px-4 py-3">
-              <IndexSignalsCard propertyId={propertyId} pagesRows={pagesRows} />
-            </div>
-
-            {/* Cannibalisation (query–page conflicts) */}
-            <div className="rounded-lg border border-border bg-surface px-4 py-3">
-              <CannibalisationCard
-                siteUrl={siteUrl}
-                startDate={startDate}
-                endDate={endDate}
-              />
+            {/* Index signals + Cannibalisation (two columns like Performance tables) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="rounded-lg border border-border bg-surface px-4 py-3 min-w-0">
+                <IndexSignalsCard propertyId={propertyId} pagesRows={pagesRows} />
+              </div>
+              <div className="rounded-lg border border-border bg-surface px-4 py-3 min-w-0">
+                <CannibalisationCard
+                  siteUrl={siteUrl}
+                  startDate={startDate}
+                  endDate={endDate}
+                />
+              </div>
             </div>
 
             {/* Section F — Performance tables + Query Counting + Content Groups */}
@@ -744,8 +797,8 @@ export default function SiteDetailPage({
                     title="Queries"
                     titleTooltip="Top queries by clicks and impressions; filter by trend"
                     rows={queriesRowsForTable}
-                    trendFilter={trendFilter}
-                    onTrendFilterChange={setTrendFilter}
+                    trendFilter={queriesTrendFilter}
+                    onTrendFilterChange={setQueriesTrendFilter}
                     showFilter
                     onExportCsv={() => exportToCsv(queriesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "queries", startDate, endDate))}
                   />
@@ -814,13 +867,14 @@ export default function SiteDetailPage({
                       </button>
                     </div>
                     {dailyForCharts.length > 0 && (
-                      <div className="px-4 pb-3 pt-0 flex-1 min-h-[120px] border-t border-border/50">
+                      <div className="px-4 pb-3 pt-0 flex-1 min-h-[120px] w-full min-w-0 border-t border-border/50">
                         <p className="text-[10px] text-muted-foreground mb-1">Performance trend</p>
                         <TrendChart
                           data={dailyForCharts}
                           height={120}
                           showImpressions
-                          className="min-w-0"
+                          className="min-w-0 w-full"
+                          margin={{ right: 2, left: 20 }}
                         />
                       </div>
                     )}
@@ -831,8 +885,8 @@ export default function SiteDetailPage({
                     title="Pages"
                     titleTooltip="Top pages by clicks and impressions; filter by trend"
                     rows={pagesRowsForTable}
-                    trendFilter={trendFilter}
-                    onTrendFilterChange={setTrendFilter}
+                    trendFilter={pagesTrendFilter}
+                    onTrendFilterChange={setPagesTrendFilter}
                     showFilter
                     onExportCsv={() => exportToCsv(pagesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "pages", startDate, endDate))}
                   />
@@ -1012,7 +1066,7 @@ export default function SiteDetailPage({
                   })()}
                 </div>
               </div>
-              {(countriesRows.length > 0 || devicesRows.length > 0) && (
+              {false && (countriesRows.length > 0 || devicesRows.length > 0) && (
                 <div className="rounded-lg border border-border bg-surface overflow-hidden">
                   <button
                     type="button"
@@ -1056,20 +1110,54 @@ export default function SiteDetailPage({
             </section>
 
             {/* Segmentation (Branded vs non-branded, full width) */}
-            {data?.branded && (
-              <section aria-label="Segmentation" className="w-full">
-                <div className="rounded-lg border border-border bg-surface px-4 py-4 transition-colors hover:border-foreground/20 flex flex-col min-h-0">
-                  <h2 className="text-sm font-semibold text-foreground mb-2">Segmentation</h2>
-                  <BrandedChart
-                    brandedClicks={data.branded.brandedClicks}
-                    nonBrandedClicks={data.branded.nonBrandedClicks}
-                    brandedChangePercent={data.branded.brandedChangePercent}
-                    nonBrandedChangePercent={data.branded.nonBrandedChangePercent}
-                    daily={data.daily}
-                  />
+            <section aria-label="Segmentation" className="w-full">
+              <div className="rounded-lg border border-border bg-surface px-4 py-4 transition-colors hover:border-foreground/20 flex flex-col min-h-0">
+                <h2 className="text-sm font-semibold text-foreground mb-2">Segmentation</h2>
+                <div className="mb-3">
+                  <p className="text-xs text-muted-foreground mb-1.5">Branded terms (queries containing these count as branded)</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="text"
+                      value={brandedTermInput}
+                      onChange={(e) => setBrandedTermInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addBrandedTerm())}
+                      placeholder="e.g. brand name"
+                      className="rounded border border-border bg-background px-2 py-1 text-sm w-32 focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={addBrandedTerm}
+                      className="rounded px-2 py-1 text-xs font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors"
+                    >
+                      Add
+                    </button>
+                    {brandedTerms.map((t) => (
+                      <span
+                        key={t}
+                        className="inline-flex items-center gap-1 rounded bg-muted/70 px-2 py-0.5 text-xs text-foreground"
+                      >
+                        {t}
+                        <button
+                          type="button"
+                          onClick={() => removeBrandedTerm(t)}
+                          className="text-muted-foreground hover:text-foreground focus:ring-2 focus:ring-ring rounded"
+                          aria-label={`Remove ${t}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </section>
-            )}
+                <BrandedChart
+                  brandedClicks={brandedFromQueries?.brandedClicks ?? data?.branded?.brandedClicks ?? 0}
+                  nonBrandedClicks={brandedFromQueries?.nonBrandedClicks ?? data?.branded?.nonBrandedClicks ?? (data?.summary?.clicks ?? 0)}
+                  brandedChangePercent={brandedFromQueries ? undefined : data?.branded?.brandedChangePercent}
+                  nonBrandedChangePercent={brandedFromQueries ? undefined : data?.branded?.nonBrandedChangePercent}
+                  daily={data?.daily}
+                />
+              </div>
+            </section>
 
             {/* Add a metric (trial): two slots, modal to pick Countries/Devices */}
             <section aria-label="Add a metric" className="grid grid-cols-1 lg:grid-cols-2 gap-4">

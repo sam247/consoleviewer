@@ -137,7 +137,7 @@ function DataTableView({
                 className={cn(
                   "rounded px-2 py-1 text-xs transition-colors duration-[120ms] whitespace-nowrap",
                   trend === t
-                    ? "bg-foreground text-background font-medium"
+                    ? "bg-muted text-foreground font-medium"
                     : "text-muted-foreground hover:bg-accent"
                 )}
               >
@@ -156,7 +156,7 @@ function DataTableView({
               ← All
             </button>
             <span className={cn(
-              "rounded px-2 py-1 text-xs font-medium capitalize bg-foreground text-background"
+              "rounded px-2 py-1 text-xs font-medium capitalize bg-muted text-foreground"
             )}>
               {FILTER_LABELS[trend]}
             </span>
@@ -235,7 +235,7 @@ function DataTableView({
                   className={cn(
                     "border-b border-border/50 transition-colors duration-100",
                     onRowClick && "cursor-pointer hover:border-l-2 hover:border-l-chart-clicks border-l-transparent",
-                    "hover:bg-accent/60"
+                    "hover:bg-muted/50"
                   )}
                   onClick={() => onRowClick?.(row)}
                   role={onRowClick ? "button" : undefined}

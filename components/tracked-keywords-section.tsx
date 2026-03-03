@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, YAxis, ResponsiveContainer } from "recharts";
 import type { MockTrackedKeyword } from "@/lib/mock-rank";
 import { InfoTooltip } from "@/components/info-tooltip";
+import { exportToCsv } from "@/lib/export-csv";
 
 function MiniSparkline({ data }: { data: number[] }) {
   const chartData = useMemo(
@@ -35,6 +36,8 @@ function MiniSparkline({ data }: { data: number[] }) {
 interface TrackedKeywordsSectionProps {
   /** Fallback mock keywords when SerpRobot is not configured or returns empty. */
   keywords: MockTrackedKeyword[];
+  /** Optional export filename (without .csv) for CSV export. */
+  exportFilename?: string;
 }
 
 async function fetchSerprobotKeywords(): Promise<{
@@ -47,30 +50,121 @@ async function fetchSerprobotKeywords(): Promise<{
   return res.json();
 }
 
-export function TrackedKeywordsSection({ keywords: mockKeywords }: TrackedKeywordsSectionProps) {
+type KeywordRow = MockTrackedKeyword & { id?: string };
+
+export function TrackedKeywordsSection({ keywords: mockKeywords, exportFilename }: TrackedKeywordsSectionProps) {
+  const queryClient = useQueryClient();
+  const [addInput, setAddInput] = useState("");
+  const [addLoading, setAddLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+
   const { data: serpData } = useQuery({
     queryKey: ["serprobotKeywords"],
     queryFn: fetchSerprobotKeywords,
   });
 
-  const keywords: MockTrackedKeyword[] =
+  const keywords: KeywordRow[] =
     serpData?.configured && (serpData.keywords?.length ?? 0) > 0
-      ? serpData.keywords
-      : mockKeywords;
+      ? (serpData.keywords as KeywordRow[])
+      : mockKeywords.map((k) => ({ ...k }));
   const showConnectMessage = serpData?.configured === false;
+  const canAddDelete = serpData?.configured === true;
+
+  const handleAdd = async () => {
+    const phrase = addInput.trim();
+    if (!phrase || addLoading) return;
+    setAddLoading(true);
+    try {
+      const res = await fetch("/api/serprobot/keywords", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phrase }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add keyword");
+      setAddInput("");
+      await queryClient.invalidateQueries({ queryKey: ["serprobotKeywords"] });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
+  const handleDelete = async (row: KeywordRow) => {
+    if (deleteLoading) return;
+    setDeleteLoading(row.keyword);
+    try {
+      const url = row.id
+        ? `/api/serprobot/keywords?keywordId=${encodeURIComponent(row.id)}`
+        : `/api/serprobot/keywords?phrase=${encodeURIComponent(row.keyword)}`;
+      const res = await fetch(url, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to remove keyword");
+      await queryClient.invalidateQueries({ queryKey: ["serprobotKeywords"] });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  const handleExport = () => {
+    const rows = keywords.map((r) => ({
+      keyword: r.keyword,
+      position: r.position,
+      delta1d: r.delta1d,
+      delta7d: r.delta7d,
+    }));
+    exportToCsv(rows, (exportFilename ?? "keywords-tracked") + ".csv");
+  };
 
   return (
     <div
       className="rounded-lg border border-border bg-surface flex flex-col min-h-0 transition-colors hover:border-foreground/20 min-w-0"
       aria-label="Keywords tracked"
     >
-      <div className="border-b border-border px-4 py-2 shrink-0">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">Keywords tracked<InfoTooltip title="Rank-tracked keywords (e.g. via SerpRobot) with position and trend" /></h3>
-        {showConnectMessage && (
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Connect SerpRobot in Settings to track keywords.
-          </p>
-        )}
+      <div className="border-b border-border px-4 py-2.5 shrink-0 flex items-center justify-between gap-2 flex-wrap">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">Keywords tracked<InfoTooltip title="Rank-tracked keywords (e.g. via SerpRobot) with position and trend" /></h3>
+          {showConnectMessage && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Connect SerpRobot in Settings to track keywords.
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          {canAddDelete && (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={addInput}
+                onChange={(e) => setAddInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                placeholder="Add keyword"
+                className="rounded border border-border bg-background px-2 py-1 text-xs w-32 focus:ring-2 focus:ring-ring focus:ring-offset-1"
+              />
+              <button
+                type="button"
+                onClick={handleAdd}
+                disabled={addLoading}
+                className="rounded px-2 py-1 text-xs font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
+              >
+                {addLoading ? "…" : "Add"}
+              </button>
+            </div>
+          )}
+          {keywords.length > 0 && (
+            <button
+              type="button"
+              onClick={handleExport}
+              className="p-1.5 rounded text-muted-foreground/80 hover:text-muted-foreground hover:bg-accent/50 transition-colors duration-[120ms] opacity-80 hover:opacity-100"
+              title="Export CSV"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex-1 min-h-0 overflow-auto px-4 py-2">
         {keywords.length === 0 ? (
@@ -87,13 +181,14 @@ export function TrackedKeywordsSection({ keywords: mockKeywords }: TrackedKeywor
                   <th className="text-right py-3 px-4 text-muted-foreground font-medium w-16">1D Δ</th>
                   <th className="text-right py-3 px-4 text-muted-foreground font-medium w-16">7D Δ</th>
                   <th className="text-right py-3 px-4 text-muted-foreground font-medium w-20">Trend</th>
+                  {canAddDelete && <th className="w-10" aria-label="Remove" />}
                 </tr>
               </thead>
               <tbody>
                 {keywords.map((row, idx) => (
                   <tr
                     key={`${row.keyword}-${idx}`}
-                    className="border-b border-border/50 last:border-b-0 hover:bg-accent/60 transition-colors duration-100"
+                    className="border-b border-border/50 last:border-b-0 hover:bg-muted/50 transition-colors duration-100"
                   >
                     <td className="py-2.5 px-4 text-foreground truncate" title={row.keyword}>
                       {row.keyword}
@@ -114,6 +209,20 @@ export function TrackedKeywordsSection({ keywords: mockKeywords }: TrackedKeywor
                     <td className="py-2.5 px-4 text-right">
                       <MiniSparkline data={row.sparkData} />
                     </td>
+                    {canAddDelete && (
+                      <td className="py-2.5 px-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(row)}
+                          disabled={deleteLoading === row.keyword}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50"
+                          aria-label={`Remove ${row.keyword}`}
+                          title="Remove keyword"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

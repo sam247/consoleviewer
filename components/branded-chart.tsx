@@ -100,9 +100,10 @@ export function BrandedChart({
         />
       </div>
       {chartData.length >= 2 && (
-        <div className="mt-4 flex-1 min-h-[160px] w-full min-w-0">
+        <div className="mt-4 w-full min-w-0">
           <p className="text-[10px] text-muted-foreground mb-1">Clicks over time</p>
-          <ResponsiveContainer width="100%" height="100%">
+          <div className="w-full min-w-0" style={{ height: 160 }}>
+            <ResponsiveContainer width="100%" height={160}>
             <LineChart
               data={chartData}
               margin={{ top: 4, right: 8, left: 0, bottom: 18 }}
@@ -142,6 +143,7 @@ export function BrandedChart({
               />
             </LineChart>
           </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>

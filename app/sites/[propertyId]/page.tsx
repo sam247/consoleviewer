@@ -24,6 +24,14 @@ import { cn } from "@/lib/utils";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
+import { ChartPlot } from "@/components/ui/chart-plot";
+import {
+  CHART_AXIS_TICK,
+  CHART_CARD_MIN_H,
+  CHART_MARGIN_SECONDARY,
+  CHART_PLOT_H,
+  CHART_Y_AXIS_WIDTH_SECONDARY,
+} from "@/components/ui/chart-frame";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -607,8 +615,8 @@ export default function SiteDetailPage({
             {/* Section B — Trend: graph + Query Footprint in one row; then AI-Style + Position volatility */}
             {data?.daily?.length > 0 && (
               <section aria-label="Trend" className="space-y-4">
-                <div className="flex flex-col lg:flex-row gap-4 min-w-0">
-                  <div className="rounded-lg border border-border bg-surface transition-colors duration-[120ms] hover:border-foreground/20 min-w-0 flex-1 flex flex-col min-h-[320px]">
+                <div className="flex flex-col gap-4 min-w-0 lg:flex-row lg:items-stretch">
+                  <div className="rounded-lg border border-border bg-surface transition-colors duration-[120ms] min-w-0 flex-1 flex flex-col" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
                     {data?.summary && (
                       <MomentumScoreCard
                         variant="strip"
@@ -690,7 +698,7 @@ export default function SiteDetailPage({
                     <TrendChart
                       data={data.daily}
                       priorData={data?.priorDaily}
-                      height={280}
+                      height={CHART_PLOT_H.primary}
                       showImpressions
                       useSeriesContext
                       compareToPrior={compareToPrior}
@@ -699,7 +707,7 @@ export default function SiteDetailPage({
                   </div>
                   </div>
                   {queriesRows.length > 0 && (
-                    <div className="w-full max-w-[320px] lg:w-[320px] lg:min-w-[280px] flex-shrink-0 flex flex-col min-h-[320px] lg:min-h-0">
+                    <div className="w-full max-w-[320px] lg:w-[320px] lg:min-w-[280px] flex-shrink-0 flex flex-col" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
                       <QueryFootprint
                         queries={queriesRows}
                         daily={dailyForCharts}
@@ -724,10 +732,8 @@ export default function SiteDetailPage({
                 </div>
                 {/* Position volatility + Branded vs non-branded: two columns */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-w-0">
-                  {data.daily.some((d: { position?: number }) => d.position != null) && (
-                    <PositionVolatilityChart daily={data.daily} />
-                  )}
-                  <div className="rounded-lg border border-border bg-surface px-4 py-4 transition-colors hover:border-foreground/20 flex flex-col min-h-[320px] min-w-0">
+                  <PositionVolatilityChart daily={data.daily} />
+                  <div className="rounded-lg border border-border bg-surface px-4 py-4 transition-colors flex flex-col min-w-0" style={{ minHeight: CHART_CARD_MIN_H.secondary }}>
                     <h2 className="text-sm font-semibold text-foreground mb-2">Branded vs non-branded</h2>
                     <p className="text-xs text-muted-foreground mb-1.5">Branded terms (queries containing these count as branded)</p>
                     <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -763,7 +769,7 @@ export default function SiteDetailPage({
                         </span>
                       ))}
                     </div>
-                    <div className="flex-1 min-h-[200px] min-w-0">
+                    <div className="flex-1 min-h-0 min-w-0">
                       <BrandedChart
                         brandedClicks={brandedFromQueries?.brandedClicks ?? data?.branded?.brandedClicks ?? 0}
                         nonBrandedClicks={brandedFromQueries?.nonBrandedClicks ?? data?.branded?.nonBrandedClicks ?? (data?.summary?.clicks ?? 0)}
@@ -875,32 +881,39 @@ export default function SiteDetailPage({
                           <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.top3}</span>
                         </div>
                       </div>
-                      {queryCounting.total > 0 && (() => {
+                      {(() => {
                         const top3 = queryCounting.top3;
                         const top4To10 = Math.max(0, queryCounting.top10 - queryCounting.top3);
                         const rest = Math.max(0, queryCounting.total - queryCounting.top10);
-                        let chartData = [
+                        const chartData = [
                           { name: "Top 3", value: top3, fill: "var(--chart-clicks)" },
-                          { name: "4–10", value: top4To10, fill: "var(--chart-impressions)" },
+                          { name: "4-10", value: top4To10, fill: "var(--chart-impressions)" },
                           { name: "11+", value: rest, fill: "var(--muted-foreground)" },
-                        ].filter((d) => d.value > 0);
-                        if (chartData.length === 0) {
-                          chartData = [{ name: "Queries", value: queryCounting.total, fill: "var(--chart-clicks)" }];
-                        }
+                        ];
                         return (
-                          <div className="h-16 w-full min-w-0">
+                          <ChartPlot
+                            height={72}
+                            minHeight={72}
+                            isEmpty={queryCounting.total === 0}
+                            emptyMessage="No ranked queries in this range."
+                          >
                             <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={chartData} layout="vertical" margin={{ top: 2, right: 8, left: 0, bottom: 2 }}>
+                              <BarChart data={chartData} layout="vertical" margin={CHART_MARGIN_SECONDARY}>
                                 <XAxis type="number" hide />
-                                <YAxis type="category" dataKey="name" width={40} tick={{ fontSize: 10 }} />
-                                <Bar dataKey="value" radius={0} barSize={12}>
+                                <YAxis
+                                  type="category"
+                                  dataKey="name"
+                                  width={CHART_Y_AXIS_WIDTH_SECONDARY}
+                                  tick={CHART_AXIS_TICK}
+                                />
+                                <Bar dataKey="value" radius={0} barSize={10}>
                                   {chartData.map((entry, i) => (
                                     <Cell key={i} fill={entry.fill} />
                                   ))}
                                 </Bar>
                               </BarChart>
                             </ResponsiveContainer>
-                          </div>
+                          </ChartPlot>
                         );
                       })()}
                       </div>
@@ -926,10 +939,10 @@ export default function SiteDetailPage({
                         <div className="flex-1 min-h-[180px] px-4 pb-3 w-full" style={{ minWidth: 0 }}>
                           <TrendChart
                             data={dailyForCharts}
-                            height={200}
+                            height={CHART_PLOT_H.secondary}
                             showImpressions
                             className="min-w-0 w-full h-full"
-                            margin={{ top: 4, right: 0, left: 22, bottom: 12 }}
+                            margin={CHART_MARGIN_SECONDARY}
                           />
                         </div>
                       </div>

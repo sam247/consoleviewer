@@ -12,10 +12,14 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { InfoTooltip } from "@/components/info-tooltip";
+import { ChartPlot } from "@/components/ui/chart-plot";
 import {
   CHART_AXIS_TICK,
+  CHART_MARGIN_SPARK,
+  CHART_PLOT_H,
   CHART_GRID_PROPS,
   CHART_TOOLTIP_STYLE,
+  createDateTickFormatter,
 } from "@/components/ui/chart-frame";
 export type BandFilter = { min: number; max: number } | null;
 
@@ -53,6 +57,7 @@ export function QueryFootprintContent({
     const t = setTimeout(() => setBarMounted(true), 50);
     return () => clearTimeout(t);
   }, []);
+  const sparkTickFormatter = createDateTickFormatter(sparkData.length);
 
   return (
     <div className={rootClassName}>
@@ -159,29 +164,33 @@ export function QueryFootprintContent({
                 );
               })}
             </div>
-            {sparkData.length > 0 && (
-              <div className="min-w-0 w-full h-[92px] shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={sparkData} margin={{ top: 6, right: 8, left: 6, bottom: 6 }}>
-                    <CartesianGrid {...CHART_GRID_PROPS} strokeOpacity={0.35} />
-                    <XAxis dataKey="date" hide />
-                    <YAxis hide tick={CHART_AXIS_TICK} />
-                    <Tooltip
-                      contentStyle={CHART_TOOLTIP_STYLE}
-                      labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                      formatter={(v: number | undefined) => [(v ?? 0).toLocaleString(), "Clicks"]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="clicks"
-                      stroke="var(--chart-clicks)"
-                      strokeWidth={1.8}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+            <ChartPlot
+              height={CHART_PLOT_H.spark}
+              minHeight={CHART_PLOT_H.spark}
+              isEmpty={sparkData.length === 0}
+              emptyMessage="No recent trend data."
+              className="shrink-0"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={sparkData} margin={CHART_MARGIN_SPARK}>
+                  <CartesianGrid {...CHART_GRID_PROPS} />
+                  <XAxis dataKey="date" tick={CHART_AXIS_TICK} tickFormatter={sparkTickFormatter} minTickGap={12} />
+                  <YAxis hide tick={CHART_AXIS_TICK} />
+                  <Tooltip
+                    contentStyle={CHART_TOOLTIP_STYLE}
+                    labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    formatter={(v: number | undefined) => [(v ?? 0).toLocaleString(), "Clicks"]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="clicks"
+                    stroke="var(--chart-clicks)"
+                    strokeWidth={1.6}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartPlot>
           </div>
         ) : (
           <div className="space-y-2.5">

@@ -3,26 +3,32 @@
 import {
   Bar,
   BarChart,
+  CartesianGrid,
   Cell,
-  LineChart,
   Line,
-  XAxis,
-  YAxis,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
-  CartesianGrid,
+  XAxis,
+  YAxis,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { ChartPlot } from "@/components/ui/chart-plot";
 import {
   CHART_AXIS_TICK,
+  CHART_EMPTY_STATE_MIN_H,
   CHART_GRID_PROPS,
+  CHART_MARGIN_SECONDARY,
+  CHART_PLOT_H,
   CHART_TOOLTIP_STYLE,
+  CHART_Y_AXIS_WIDTH_SECONDARY,
+  createDateTickFormatter,
 } from "@/components/ui/chart-frame";
 
 interface DailyPoint {
   date: string;
-  clicks?: number;
-  impressions?: number;
+  brandedClicks?: number;
+  nonBrandedClicks?: number;
 }
 
 interface BrandedChartProps {
@@ -30,14 +36,19 @@ interface BrandedChartProps {
   nonBrandedClicks: number;
   brandedChangePercent?: number;
   nonBrandedChangePercent?: number;
-  /** Daily series for trend graph; uses clicks when present */
   daily?: DailyPoint[];
   className?: string;
 }
 
-function formatNum(n: number): string {
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + "k";
-  return String(n);
+function formatNum(value: number): string {
+  if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+  if (value >= 1e3) return `${(value / 1e3).toFixed(1)}k`;
+  return String(value);
+}
+
+function formatSignedPercent(value?: number): string | null {
+  if (value == null || Number.isNaN(value)) return null;
+  return `${value >= 0 ? "+" : ""}${value}%`;
 }
 
 export function BrandedChart({
@@ -50,140 +61,113 @@ export function BrandedChart({
 }: BrandedChartProps) {
   const total = brandedClicks + nonBrandedClicks;
   const brandedPct = total > 0 ? (brandedClicks / total) * 100 : 0;
-  const chartData = (daily ?? []).map((d) => ({
-    date: d.date,
-    clicks: d.clicks ?? 0,
-    impressions: d.impressions ?? 0,
-  }));
-  const splitChartData = total > 0
-    ? [
-        { label: "Branded", value: brandedClicks, rawValue: brandedClicks, color: "var(--chart-clicks)" },
-        { label: "Non-branded", value: nonBrandedClicks, rawValue: nonBrandedClicks, color: "var(--chart-impressions)" },
-      ]
-    : [
-        { label: "Branded", value: 1, rawValue: 0, color: "var(--chart-clicks)" },
-        { label: "Non-branded", value: 1, rawValue: 0, color: "var(--chart-impressions)" },
-      ];
+
+  const brandedTrend = (daily ?? [])
+    .filter((d) => d.brandedClicks != null || d.nonBrandedClicks != null)
+    .map((d) => ({
+      date: d.date,
+      brandedClicks: d.brandedClicks ?? 0,
+      nonBrandedClicks: d.nonBrandedClicks ?? 0,
+    }));
+
+  const hasBrandedTrend = brandedTrend.length >= 2;
+  const dateTickFormatter = createDateTickFormatter(brandedTrend.length || 30);
+
+  const splitBars = [
+    {
+      label: "Branded",
+      value: brandedClicks > 0 ? brandedClicks : 1,
+      rawValue: brandedClicks,
+      color: "var(--chart-clicks)",
+    },
+    {
+      label: "Non-branded",
+      value: nonBrandedClicks > 0 ? nonBrandedClicks : 1,
+      rawValue: nonBrandedClicks,
+      color: "var(--chart-impressions)",
+    },
+  ];
 
   return (
-    <div className={cn("flex flex-col min-h-0", className)}>
-      <div className="flex flex-wrap gap-4 text-sm mb-2">
-        <div className="flex items-center gap-1">
-          <span className="text-muted-foreground">Branded</span>
-          <span className="font-medium">{formatNum(brandedClicks)}</span>
-          {brandedChangePercent != null && (
-            <span
-              className={cn(
-                "tabular-nums",
-                brandedChangePercent >= 0 ? "text-positive" : "text-negative"
-              )}
-            >
-              {brandedChangePercent >= 0 ? "+" : ""}
-              {brandedChangePercent}%
-            </span>
-          )}
+    <div className={cn("flex h-full min-h-0 flex-col", className)}>
+      <div className="mb-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+        <div className="rounded-md border border-border/70 bg-muted/20 px-2.5 py-1.5">
+          <span className="text-xs text-muted-foreground">Branded</span>
+          <div className="mt-0.5 flex items-baseline gap-1.5">
+            <span className="text-base font-semibold tabular-nums text-foreground">{formatNum(brandedClicks)}</span>
+            {formatSignedPercent(brandedChangePercent) && (
+              <span className={cn("text-xs tabular-nums", brandedChangePercent! >= 0 ? "text-positive" : "text-negative")}>{formatSignedPercent(brandedChangePercent)}</span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="text-muted-foreground">Non‑branded</span>
-          <span className="font-medium">{formatNum(nonBrandedClicks)}</span>
-          {nonBrandedChangePercent != null && (
-            <span
-              className={cn(
-                "tabular-nums",
-                nonBrandedChangePercent >= 0 ? "text-positive" : "text-negative"
-              )}
-            >
-              {nonBrandedChangePercent >= 0 ? "+" : ""}
-              {nonBrandedChangePercent}%
-            </span>
-          )}
+
+        <div className="rounded-md border border-border/70 bg-muted/20 px-2.5 py-1.5">
+          <span className="text-xs text-muted-foreground">Non-branded</span>
+          <div className="mt-0.5 flex items-baseline gap-1.5">
+            <span className="text-base font-semibold tabular-nums text-foreground">{formatNum(nonBrandedClicks)}</span>
+            {formatSignedPercent(nonBrandedChangePercent) && (
+              <span className={cn("text-xs tabular-nums", nonBrandedChangePercent! >= 0 ? "text-positive" : "text-negative")}>{formatSignedPercent(nonBrandedChangePercent)}</span>
+            )}
+          </div>
         </div>
-        <div className="text-muted-foreground">
-          {brandedPct.toFixed(1)}% branded
+
+        <div className="rounded-md border border-border/70 bg-muted/20 px-2.5 py-1.5">
+          <span className="text-xs text-muted-foreground">Branded share</span>
+          <div className="mt-0.5 text-base font-semibold tabular-nums text-foreground">{brandedPct.toFixed(1)}%</div>
         </div>
       </div>
-      <div className="mt-1.5 h-2 w-full rounded-full bg-muted overflow-hidden flex shrink-0">
-        <div
-          className="h-full bg-blue-500"
-          style={{ width: `${brandedPct}%` }}
-        />
-        <div
-          className="h-full bg-slate-400"
-          style={{ width: `${100 - brandedPct}%` }}
-        />
+
+      <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-full bg-[var(--chart-clicks)]" style={{ width: `${brandedPct}%` }} />
       </div>
-      {chartData.length >= 2 && (
-        <div className="mt-3 w-full min-w-0 flex-1 min-h-0 flex flex-col">
-          <p className="text-[10px] text-muted-foreground mb-1 shrink-0">Clicks over time</p>
-          <div className="w-full flex-1 min-h-[180px]" style={{ height: 220 }}>
-            <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={chartData}
-              margin={{ top: 6, right: 8, left: 22, bottom: 14 }}
-            >
+
+      <div className="mb-1 text-[11px] text-muted-foreground">{hasBrandedTrend ? "Branded trend over time" : "Branded split"}</div>
+
+      <ChartPlot
+        height={CHART_PLOT_H.secondary}
+        minHeight={CHART_EMPTY_STATE_MIN_H.secondary}
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          {hasBrandedTrend ? (
+            <LineChart data={brandedTrend} margin={CHART_MARGIN_SECONDARY}>
               <CartesianGrid {...CHART_GRID_PROPS} />
-              <XAxis
-                dataKey="date"
-                tick={CHART_AXIS_TICK}
-                tickFormatter={(v) => {
-                  const d = new Date(v);
-                  return `${d.getMonth() + 1}/${d.getDate()}`;
-                }}
-              />
+              <XAxis dataKey="date" tick={CHART_AXIS_TICK} tickFormatter={dateTickFormatter} minTickGap={14} />
               <YAxis
-                width={34}
-                domain={["dataMin", "dataMax"]}
+                width={CHART_Y_AXIS_WIDTH_SECONDARY}
                 tick={CHART_AXIS_TICK}
-                tickFormatter={(v) => (Number(v) >= 1e3 ? `${(Number(v) / 1e3).toFixed(0)}k` : String(v))}
+                tickFormatter={(v) => (Number(v) >= 1e3 ? `${(Number(v) / 1e3).toFixed(1)}k` : String(v))}
               />
               <Tooltip
                 contentStyle={CHART_TOOLTIP_STYLE}
-                labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-                formatter={(value: number | undefined) => [(value ?? 0).toLocaleString(), "Clicks"]}
+                labelFormatter={(v) =>
+                  new Date(v).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
+                }
               />
-              <Line
-                type="monotone"
-                dataKey="clicks"
-                stroke="var(--chart-clicks)"
-                strokeWidth={2}
-                dot={false}
-                name="Clicks"
-              />
+              <Line type="monotone" dataKey="brandedClicks" stroke="var(--chart-clicks)" strokeWidth={1.9} dot={false} />
+              <Line type="monotone" dataKey="nonBrandedClicks" stroke="var(--chart-impressions)" strokeWidth={1.3} dot={false} />
             </LineChart>
-          </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-      {chartData.length < 2 && (
-        <div className="mt-3 w-full min-w-0 flex-1 min-h-[180px] flex flex-col">
-          <p className="text-[10px] text-muted-foreground mb-1 shrink-0">Branded share</p>
-          <div className="w-full flex-1 min-h-[180px]" style={{ height: 220 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={splitChartData} margin={{ top: 6, right: 8, left: 22, bottom: 14 }}>
-                <CartesianGrid {...CHART_GRID_PROPS} />
-                <XAxis dataKey="label" tick={CHART_AXIS_TICK} />
-                <YAxis
-                  width={34}
-                  tick={CHART_AXIS_TICK}
-                  tickFormatter={(v) => (Number(v) >= 1e3 ? `${(Number(v) / 1e3).toFixed(0)}k` : String(v))}
-                />
-                <Tooltip
-                  contentStyle={CHART_TOOLTIP_STYLE}
-                  formatter={(value: number | undefined, _name, item) => {
-                    const payload = item?.payload as { rawValue?: number } | undefined;
-                    return [String(payload?.rawValue ?? value ?? 0), "Clicks"];
-                  }}
-                />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={38}>
-                  {splitChartData.map((entry) => (
-                    <Cell key={entry.label} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
+          ) : (
+            <BarChart data={splitBars} margin={CHART_MARGIN_SECONDARY}>
+              <CartesianGrid {...CHART_GRID_PROPS} />
+              <XAxis dataKey="label" tick={CHART_AXIS_TICK} />
+              <YAxis
+                width={CHART_Y_AXIS_WIDTH_SECONDARY}
+                tick={CHART_AXIS_TICK}
+                tickFormatter={(v) => (Number(v) >= 1e3 ? `${(Number(v) / 1e3).toFixed(1)}k` : String(v))}
+              />
+              <Tooltip
+                contentStyle={CHART_TOOLTIP_STYLE}
+                formatter={(_value: number | undefined, _name, item) => [String((item.payload as { rawValue?: number })?.rawValue ?? 0), "Clicks"]}
+              />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={42}>
+                {splitBars.map((entry) => (
+                  <Cell key={entry.label} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          )}
+        </ResponsiveContainer>
+      </ChartPlot>
     </div>
   );
 }

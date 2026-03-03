@@ -1,23 +1,30 @@
 "use client";
 
-import { Fragment, useMemo } from "react";
+import { useMemo } from "react";
 import {
   Area,
   CartesianGrid,
   Line,
   LineChart,
   ReferenceLine,
-  XAxis,
-  YAxis,
   ResponsiveContainer,
   Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
 import { useSparkSeries, type SparkSeriesKey } from "@/contexts/spark-series-context";
-import { cn } from "@/lib/utils";
+import { ChartPlot } from "@/components/ui/chart-plot";
 import {
   CHART_AXIS_TICK,
   CHART_GRID_PROPS,
+  CHART_MARGIN_PRIMARY,
+  CHART_MARGIN_SECONDARY,
+  CHART_MARGIN_SPARK,
+  CHART_PLOT_H,
   CHART_TOOLTIP_STYLE,
+  CHART_Y_AXIS_WIDTH_PRIMARY,
+  CHART_Y_AXIS_WIDTH_SECONDARY,
+  createDateTickFormatter,
 } from "@/components/ui/chart-frame";
 
 export interface SparklineDataPoint {
@@ -38,17 +45,12 @@ interface DataPoint {
 
 interface TrendChartProps {
   data: DataPoint[];
-  /** When set and compareToPrior is true, prior series are drawn as dashed/muted overlay */
   priorData?: DataPoint[];
   height?: number;
   showImpressions?: boolean;
-  /** When true, show which series (clicks/impressions) from SparkSeries context; overrides showImpressions when set */
   useSeriesContext?: boolean;
-  /** When true and priorData is provided, overlay prior period series */
   compareToPrior?: boolean;
-  /** When true with useSeriesContext, normalize each series to 0-1 so multiple metrics are visible (dashboard sparkline style) */
   normalizeWhenMultiSeries?: boolean;
-  /** Optional chart margin override (e.g. tighter for small cards) */
   margin?: { top?: number; right?: number; left?: number; bottom?: number };
   className?: string;
 }
@@ -65,20 +67,77 @@ const SERIES_CONFIG: { key: SparkSeriesKey; dataKey: keyof SparklineDataPoint; s
   { key: "position", dataKey: "position", stroke: CHART_POSITION, label: "Avg position" },
 ];
 
-const CHART_MARGIN = { top: 6, right: 8, left: 22, bottom: 14 };
-
-/** Normalize a series to 0-1 range so multiple metrics are all visible (each uses full vertical scale) */
-function normalizeSeriesValues(values: number[]): number[] {
+function normalizeSeries(values: number[]): number[] {
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
   return values.map((v) => (v - min) / range);
 }
 
+function compactNumber(value: number): string {
+  if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+  if (value >= 1e3) return `${(value / 1e3).toFixed(1)}k`;
+  if (value < 1 && value > 0) return value.toFixed(2);
+  return String(Math.round(value));
+}
+
+function formatTooltipValue(key: SparkSeriesKey, value: number): string {
+  if (key === "ctr") return `${value.toFixed(2)}%`;
+  if (key === "position") return value.toFixed(1);
+  return compactNumber(value);
+}
+
+function buildChartMargin(height: number, marginOverride?: TrendChartProps["margin"]) {
+  const base = height >= CHART_PLOT_H.primary ? CHART_MARGIN_PRIMARY : CHART_MARGIN_SECONDARY;
+  return marginOverride ? { ...base, ...marginOverride } : base;
+}
+
+function SparklineTooltip({
+  active,
+  label,
+  data,
+  visible,
+}: {
+  active?: boolean;
+  label?: string;
+  data: SparklineDataPoint[];
+  visible: typeof SERIES_CONFIG;
+}) {
+  if (!active || !label) return null;
+  const raw = data.find((d) => d.date === label);
+  if (!raw) return null;
+
+  return (
+    <div
+      className="rounded-md border border-border bg-surface px-3 py-2 text-xs shadow-sm"
+      style={CHART_TOOLTIP_STYLE}
+    >
+      <div className="mb-1.5 font-medium text-foreground">
+        {new Date(label).toLocaleDateString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        })}
+      </div>
+      <div className="flex flex-col gap-0.5 text-muted-foreground">
+        {visible.map((s) => {
+          const v = raw[s.dataKey];
+          if (v == null) return null;
+          return (
+            <span key={s.key} className="tabular-nums">
+              {s.label}: {formatTooltipValue(s.key, v as number)}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function TrendChart({
   data,
   priorData,
-  height = 80,
+  height = CHART_PLOT_H.secondary,
   showImpressions = true,
   useSeriesContext = false,
   compareToPrior = false,
@@ -86,8 +145,10 @@ export function TrendChart({
   margin: marginOverride,
   className,
 }: TrendChartProps) {
-  const chartMargin = marginOverride ? { ...CHART_MARGIN, ...marginOverride } : CHART_MARGIN;
   const { series } = useSparkSeries();
+  const chartMargin = buildChartMargin(height, marginOverride);
+  const dateTickFormatter = useMemo(() => createDateTickFormatter(data?.length ?? 0), [data?.length]);
+  const yAxisWidth = height >= CHART_PLOT_H.primary ? CHART_Y_AXIS_WIDTH_PRIMARY : CHART_Y_AXIS_WIDTH_SECONDARY;
 
   const showClicks = useSeriesContext ? series?.clicks !== false : true;
   const showImpr = useSeriesContext ? series?.impressions === true : showImpressions;
@@ -105,18 +166,19 @@ export function TrendChart({
             return false;
           })
         : [],
-    [useSeriesContext, showClicks, showImpr, showCtr, showPosition]
+    [showClicks, showCtr, showImpr, showPosition, useSeriesContext]
   );
 
   const useNormalized =
     normalizeWhenMultiSeries &&
     useSeriesContext &&
     visibleSeries.length > 0 &&
-    (data?.length ?? 0) > 0 &&
-    visibleSeries.some((s) => (data ?? []).some((d) => (d[s.dataKey] as number) != null));
+    (data?.length ?? 0) > 0;
 
   const chartData = useMemo(() => {
     const safeData = data ?? [];
+    if (!safeData.length) return [];
+
     if (!useNormalized) {
       if (useSeriesContext && compareToPrior && priorData?.length) {
         return safeData.map((d, i) => ({
@@ -129,39 +191,29 @@ export function TrendChart({
       }
       return safeData;
     }
+
     return safeData.map((point, i) => {
       const out: Record<string, string | number | undefined> = { ...point };
       visibleSeries.forEach((s) => {
-        const raw = point[s.dataKey] as number | undefined;
-        if (raw == null) return;
         const values = safeData.map((d) => (d[s.dataKey] as number) ?? 0);
-        const norm = normalizeSeriesValues(values);
-        out[`_norm_${s.key}`] = norm[i];
+        out[`_norm_${s.key}`] = normalizeSeries(values)[i];
       });
       if (compareToPrior && priorData?.length) {
         visibleSeries.forEach((s) => {
-          const raw = priorData[i]?.[s.dataKey] as number | undefined;
-          if (raw == null) return;
           const values = priorData.map((d) => (d[s.dataKey] as number) ?? 0);
-          const norm = normalizeSeriesValues(values);
-          out[`_norm_${s.key}Prior`] = norm[i];
+          out[`_norm_${s.key}Prior`] = normalizeSeries(values)[i];
         });
       }
       return out;
     });
-  }, [data, priorData, useSeriesContext, compareToPrior, useNormalized, visibleSeries]);
-
-  const priorByDate = useMemo(() => {
-    const m = new Map<string, DataPoint>();
-    (priorData ?? []).forEach((d) => m.set(d.date, d));
-    return m;
-  }, [priorData]);
+  }, [compareToPrior, data, priorData, useNormalized, useSeriesContext, visibleSeries]);
 
   const yDomain = useMemo((): [number, number] | undefined => {
     if (!chartData.length) return undefined;
     const keys: (keyof DataPoint)[] = ["clicks", "impressions", "ctr", "position"];
     let min = Infinity;
     let max = -Infinity;
+
     chartData.forEach((d) => {
       keys.forEach((k) => {
         const v = d[k];
@@ -171,339 +223,179 @@ export function TrendChart({
         }
       });
     });
+
     if (min === Infinity || max === -Infinity) return undefined;
-    const pad = Math.max(0, (max - min) * 0.05) || (max !== 0 ? Math.abs(max) * 0.05 : 1);
+    const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
     return [Math.max(0, min - pad), max + pad];
   }, [chartData]);
 
-  if (!data?.length) return null;
-
-  if (useNormalized) {
-    const normKeys = visibleSeries.map((s) => `_norm_${s.key}`);
-    const allNormValues = chartData.flatMap((d) =>
-      normKeys.map((k) => (d as Record<string, unknown>)[k] as number | undefined).filter((v): v is number => typeof v === "number")
-    );
-    const dataMin = allNormValues.length ? Math.min(...allNormValues) : 0;
-    const dataMax = allNormValues.length ? Math.max(...allNormValues) : 1;
-    const padding = Math.max(0.02, (dataMax - dataMin) * 0.05);
-    const yDomain: [number, number] = [Math.max(0, dataMin - padding), Math.min(1, dataMax + padding)];
-
+  if (!data?.length) {
     return (
-      <div className={cn("w-full", className)} style={{ height }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={chartMargin}>
-            <CartesianGrid {...CHART_GRID_PROPS} />
-            <XAxis
-              dataKey="date"
-              tick={CHART_AXIS_TICK}
-              tickFormatter={(v) => {
-                const d = new Date(v);
-                return `${d.getMonth() + 1}/${d.getDate()}`;
-              }}
-            />
-            <YAxis
-              width={34}
-              domain={yDomain}
-              allowDataOverflow
-              tick={CHART_AXIS_TICK}
-              tickFormatter={(v) => `${Math.round(Number(v) * 100)}%`}
-            />
-            <Tooltip
-              contentStyle={CHART_TOOLTIP_STYLE}
-              labelFormatter={(v) => new Date(v).toLocaleDateString()}
-              content={({ active, payload, label }) => {
-                if (!active || !label || !payload?.length) return null;
-                const raw = data.find((d) => d.date === label);
-                if (!raw) return null;
-                return (
-                  <div
-                    className="rounded-md border border-border bg-surface px-3 py-2 text-xs shadow-sm"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-                  >
-                    <div className="font-medium text-foreground mb-1.5">
-                      {new Date(label).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-                    </div>
-                    <div className="flex flex-col gap-0.5 text-muted-foreground">
-                      {visibleSeries.map((s) => {
-                        const v = raw[s.dataKey];
-                        if (v == null) return null;
-                        const fmt =
-                          s.key === "ctr"
-                            ? `${(v as number).toFixed(2)}%`
-                            : s.key === "position"
-                              ? (v as number).toFixed(1)
-                              : (v as number) >= 1e6
-                                ? `${((v as number) / 1e6).toFixed(1)}M`
-                                : (v as number) >= 1e3
-                                  ? `${((v as number) / 1e3).toFixed(1)}k`
-                                  : String(v);
-                        return (
-                          <span key={s.key} className="tabular-nums">
-                            {s.key.charAt(0).toUpperCase() + s.key.slice(1)}: {fmt}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              }}
-            />
-            {visibleSeries.map((s) => (
-              <Line
-                key={s.key}
-                type="monotone"
-                dataKey={`_norm_${s.key}`}
-                stroke={s.stroke}
-                strokeWidth={s.key === "clicks" ? 2 : 1.2}
-                strokeOpacity={s.key === "impressions" ? 0.85 : 1}
-                dot={false}
-                name={s.label}
-              />
-            ))}
-            {compareToPrior &&
-              priorData?.length &&
-              visibleSeries.map((s) => (
-                <Line
-                  key={`${s.key}-prior`}
-                  type="monotone"
-                  dataKey={`_norm_${s.key}Prior`}
-                  stroke={s.stroke}
-                  strokeWidth={1}
-                  strokeOpacity={0.45}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  name="Prior"
-                />
-              ))}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      <ChartPlot
+        height={height}
+        minHeight={height}
+        isEmpty
+        emptyMessage="No performance data in this range."
+        className={className}
+      />
     );
   }
 
-  const yAxisTickFormatter = (value: number) => {
-    const v = Number(value);
-    if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
-    if (v >= 1e3) return `${(v / 1e3).toFixed(1)}k`;
-    if (v < 1 && v > 0) return v.toFixed(2);
-    return String(Math.round(v));
-  };
-
   return (
-    <div className={cn("w-full", className)} style={{ height }}>
+    <ChartPlot height={height} minHeight={height} className={className}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={chartMargin}>
           <defs>
             <linearGradient id="trend-fill-clicks" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={CHART_CLICKS} stopOpacity={0.25} />
+              <stop offset="0%" stopColor={CHART_CLICKS} stopOpacity={0.2} />
               <stop offset="100%" stopColor={CHART_CLICKS} stopOpacity={0} />
             </linearGradient>
           </defs>
+
           <CartesianGrid {...CHART_GRID_PROPS} />
-          <ReferenceLine y={0} stroke="var(--border)" strokeOpacity={0.6} />
-          <XAxis
-            dataKey="date"
-            axisLine={{ stroke: "var(--border)", strokeOpacity: 0.7 }}
-            tick={CHART_AXIS_TICK}
-            tickFormatter={(v) => {
-              const d = new Date(v);
-              return `${d.getMonth() + 1}/${d.getDate()}`;
-            }}
-          />
+          <ReferenceLine y={0} stroke="var(--border)" strokeOpacity={0.55} />
+          <XAxis dataKey="date" tick={CHART_AXIS_TICK} tickFormatter={dateTickFormatter} minTickGap={14} />
+
           <YAxis
-            width={34}
-            hide={false}
-            domain={yDomain ?? ["auto", "auto"]}
-            tickCount={6}
-            tick={{ ...CHART_AXIS_TICK, opacity: 0.9 }}
-            tickFormatter={yAxisTickFormatter}
+            width={yAxisWidth}
+            domain={useNormalized ? [0, 1] : yDomain ?? ["auto", "auto"]}
+            tick={CHART_AXIS_TICK}
+            tickCount={5}
+            tickFormatter={(value) => (useNormalized ? `${Math.round(Number(value) * 100)}%` : compactNumber(Number(value)))}
           />
+
           <Tooltip
             cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
-            content={({ active, payload, label }) => {
-              if (!active || !label || !payload?.length) return null;
-              const row = chartData.find((d) => d.date === String(label)) as (DataPoint & { clicksPrior?: number; impressionsPrior?: number; ctrPrior?: number; positionPrior?: number }) | undefined;
-              const prior = priorByDate.get(String(label));
-              const fmt = (v: number, isPct = false) =>
-                isPct ? `${v.toFixed(1)}%` : v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}k` : String(Math.round(v));
-              const pctChange = (curr: number, prev: number) => (prev === 0 ? null : ((curr - prev) / prev) * 100);
-              const tooltipRows: { label: string; value: string; vsPrior: string | null; vsPriorPct: number | null; color: string; positiveIsGood: boolean }[] = [];
-              if (row?.clicks != null) {
-                const p = prior?.clicks != null ? pctChange(row.clicks, prior.clicks) : null;
-                tooltipRows.push({ label: "Clicks", value: fmt(row.clicks), vsPrior: p != null ? `${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior` : null, vsPriorPct: p ?? null, color: CHART_CLICKS, positiveIsGood: true });
-              }
-              if (row?.impressions != null) {
-                const p = prior?.impressions != null ? pctChange(row.impressions, prior.impressions) : null;
-                tooltipRows.push({ label: "Impressions", value: fmt(row.impressions), vsPrior: p != null ? `${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior` : null, vsPriorPct: p ?? null, color: CHART_IMPRESSIONS, positiveIsGood: true });
-              }
-              if (row?.position != null) {
-                const p = prior?.position != null ? pctChange(row.position, prior.position) : null;
-                tooltipRows.push({ label: "Position", value: row.position.toFixed(1), vsPrior: p != null ? `${p >= 0 ? "+" : ""}${p.toFixed(0)}% vs prior` : null, vsPriorPct: p ?? null, color: CHART_POSITION, positiveIsGood: false });
-              }
-              const deltaClass = (r: typeof tooltipRows[0]) => {
-                if (r.vsPriorPct == null) return "text-muted-foreground/90";
-                const good = r.positiveIsGood ? r.vsPriorPct > 0 : r.vsPriorPct < 0;
-                const bad = r.positiveIsGood ? r.vsPriorPct < 0 : r.vsPriorPct > 0;
-                return good ? "text-positive" : bad ? "text-negative" : "text-muted-foreground/90";
-              };
-              return (
-                <div className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs shadow-lg min-w-[140px]" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-                  <div className="font-semibold text-foreground mb-1">{new Date(label).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
-                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-muted-foreground">
-                    {tooltipRows.map((r) => (
-                      <Fragment key={r.label}>
-                        <div className="flex items-center gap-1.5">
-                          <span className="rounded-full w-1.5 h-1.5 shrink-0" style={{ background: r.color }} />
-                          <span className="font-medium text-foreground">{r.label}</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="tabular-nums">{r.value}</span>
-                          {r.vsPrior && <span className={cn("text-[10px] tabular-nums", deltaClass(r))}>{r.vsPrior}</span>}
-                        </div>
-                      </Fragment>
-                    ))}
-                  </div>
-                </div>
-              );
-            }}
+            contentStyle={CHART_TOOLTIP_STYLE}
+            labelFormatter={(v) =>
+              new Date(v).toLocaleDateString(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+              })
+            }
           />
-          {showClicks && (
+
+          {useNormalized
+            ? visibleSeries.map((s) => (
+                <Line
+                  key={s.key}
+                  type="monotone"
+                  dataKey={`_norm_${s.key}`}
+                  stroke={s.stroke}
+                  strokeWidth={s.key === "clicks" ? 2 : 1.3}
+                  strokeOpacity={s.key === "impressions" ? 0.9 : 1}
+                  dot={false}
+                  name={s.label}
+                />
+              ))
+            : null}
+
+          {showClicks && !useNormalized && (
             <>
               <Area type="monotone" dataKey="clicks" fill="url(#trend-fill-clicks)" stroke="none" />
-              <Line type="monotone" dataKey="clicks" stroke={CHART_CLICKS} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, fill: CHART_CLICKS, stroke: "var(--surface)" }} name="Clicks" />
+              <Line
+                type="monotone"
+                dataKey="clicks"
+                stroke={CHART_CLICKS}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 3, strokeWidth: 1.5, fill: CHART_CLICKS, stroke: "var(--surface)" }}
+                name="Clicks"
+              />
               {compareToPrior && priorData?.length && (
-                <Line type="monotone" dataKey="clicksPrior" stroke={CHART_CLICKS} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="4 4" strokeOpacity={0.5} name="Prior" />
+                <Line
+                  type="monotone"
+                  dataKey="clicksPrior"
+                  stroke={CHART_CLICKS}
+                  strokeWidth={1}
+                  dot={false}
+                  strokeDasharray="5 4"
+                  strokeOpacity={0.5}
+                  name="Clicks (prior)"
+                />
               )}
             </>
           )}
-          {showImpr && (
+
+          {showImpr && !useNormalized && (
             <>
-              <Line type="monotone" dataKey="impressions" stroke={CHART_IMPRESSIONS} strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} strokeDasharray="3 3" strokeOpacity={0.7} name="Impressions" />
+              <Line
+                type="monotone"
+                dataKey="impressions"
+                stroke={CHART_IMPRESSIONS}
+                strokeWidth={1.2}
+                dot={false}
+                strokeOpacity={0.85}
+                name="Impressions"
+              />
               {compareToPrior && priorData?.length && (
-                <Line type="monotone" dataKey="impressionsPrior" stroke={CHART_IMPRESSIONS} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="5 5" strokeOpacity={0.4} name="Prior" />
+                <Line
+                  type="monotone"
+                  dataKey="impressionsPrior"
+                  stroke={CHART_IMPRESSIONS}
+                  strokeWidth={1}
+                  dot={false}
+                  strokeDasharray="5 4"
+                  strokeOpacity={0.45}
+                  name="Impressions (prior)"
+                />
               )}
             </>
           )}
-          {showCtr && (
-            <>
-              <Line type="monotone" dataKey="ctr" stroke={CHART_CTR} strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} name="CTR" />
-              {compareToPrior && priorData?.length && (
-                <Line type="monotone" dataKey="ctrPrior" stroke={CHART_CTR} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
-              )}
-            </>
+
+          {showCtr && !useNormalized && (
+            <Line
+              type="monotone"
+              dataKey="ctr"
+              stroke={CHART_CTR}
+              strokeWidth={1.2}
+              dot={false}
+              name="CTR"
+            />
           )}
-          {showPosition && (
-            <>
-              <Line type="monotone" dataKey="position" stroke={CHART_POSITION} strokeWidth={1.2} dot={false} activeDot={{ r: 3 }} name="Avg position" />
-              {compareToPrior && priorData?.length && (
-                <Line type="monotone" dataKey="positionPrior" stroke={CHART_POSITION} strokeWidth={1} dot={false} activeDot={false} strokeDasharray="4 4" strokeOpacity={0.45} name="Prior" />
-              )}
-            </>
+
+          {showPosition && !useNormalized && (
+            <Line
+              type="monotone"
+              dataKey="position"
+              stroke={CHART_POSITION}
+              strokeWidth={1.2}
+              dot={false}
+              name="Avg position"
+            />
           )}
         </LineChart>
       </ResponsiveContainer>
-    </div>
+    </ChartPlot>
   );
 }
 
-/** Normalize a series to 0-1 range so multiple metrics are all visible (each uses full vertical scale) */
-function normalizeSeries(values: number[]): number[] {
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  return values.map((v) => (v - min) / range);
-}
-
-const SERIES_LABELS: Record<SparkSeriesKey, string> = {
-  clicks: "Clicks",
-  impressions: "Impressions",
-  ctr: "CTR",
-  position: "Avg position",
-};
-
-function formatTooltipValue(key: SparkSeriesKey, value: number): string {
-  if (key === "ctr") return `${value.toFixed(2)}%`;
-  if (key === "position") return value.toFixed(1);
-  if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
-  if (value >= 1e3) return `${(value / 1e3).toFixed(1)}k`;
-  return String(value);
-}
-
-function SparklineTooltip({
-  active,
-  payload,
-  label,
-  data,
-  visible,
-}: {
-  active?: boolean;
-  payload?: readonly { dataKey?: string }[];
-  label?: string;
-  data: SparklineDataPoint[];
-  visible: typeof SERIES_CONFIG;
-}) {
-  if (!active || !label || !payload?.length) return null;
-  const raw = data.find((d) => d.date === label);
-  if (!raw) return null;
-  const dateStr = new Date(label).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-  return (
-    <div
-      className="rounded-md border border-border bg-surface px-3 py-2 text-xs shadow-sm"
-      style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-    >
-      <div className="font-medium text-foreground mb-1.5">{dateStr}</div>
-      <div className="flex flex-col gap-0.5 text-muted-foreground">
-        {visible.map((s) => {
-          const v = raw[s.dataKey];
-          if (v == null) return null;
-          return (
-            <span key={s.key} className="tabular-nums">
-              {SERIES_LABELS[s.key]}: {formatTooltipValue(s.key, v as number)}
-            </span>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/** Compact sparkline: each enabled metric normalized to its own scale so all are visible in different colours (SEO Gets style) */
 export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
   const { series } = useSparkSeries();
   if (!data?.length) return null;
 
   const visible = SERIES_CONFIG.filter((s) => series[s.key] && data.some((d) => d[s.dataKey] != null));
-  if (visible.length === 0) return null;
+  if (!visible.length) return null;
 
   const normalizedData = data.map((point, i) => {
     const out: Record<string, string | number> = { date: point.date };
     visible.forEach((s) => {
-      const raw = point[s.dataKey];
-      if (raw == null) return;
       const values = data.map((d) => (d[s.dataKey] as number) ?? 0);
-      const norm = normalizeSeries(values);
-      out[`_norm_${s.key}`] = norm[i];
+      out[`_norm_${s.key}`] = normalizeSeries(values)[i];
     });
     return out;
   });
 
   return (
-    <div className="h-20 w-full min-w-0">
+    <ChartPlot height={CHART_PLOT_H.spark} minHeight={CHART_PLOT_H.spark}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={normalizedData}
-          margin={{ top: 10, right: 4, left: 4, bottom: 10 }}
-        >
+        <LineChart data={normalizedData} margin={CHART_MARGIN_SPARK}>
           <YAxis hide domain={[0, 1]} allowDataOverflow />
           <Tooltip
-            content={({ active, payload, label }) => (
+            content={({ active, label }) => (
               <SparklineTooltip
                 active={active}
-                payload={payload}
                 label={label != null ? String(label) : undefined}
                 data={data}
                 visible={visible}
@@ -516,13 +408,13 @@ export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
               type="monotone"
               dataKey={`_norm_${s.key}`}
               stroke={s.stroke}
-              strokeWidth={1.5}
-              strokeOpacity={0.9}
+              strokeWidth={1.4}
               dot={false}
+              strokeOpacity={0.9}
             />
           ))}
         </LineChart>
       </ResponsiveContainer>
-    </div>
+    </ChartPlot>
   );
 }

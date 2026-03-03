@@ -128,7 +128,7 @@ function DataTableView({
         </div>
         <div className="flex items-center gap-2 flex-wrap ml-auto">
         {showFilterBar && trend !== "new" && trend !== "lost" && (
-          <div className="flex flex-wrap gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
+          <div className="flex flex-wrap gap-0.5 rounded-md border border-input bg-background p-0.5">
             {filterOptions.filter((t) => t !== "new" && t !== "lost").map((t) => (
               <button
                 key={t}
@@ -137,7 +137,7 @@ function DataTableView({
                 className={cn(
                   "rounded px-2 py-1 text-xs transition-colors duration-[120ms] whitespace-nowrap",
                   trend === t
-                    ? "bg-muted text-foreground font-medium"
+                    ? "bg-background text-foreground font-medium border border-input"
                     : "text-muted-foreground hover:bg-accent"
                 )}
               >
@@ -147,7 +147,7 @@ function DataTableView({
           </div>
         )}
         {showFilterBar && (trend === "new" || trend === "lost") && (
-          <div className="flex gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
+          <div className="flex gap-0.5 rounded-md border border-input bg-background p-0.5">
             <button
               type="button"
               onClick={() => setTrend("all")}
@@ -156,7 +156,7 @@ function DataTableView({
               ← All
             </button>
             <span className={cn(
-              "rounded px-2 py-1 text-xs font-medium capitalize bg-muted text-foreground"
+              "rounded px-2 py-1 text-xs font-medium capitalize bg-background text-foreground border border-input"
             )}>
               {FILTER_LABELS[trend]}
             </span>

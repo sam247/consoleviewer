@@ -211,7 +211,7 @@ function MovementIntelligence({
     <section aria-label="Movement intelligence" className="rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <h2 className="text-sm font-semibold text-foreground">Movement intelligence</h2>
-        <div className="flex gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
+        <div className="flex gap-0.5 rounded-md border border-input bg-background p-0.5">
           {(["all", "growing", "decaying", "new", "lost"] as const).map((t) => (
             <button
               key={t}
@@ -220,7 +220,7 @@ function MovementIntelligence({
               className={cn(
                 "rounded px-2 py-1 text-xs font-medium capitalize transition-colors duration-[120ms]",
                 trendFilter === t
-                  ? "bg-muted text-foreground"
+                  ? "bg-background text-foreground border border-input"
                   : "text-muted-foreground hover:bg-accent"
               )}
             >
@@ -718,10 +718,15 @@ export default function SiteDetailPage({
                     />
                   </div>
                 </div>
-                {/* Position volatility: full width */}
-                {data.daily.some((d: { position?: number }) => d.position != null) && (
-                  <PositionVolatilityChart daily={data.daily} />
-                )}
+                {/* Position volatility + Opportunity index: two columns */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-w-0">
+                  {data.daily.some((d: { position?: number }) => d.position != null) && (
+                    <PositionVolatilityChart daily={data.daily} />
+                  )}
+                  {queriesRows.length > 0 && (
+                    <OpportunityIndex queries={queriesRows} />
+                  )}
+                </div>
               </section>
             )}
 
@@ -739,11 +744,10 @@ export default function SiteDetailPage({
             )}
 
             <div className="space-y-4">
-            {/* Opportunity index (top 5 by score) */}
-            {queriesRows.length > 0 && (
+            {/* Opportunity index when no daily data (otherwise shown in 2-col with Position volatility) */}
+            {!data?.daily?.length && queriesRows.length > 0 && (
               <OpportunityIndex queries={queriesRows} />
             )}
-
             {/* Opportunity Intelligence */}
             {queriesRows.length > 0 && (
               <OpportunityIntelligence queries={queriesRows} />
@@ -939,14 +943,14 @@ export default function SiteDetailPage({
                               <button
                                 type="button"
                                 onClick={() => setContentFilterExclude(false)}
-                                className={cn("rounded px-2 py-0.5 text-xs font-medium transition-colors duration-[120ms]", !contentFilterExclude ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent")}
+                                className={cn("rounded px-2 py-0.5 text-xs font-medium transition-colors duration-[120ms]", !contentFilterExclude ? "bg-background text-foreground border border-input" : "text-muted-foreground hover:bg-accent")}
                               >
                                 Include
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setContentFilterExclude(true)}
-                                className={cn("rounded px-2 py-0.5 text-xs font-medium transition-colors duration-[120ms]", contentFilterExclude ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent")}
+                                className={cn("rounded px-2 py-0.5 text-xs font-medium transition-colors duration-[120ms]", contentFilterExclude ? "bg-background text-foreground border border-input" : "text-muted-foreground hover:bg-accent")}
                               >
                                 Exclude
                               </button>
@@ -1158,7 +1162,7 @@ export default function SiteDetailPage({
                     <button
                       type="button"
                       onClick={addBrandedTerm}
-                      className="rounded px-2 py-1 text-xs font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors"
+                      className="rounded px-2 py-1 text-xs font-medium bg-background text-foreground border border-input hover:bg-accent transition-colors"
                     >
                       Add
                     </button>

@@ -148,7 +148,7 @@ export function TrackedKeywordsSection({ keywords: mockKeywords, exportFilename 
                 type="button"
                 onClick={handleAdd}
                 disabled={addLoading}
-                className="rounded px-2 py-1 text-xs font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
+                className="rounded px-2 py-1 text-xs font-medium bg-background text-foreground border border-input hover:bg-accent transition-colors disabled:opacity-50"
               >
                 {addLoading ? "…" : "Add"}
               </button>

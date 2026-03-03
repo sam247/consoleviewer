@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { classifyQuery } from "@/lib/ai-query-detection";
 import type { DataTableRow } from "@/components/data-table";
 import { InfoTooltip } from "@/components/info-tooltip";
@@ -11,7 +10,7 @@ interface AiQuerySignalsCardProps {
   daily?: { date: string; impressions?: number; clicks?: number }[];
 }
 
-export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) {
+export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
   const stats = useMemo(() => {
     const totalQueries = queries.length;
     const totalClicks = queries.reduce((s, r) => s + r.clicks, 0);
@@ -47,79 +46,65 @@ export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) 
       pctLongClicks,
       pctConvQueries,
       top5,
-      sparkData: daily?.slice(-14).map((d) => d.impressions ?? d.clicks ?? 0) ?? [],
     };
-  }, [queries, daily]);
+  }, [queries]);
 
   return (
-    <div className="rounded-lg border border-border bg-surface flex flex-col min-h-0 transition-colors hover:border-foreground/20">
-      <div className="border-b border-border px-4 py-2 shrink-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">
+    <div className="min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu flex flex-col">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-semibold text-sm text-foreground flex items-center gap-1">
             AI-style query signals
             <InfoTooltip title="Queries that look like long-form or conversational search (LLM-style)" />
-          </h3>
+          </span>
           <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5">
             Experimental
           </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
-          Long-form: {stats.pctLongQueries}% of queries, {stats.pctLongClicks}%
-          of clicks · Conversational: {stats.pctConvQueries}% of queries
+        <p className="text-xs text-muted-foreground tabular-nums w-full sm:w-auto">
+          Long-form: {stats.pctLongQueries}% queries, {stats.pctLongClicks}% clicks · Conversational: {stats.pctConvQueries}% queries
         </p>
       </div>
-      <div className="flex-1 min-h-0 flex flex-col gap-3 px-4 py-2 overflow-auto">
-        {stats.top5.length > 0 && (
-          <div className="shrink-0">
-            <p className="text-xs text-muted-foreground mb-1">Top 5 LLM-style queries</p>
-            <ul className="text-xs space-y-1.5 w-full min-w-0">
-              {stats.top5.map((r) => (
-                <li
+      <div className="overflow-x-auto min-w-0 flex-1">
+        <table className="w-full text-sm table-fixed border-collapse">
+          <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
+            <tr>
+              <th className="text-left px-4 py-1.5 pb-1.5 font-semibold min-w-0 w-[35%]">Name</th>
+              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-[20%]">Clicks</th>
+              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-[20%]">Impr.</th>
+              <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-14">Pos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stats.top5.length > 0 ? (
+              stats.top5.map((r) => (
+                <tr
                   key={r.key}
-                  className="truncate text-foreground tabular-nums min-w-0 rounded px-2 py-1 -mx-2 transition-colors duration-100 hover:bg-muted/50"
-                  title={r.key}
+                  className="border-b border-border/50 last:border-b-0 hover:bg-muted/50 transition-colors duration-100"
                 >
-                  <span className="text-muted-foreground mr-1">
-                    {r.impressions != null ? r.impressions.toLocaleString() : "—"} impr
-                  </span>
-                  {r.key}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {stats.sparkData.length >= 2 && (
-          <div className="flex-1 min-h-[120px] w-full shrink-0">
-            <p className="text-[10px] text-muted-foreground mb-1">Site trend</p>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={(daily ?? []).slice(-28).map((d) => ({
-                  date: d.date,
-                  clicks: d.clicks ?? 0,
-                  impressions: d.impressions ?? 0,
-                }))}
-                margin={{ top: 2, right: 4, left: 0, bottom: 2 }}
-              >
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 9 }}
-                  tickFormatter={(v) => {
-                    const d = new Date(v);
-                    return `${d.getMonth() + 1}/${d.getDate()}`;
-                  }}
-                />
-                <YAxis width={24} tick={{ fontSize: 9 }} hide={false} />
-                <Tooltip
-                  contentStyle={{ fontSize: 10, padding: "4px 6px" }}
-                  labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                  formatter={(value: number | undefined) => [(value ?? 0).toLocaleString(), ""]}
-                />
-                <Line type="monotone" dataKey="clicks" stroke="var(--chart-clicks)" strokeWidth={1.5} dot={false} name="Clicks" />
-                <Line type="monotone" dataKey="impressions" stroke="var(--chart-impressions)" strokeWidth={1} dot={false} strokeDasharray="3 2" name="Impr." />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+                  <td className="px-4 py-1.5 truncate min-w-0 text-foreground" title={r.key}>
+                    {r.key}
+                  </td>
+                  <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">
+                    {r.clicks.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">
+                    {r.impressions != null ? r.impressions.toLocaleString() : "—"}
+                  </td>
+                  <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">
+                    {r.position != null ? r.position.toFixed(1) : "—"}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="px-4 py-3 text-sm text-muted-foreground">
+                  No LLM-style queries in top set
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

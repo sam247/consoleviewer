@@ -121,19 +121,19 @@ export function TrackedKeywordsSection({ keywords: mockKeywords, exportFilename 
 
   return (
     <div
-      className="rounded-lg border border-border bg-surface flex flex-col min-h-0 transition-colors hover:border-foreground/20 min-w-0"
+      className="min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu flex flex-col"
       aria-label="Keywords tracked"
     >
-      <div className="border-b border-border px-4 py-2.5 shrink-0 flex items-center justify-between gap-2 flex-wrap">
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">Keywords tracked<InfoTooltip title="Rank-tracked keywords (e.g. via SerpRobot) with position and trend" /></h3>
+      <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap shrink-0">
+        <div className="flex items-center gap-2 shrink-0 min-w-0">
+          <span className="font-semibold text-sm text-foreground flex items-center gap-1">Keywords tracked<InfoTooltip title="Rank-tracked keywords (e.g. via SerpRobot) with position and trend" /></span>
           {showConnectMessage && (
             <p className="text-xs text-muted-foreground mt-0.5">
               Connect SerpRobot in Settings to track keywords.
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 flex-wrap ml-auto">
           {canAddDelete && (
             <div className="flex items-center gap-1.5">
               <input
@@ -166,9 +166,9 @@ export function TrackedKeywordsSection({ keywords: mockKeywords, exportFilename 
           )}
         </div>
       </div>
-      <div className="flex-1 min-h-0 overflow-auto px-4 py-2">
+      <div className="flex-1 min-h-0 overflow-auto min-w-0">
         {keywords.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground px-4 py-3">
             No keywords yet. Connect SerpRobot in Settings to track keywords.
           </p>
         ) : (
@@ -176,7 +176,7 @@ export function TrackedKeywordsSection({ keywords: mockKeywords, exportFilename 
             <table className="w-full text-sm table-fixed border-collapse">
               <thead className="sticky top-0 z-10 bg-surface border-b border-border text-muted-foreground">
                 <tr>
-                  <th className="text-left px-4 py-1.5 pb-1.5 font-semibold min-w-0 w-[35%]">Keyword</th>
+                  <th className="text-left px-4 py-1.5 pb-1.5 font-semibold min-w-0 w-[35%]">Name</th>
                   <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-20">Position</th>
                   <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">1D Δ</th>
                   <th className="text-right px-4 py-1.5 pb-1.5 font-semibold w-16">7D Δ</th>

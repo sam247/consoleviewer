@@ -718,14 +718,57 @@ export default function SiteDetailPage({
                     />
                   </div>
                 </div>
-                {/* Position volatility + Opportunity index: two columns */}
+                {/* Position volatility + Branded vs non-branded: two columns */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-w-0">
                   {data.daily.some((d: { position?: number }) => d.position != null) && (
                     <PositionVolatilityChart daily={data.daily} />
                   )}
-                  {queriesRows.length > 0 && (
-                    <OpportunityIndex queries={queriesRows} />
-                  )}
+                  <div className="rounded-lg border border-border bg-surface px-4 py-4 transition-colors hover:border-foreground/20 flex flex-col min-h-0 min-w-0">
+                    <h2 className="text-sm font-semibold text-foreground mb-2">Branded vs non-branded</h2>
+                    <p className="text-xs text-muted-foreground mb-1.5">Branded terms (queries containing these count as branded)</p>
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <input
+                        type="text"
+                        value={brandedTermInput}
+                        onChange={(e) => setBrandedTermInput(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addBrandedTerm())}
+                        placeholder="e.g. brand name"
+                        className="rounded border border-border bg-background px-2 py-1 text-sm w-32 focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={addBrandedTerm}
+                        className="rounded px-2 py-1 text-xs font-medium bg-background text-foreground border border-input hover:bg-accent transition-colors"
+                      >
+                        Add
+                      </button>
+                      {brandedTerms.map((t) => (
+                        <span
+                          key={t}
+                          className="inline-flex items-center gap-1 rounded bg-muted/70 px-2 py-0.5 text-xs text-foreground"
+                        >
+                          {t}
+                          <button
+                            type="button"
+                            onClick={() => removeBrandedTerm(t)}
+                            className="text-muted-foreground hover:text-foreground focus:ring-2 focus:ring-ring rounded"
+                            aria-label={`Remove ${t}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex-1 min-h-0 min-w-0">
+                      <BrandedChart
+                        brandedClicks={brandedFromQueries?.brandedClicks ?? data?.branded?.brandedClicks ?? 0}
+                        nonBrandedClicks={brandedFromQueries?.nonBrandedClicks ?? data?.branded?.nonBrandedClicks ?? (data?.summary?.clicks ?? 0)}
+                        brandedChangePercent={brandedFromQueries ? undefined : data?.branded?.brandedChangePercent}
+                        nonBrandedChangePercent={brandedFromQueries ? undefined : data?.branded?.nonBrandedChangePercent}
+                        daily={data?.daily}
+                      />
+                    </div>
+                  </div>
                 </div>
               </section>
             )}
@@ -744,8 +787,8 @@ export default function SiteDetailPage({
             )}
 
             <div className="space-y-4">
-            {/* Opportunity index when no daily data (otherwise shown in 2-col with Position volatility) */}
-            {!data?.daily?.length && queriesRows.length > 0 && (
+            {/* Opportunity index (part of opportunities section) */}
+            {queriesRows.length > 0 && (
               <OpportunityIndex queries={queriesRows} />
             )}
             {/* Opportunity Intelligence */}
@@ -873,14 +916,14 @@ export default function SiteDetailPage({
                       </button>
                     </div>
                     {dailyForCharts.length > 0 && (
-                      <div className="flex-1 min-h-[120px] w-full min-w-0 border-t border-border/50 flex flex-col">
-                        <p className="text-[10px] text-muted-foreground mb-1 px-4 pt-2">Performance trend</p>
-                        <div className="flex-1 min-h-0 px-4 pb-3 w-full" style={{ minWidth: 0 }}>
+                      <div className="flex-1 min-h-[200px] w-full min-w-0 border-t border-border/50 flex flex-col">
+                        <p className="text-[10px] text-muted-foreground mb-1 px-4 pt-2 shrink-0">Performance trend</p>
+                        <div className="flex-1 min-h-[180px] px-4 pb-3 w-full" style={{ minWidth: 0 }}>
                           <TrendChart
                             data={dailyForCharts}
-                            height={120}
+                            height={200}
                             showImpressions
-                            className="min-w-0 w-full"
+                            className="min-w-0 w-full h-full"
                             margin={{ top: 4, right: 0, left: 22, bottom: 12 }}
                           />
                         </div>
@@ -1142,56 +1185,6 @@ export default function SiteDetailPage({
                   )}
                 </div>
               )}
-            </section>
-
-            {/* Segmentation (Branded vs non-branded, full width) */}
-            <section aria-label="Segmentation" className="w-full">
-              <div className="rounded-lg border border-border bg-surface px-4 py-4 transition-colors hover:border-foreground/20 flex flex-col min-h-0">
-                <h2 className="text-sm font-semibold text-foreground mb-2">Segmentation</h2>
-                <div className="mb-3">
-                  <p className="text-xs text-muted-foreground mb-1.5">Branded terms (queries containing these count as branded)</p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      type="text"
-                      value={brandedTermInput}
-                      onChange={(e) => setBrandedTermInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addBrandedTerm())}
-                      placeholder="e.g. brand name"
-                      className="rounded border border-border bg-background px-2 py-1 text-sm w-32 focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={addBrandedTerm}
-                      className="rounded px-2 py-1 text-xs font-medium bg-background text-foreground border border-input hover:bg-accent transition-colors"
-                    >
-                      Add
-                    </button>
-                    {brandedTerms.map((t) => (
-                      <span
-                        key={t}
-                        className="inline-flex items-center gap-1 rounded bg-muted/70 px-2 py-0.5 text-xs text-foreground"
-                      >
-                        {t}
-                        <button
-                          type="button"
-                          onClick={() => removeBrandedTerm(t)}
-                          className="text-muted-foreground hover:text-foreground focus:ring-2 focus:ring-ring rounded"
-                          aria-label={`Remove ${t}`}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <BrandedChart
-                  brandedClicks={brandedFromQueries?.brandedClicks ?? data?.branded?.brandedClicks ?? 0}
-                  nonBrandedClicks={brandedFromQueries?.nonBrandedClicks ?? data?.branded?.nonBrandedClicks ?? (data?.summary?.clicks ?? 0)}
-                  brandedChangePercent={brandedFromQueries ? undefined : data?.branded?.brandedChangePercent}
-                  nonBrandedChangePercent={brandedFromQueries ? undefined : data?.branded?.nonBrandedChangePercent}
-                  daily={data?.daily}
-                />
-              </div>
             </section>
 
             {/* Add a metric (trial): two slots, modal to pick Countries/Devices */}

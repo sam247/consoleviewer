@@ -153,31 +153,30 @@ export function QueryFootprintContent({
             </div>
             {sparkData.length > 0 && (
               <div className="min-w-0 w-full h-[72px] shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={sparkData} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
-                      <Tooltip
-                        contentStyle={{
-                          fontSize: 11,
-                          padding: "4px 8px",
-                          background: "var(--surface)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 4,
-                        }}
-                        labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                        formatter={(v: number | undefined) => [(v ?? 0).toLocaleString(), "Clicks"]}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="clicks"
-                        stroke="var(--chart-clicks)"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </div>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={sparkData} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
+                    <Tooltip
+                      contentStyle={{
+                        fontSize: 11,
+                        padding: "4px 8px",
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 4,
+                      }}
+                      labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      formatter={(v: number | undefined) => [(v ?? 0).toLocaleString(), "Clicks"]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="clicks"
+                      stroke="var(--chart-clicks)"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-2.5">

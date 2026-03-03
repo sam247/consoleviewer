@@ -895,7 +895,6 @@ export default function SiteDetailPage({
                     onExportCsv={() => exportToCsv(pagesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "pages", startDate, endDate))}
                   />
                   {contentGroups.length > 0 && (() => {
-                    const maxClicks = Math.max(...contentGroups.map((g) => g.clicks), 1);
                     const totalGroupClicks = contentGroups.reduce((s, g) => s + g.clicks, 0);
                     const totalSiteClicks = pagesRows.reduce((s, p) => s + p.clicks, 0);
                     const sharePct = totalSiteClicks > 0 ? Math.round((totalGroupClicks / totalSiteClicks) * 100) : 0;

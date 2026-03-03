@@ -650,8 +650,8 @@ export default function SiteDetailPage({
                     </div>
                   )}
                 </div>
-                {/* AI-Style Query Signals + Tracked Keywords: align columns with row above (left flex, right 320px) */}
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-stretch min-w-0">
+                {/* AI-Style Query Signals + Tracked Keywords: equal 2-column split (like Performance tables) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-w-0">
                   {queriesRows.length > 0 && (
                     <AiQuerySignalsCard queries={queriesRows} daily={data?.daily} />
                   )}

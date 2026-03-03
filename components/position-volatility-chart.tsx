@@ -76,8 +76,8 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
           </p>
         )}
       </div>
-      <div className="flex-1 min-h-[180px] h-[180px] px-4 py-3 min-w-0">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="shrink-0 px-4 py-3 min-w-0" style={{ height: 180 }}>
+        <ResponsiveContainer width="100%" height={180}>
           <LineChart data={dataWithPosition} margin={{ top: 4, right: 8, left: 36, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis

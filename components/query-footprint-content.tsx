@@ -110,50 +110,49 @@ export function QueryFootprintContent({
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-3 items-end">
-              <div className="flex flex-wrap gap-2 min-w-0">
-                {pillStats.map((stat) => {
-                  const isAll = stat.label === "Total";
-                  const band: BandFilter = isAll ? null : stat.label === "Top 3" ? { min: 1, max: 3 } : stat.label === "Top 10" ? { min: 1, max: 10 } : stat.label === "Top 20" ? { min: 1, max: 20 } : null;
-                  const isSelected = isAll ? selectedBand === null : (selectedBand != null && band != null && selectedBand.min === band.min && selectedBand.max === band.max);
-                  const handleClick = () => onBandSelect?.(band ?? null);
-                  return (
-                    <button
-                      key={stat.label}
-                      type="button"
-                      className={cn(
-                        "flex flex-col rounded px-2 py-1 text-left transition-colors duration-[120ms]",
-                        (onBandSelect != null) && "cursor-pointer hover:bg-accent/50",
-                        isSelected && "ring-2 ring-foreground/30 bg-accent/50"
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 w-full min-w-0">
+              {pillStats.map((stat) => {
+                const isAll = stat.label === "Total";
+                const band: BandFilter = isAll ? null : stat.label === "Top 3" ? { min: 1, max: 3 } : stat.label === "Top 10" ? { min: 1, max: 10 } : stat.label === "Top 20" ? { min: 1, max: 20 } : null;
+                const isSelected = isAll ? selectedBand === null : (selectedBand != null && band != null && selectedBand.min === band.min && selectedBand.max === band.max);
+                const handleClick = () => onBandSelect?.(band ?? null);
+                return (
+                  <button
+                    key={stat.label}
+                    type="button"
+                    className={cn(
+                      "flex flex-col rounded px-2 py-1.5 text-left transition-colors duration-[120ms] min-w-0",
+                      (onBandSelect != null) && "cursor-pointer hover:bg-accent/50",
+                      isSelected && "ring-2 ring-foreground/30 bg-accent/50"
+                    )}
+                    onClick={onBandSelect ? handleClick : undefined}
+                    title={total ? `${stat.label}: ${stat.value} queries (${stat.label !== "Total" ? Math.round((stat.value / total) * 100) + "%" : "total"})` : undefined}
+                  >
+                    <span className="text-xs text-muted-foreground">{stat.label}</span>
+                    <span className="text-xl font-semibold tabular-nums text-foreground leading-tight">
+                      {stat.value}
+                      {total > 0 && stat.label !== "Total" && (
+                        <span className="text-xs font-normal text-muted-foreground ml-1">
+                          ({Math.round((stat.value / total) * 100)}%)
+                        </span>
                       )}
-                      onClick={onBandSelect ? handleClick : undefined}
-                      title={total ? `${stat.label}: ${stat.value} queries (${stat.label !== "Total" ? Math.round((stat.value / total) * 100) + "%" : "total"})` : undefined}
-                    >
-                      <span className="text-xs text-muted-foreground">{stat.label}</span>
-                      <span className="text-xl font-semibold tabular-nums text-foreground leading-tight">
-                        {stat.value}
-                        {total > 0 && stat.label !== "Total" && (
-                          <span className="text-xs font-normal text-muted-foreground ml-1">
-                            ({Math.round((stat.value / total) * 100)}%)
-                          </span>
-                        )}
-                      </span>
-                      <span className={cn(
-                        "text-[10px] mt-0.5 tabular-nums",
-                        stat.deltaPercent != null
-                          ? stat.deltaPercent >= 0
-                            ? "text-positive"
-                            : "text-negative"
-                          : "text-muted-foreground/80"
-                      )}>
-                        {stat.deltaPercent != null ? `${stat.deltaPercent >= 0 ? "+" : ""}${stat.deltaPercent}% vs prior` : "— vs prior"}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {sparkData.length > 0 && (
-                <div className="min-w-[140px] h-[72px] w-full max-w-[200px] shrink-0">
+                    </span>
+                    <span className={cn(
+                      "text-[10px] mt-0.5 tabular-nums",
+                      stat.deltaPercent != null
+                        ? stat.deltaPercent >= 0
+                          ? "text-positive"
+                          : "text-negative"
+                        : "text-muted-foreground/80"
+                    )}>
+                      {stat.deltaPercent != null ? `${stat.deltaPercent >= 0 ? "+" : ""}${stat.deltaPercent}% vs prior` : "— vs prior"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {sparkData.length > 0 && (
+              <div className="min-w-0 w-full h-[72px] shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={sparkData} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
                       <Tooltip

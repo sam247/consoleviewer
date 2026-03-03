@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { classifyQuery } from "@/lib/ai-query-detection";
 import type { DataTableRow } from "@/components/data-table";
 import { InfoTooltip } from "@/components/info-tooltip";
+import { RowTableCard } from "@/components/ui/row-table-card";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -57,21 +58,23 @@ export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
   }, [queries]);
 
   return (
-    <div className="min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-colors duration-[120ms] hover:border-foreground/20 flex flex-col">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-semibold text-sm text-foreground flex items-center gap-1">
+    <RowTableCard
+      title={
+        <span className="font-semibold text-sm text-foreground flex items-center gap-1">
             AI-style query signals
             <InfoTooltip title="Queries that look like long-form or conversational search (LLM-style)" />
           </span>
+      }
+      headerRight={
+        <div className="flex items-center gap-2 min-w-0">
           <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5">
             Experimental
           </span>
         </div>
-        <p className="text-xs text-muted-foreground tabular-nums w-full sm:w-auto">
-          Long-form: {stats.pctLongQueries}% queries, {stats.pctLongClicks}% clicks · Conversational: {stats.pctConvQueries}% queries
-        </p>
-      </div>
+      }
+      subtitle={`Long-form: ${stats.pctLongQueries}% queries, ${stats.pctLongClicks}% clicks · Conversational: ${stats.pctConvQueries}% queries`}
+      className="flex flex-col"
+    >
       <div className="overflow-x-auto min-w-0 flex-1">
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
@@ -113,6 +116,6 @@ export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
           </tbody>
         </table>
       </div>
-    </div>
+    </RowTableCard>
   );
 }

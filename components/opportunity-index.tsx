@@ -6,6 +6,7 @@ import { classifyQuery } from "@/lib/ai-query-detection";
 import type { DataTableRow } from "@/components/data-table";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
 import { exportToCsv } from "@/lib/export-csv";
+import { RowTableCard } from "@/components/ui/row-table-card";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -116,15 +117,12 @@ export function OpportunityIndex({ queries, className, exportFilename }: Opportu
 
   return (
     <>
-      <div className={cn("rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20", className)}>
-        <div className="border-b border-border px-4 py-2.5 flex items-center justify-between gap-2 flex-wrap">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Opportunity index</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Top {ROWS_INITIAL} by Impressions × position gap × CTR deficit
-            </p>
-          </div>
-          {allRows.length > 0 && exportFilename && (
+      <RowTableCard
+        title="Opportunity index"
+        subtitle={`Top ${ROWS_INITIAL} by Impressions × position gap × CTR deficit`}
+        className={className}
+        headerRight={
+          allRows.length > 0 && exportFilename ? (
             <button
               type="button"
               onClick={handleExport}
@@ -133,8 +131,20 @@ export function OpportunityIndex({ queries, className, exportFilename }: Opportu
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
             </button>
-          )}
-        </div>
+          ) : undefined
+        }
+        footer={
+          hasMore ? (
+            <button
+              type="button"
+              onClick={() => setFullViewOpen(true)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
+            >
+              View {moreCount} more
+            </button>
+          ) : undefined
+        }
+      >
         <div className="overflow-x-auto">
           <table className={TABLE_BASE_CLASS}>
             <thead className={TABLE_HEAD_CLASS}>
@@ -159,18 +169,7 @@ export function OpportunityIndex({ queries, className, exportFilename }: Opportu
             </tbody>
           </table>
         </div>
-        {hasMore && (
-          <div className="border-t border-border px-4 py-2 flex justify-center">
-            <button
-              type="button"
-              onClick={() => setFullViewOpen(true)}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
-            >
-              View {moreCount} more
-            </button>
-          </div>
-        )}
-      </div>
+      </RowTableCard>
       <TableFullViewModal
         open={fullViewOpen}
         onClose={() => setFullViewOpen(false)}

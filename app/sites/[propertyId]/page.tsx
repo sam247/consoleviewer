@@ -817,13 +817,11 @@ export default function SiteDetailPage({
               <div className="rounded-lg border border-border bg-surface px-4 py-3 min-w-0">
                 <IndexSignalsCard propertyId={propertyId} pagesRows={pagesRows} />
               </div>
-              <div className="rounded-lg border border-border bg-surface px-4 py-3 min-w-0">
-                <CannibalisationCard
-                  siteUrl={siteUrl}
-                  startDate={startDate}
-                  endDate={endDate}
-                />
-              </div>
+              <CannibalisationCard
+                siteUrl={siteUrl}
+                startDate={startDate}
+                endDate={endDate}
+              />
             </div>
 
             {/* Section F — Performance tables + Query Counting + Content Groups */}

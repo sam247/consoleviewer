@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 import { classifyQuery } from "@/lib/ai-query-detection";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
+import { RowTableCard } from "@/components/ui/row-table-card";
 import {
   TABLE_BASE_CLASS,
-  TABLE_CARD_CLASS,
   TABLE_CELL_Y,
   TABLE_HEAD_CLASS,
   TABLE_ROW_CLASS,
@@ -128,72 +128,83 @@ function DataTableView({
     : ["all", "growing", "decaying", "new", "lost", "longForm", "conversational"];
 
   return (
-    <div className={cn(TABLE_CARD_CLASS, "p-0", className)}>
-      <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap">
-        <div className="flex items-center gap-2 shrink-0 min-w-0">
-          <span className="font-semibold text-sm text-foreground flex items-center gap-1">{title}{titleTooltip && <InfoTooltip title={titleTooltip} />}</span>
-        </div>
+    <RowTableCard
+      title={<span className="flex items-center gap-1">{title}{titleTooltip && <InfoTooltip title={titleTooltip} />}</span>}
+      className={className}
+      headerRight={
         <div className="flex items-center gap-2 flex-wrap ml-auto">
-        {showFilterBar && trend !== "new" && trend !== "lost" && (
-          <div className="flex flex-wrap gap-0.5 rounded-md border border-input bg-background p-0.5">
-            {filterOptions.filter((t) => t !== "new" && t !== "lost").map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTrend(t)}
-                className={cn(
-                  "rounded px-2 py-1 text-xs transition-colors duration-[120ms] whitespace-nowrap",
-                  trend === t
-                    ? "bg-background text-foreground font-medium border border-input"
-                    : "text-muted-foreground hover:bg-accent"
-                )}
-              >
-                {FILTER_LABELS[t]}
-              </button>
-            ))}
-          </div>
-        )}
-        {showFilterBar && (trend === "new" || trend === "lost") && (
-          <div className="flex gap-0.5 rounded-md border border-input bg-background p-0.5">
-            <button
-              type="button"
-              onClick={() => setTrend("all")}
-              className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent transition-colors duration-[120ms]"
-            >
-              ← All
-            </button>
-            <span className={cn(
-              "rounded px-2 py-1 text-xs font-medium capitalize bg-background text-foreground border border-input"
-            )}>
-              {FILTER_LABELS[trend]}
-            </span>
-          </div>
-        )}
-        {onExportCsv && (
-          <div className="relative shrink-0" ref={exportMenuRef}>
-            <button
-              type="button"
-              onClick={() => setExportMenuOpen((o) => !o)}
-              className="p-1.5 rounded text-muted-foreground/80 hover:text-muted-foreground hover:bg-accent/50 transition-colors duration-[120ms] opacity-80 hover:opacity-100"
-              title="Export"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            </button>
-            {exportMenuOpen && (
-              <div className="absolute right-0 top-full mt-0.5 z-20 min-w-[100px] rounded border border-border bg-surface py-1 shadow-lg">
+          {showFilterBar && trend !== "new" && trend !== "lost" && (
+            <div className="flex flex-wrap gap-0.5 rounded-md border border-input bg-background p-0.5">
+              {filterOptions.filter((t) => t !== "new" && t !== "lost").map((t) => (
                 <button
+                  key={t}
                   type="button"
-                  className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                  onClick={() => { onExportCsv(); setExportMenuOpen(false); }}
+                  onClick={() => setTrend(t)}
+                  className={cn(
+                    "rounded px-2 py-1 text-xs transition-colors duration-[120ms] whitespace-nowrap",
+                    trend === t
+                      ? "bg-background text-foreground font-medium border border-input"
+                      : "text-muted-foreground hover:bg-accent"
+                  )}
                 >
-                  Export CSV
+                  {FILTER_LABELS[t]}
                 </button>
-              </div>
-            )}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+          {showFilterBar && (trend === "new" || trend === "lost") && (
+            <div className="flex gap-0.5 rounded-md border border-input bg-background p-0.5">
+              <button
+                type="button"
+                onClick={() => setTrend("all")}
+                className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent transition-colors duration-[120ms]"
+              >
+                ← All
+              </button>
+              <span className={cn(
+                "rounded px-2 py-1 text-xs font-medium capitalize bg-background text-foreground border border-input"
+              )}>
+                {FILTER_LABELS[trend]}
+              </span>
+            </div>
+          )}
+          {onExportCsv && (
+            <div className="relative shrink-0" ref={exportMenuRef}>
+              <button
+                type="button"
+                onClick={() => setExportMenuOpen((o) => !o)}
+                className="p-1.5 rounded text-muted-foreground/80 hover:text-muted-foreground hover:bg-accent/50 transition-colors duration-[120ms] opacity-80 hover:opacity-100"
+                title="Export"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              </button>
+              {exportMenuOpen && (
+                <div className="absolute right-0 top-full mt-0.5 z-20 min-w-[100px] rounded border border-border bg-surface py-1 shadow-lg">
+                  <button
+                    type="button"
+                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                    onClick={() => { onExportCsv(); setExportMenuOpen(false); }}
+                  >
+                    Export CSV
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </div>
+      }
+      footer={
+        hasMore ? (
+          <button
+            type="button"
+            onClick={onOpenFullView ?? onToggleExpand}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
+          >
+            {onOpenFullView ? `View ${moreCount} more` : expanded ? "View less" : `View ${moreCount} more`}
+          </button>
+        ) : undefined
+      }
+    >
       <div className="overflow-x-auto min-w-0">
         <div className="overflow-y-auto" style={{ maxHeight: BODY_MAX_HEIGHT }}>
           <table className={TABLE_BASE_CLASS}>
@@ -286,19 +297,8 @@ function DataTableView({
             </tbody>
           </table>
         </div>
-        {hasMore ? (
-          <div className="border-t border-border px-4 py-2 flex justify-center">
-            <button
-              type="button"
-              onClick={onOpenFullView ?? onToggleExpand}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
-            >
-              {onOpenFullView ? `View ${moreCount} more` : expanded ? "View less" : `View ${moreCount} more`}
-            </button>
-          </div>
-        ) : null}
       </div>
-    </div>
+    </RowTableCard>
   );
 }
 

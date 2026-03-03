@@ -55,10 +55,15 @@ export function BrandedChart({
     clicks: d.clicks ?? 0,
     impressions: d.impressions ?? 0,
   }));
-  const splitChartData = [
-    { label: "Branded", value: brandedClicks, color: "var(--chart-clicks)" },
-    { label: "Non-branded", value: nonBrandedClicks, color: "var(--chart-impressions)" },
-  ];
+  const splitChartData = total > 0
+    ? [
+        { label: "Branded", value: brandedClicks, rawValue: brandedClicks, color: "var(--chart-clicks)" },
+        { label: "Non-branded", value: nonBrandedClicks, rawValue: nonBrandedClicks, color: "var(--chart-impressions)" },
+      ]
+    : [
+        { label: "Branded", value: 1, rawValue: 0, color: "var(--chart-clicks)" },
+        { label: "Non-branded", value: 1, rawValue: 0, color: "var(--chart-impressions)" },
+      ];
 
   return (
     <div className={cn("flex flex-col min-h-0", className)}>
@@ -164,7 +169,10 @@ export function BrandedChart({
                 />
                 <Tooltip
                   contentStyle={CHART_TOOLTIP_STYLE}
-                  formatter={(value: number | undefined) => [(value ?? 0).toLocaleString(), "Clicks"]}
+                  formatter={(value: number | undefined, _name, item) => {
+                    const payload = item?.payload as { rawValue?: number } | undefined;
+                    return [String(payload?.rawValue ?? value ?? 0), "Clicks"];
+                  }}
                 />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={38}>
                   {splitChartData.map((entry) => (

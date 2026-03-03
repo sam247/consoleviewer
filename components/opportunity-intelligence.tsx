@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { DataTableRow } from "@/components/data-table";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
+import { RowTableCard } from "@/components/ui/row-table-card";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -248,15 +249,11 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
   const totalOpps = page1Push.length + page2Opp.length + ctrLeak.length;
 
   return (
-    <div className={cn("rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20", className)}>
-      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-foreground">Opportunity intelligence</span>
-          {totalOpps > 0 && (
-            <span className="text-xs text-muted-foreground tabular-nums">{totalOpps} opportunities identified</span>
-          )}
-        </div>
-      </div>
+    <RowTableCard
+      title="Opportunity intelligence"
+      subtitle={totalOpps > 0 ? `${totalOpps} opportunities identified` : "No opportunities identified"}
+      className={className}
+    >
 
       {/* Page 1 Push */}
       <div className="border-b border-border/60">
@@ -327,6 +324,6 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
           hasPosition
         />
       )}
-    </div>
+    </RowTableCard>
   );
 }

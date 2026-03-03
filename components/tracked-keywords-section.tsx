@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, YAxis, ResponsiveContainer } from "recharts";
 import type { MockTrackedKeyword } from "@/lib/mock-rank";
+import { InfoTooltip } from "@/components/info-tooltip";
 
 function MiniSparkline({ data }: { data: number[] }) {
   const chartData = useMemo(
@@ -64,7 +65,7 @@ export function TrackedKeywordsSection({ keywords: mockKeywords }: TrackedKeywor
       aria-label="Keywords tracked"
     >
       <div className="border-b border-border px-4 py-2 shrink-0">
-        <h3 className="text-sm font-semibold text-foreground">Keywords tracked</h3>
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">Keywords tracked<InfoTooltip title="Rank-tracked keywords (e.g. via SerpRobot) with position and trend" /></h3>
         {showConnectMessage && (
           <p className="text-xs text-muted-foreground mt-0.5">
             Connect SerpRobot in Settings to track keywords.

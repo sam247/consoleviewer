@@ -4,7 +4,6 @@ import { Fragment, useMemo } from "react";
 import {
   Area,
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ReferenceLine,
@@ -254,7 +253,6 @@ export function TrendChart({
                   name="Prior"
                 />
               ))}
-            <Legend wrapperStyle={{ fontSize: 11 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -381,7 +379,6 @@ export function TrendChart({
               )}
             </>
           )}
-          <Legend align="right" verticalAlign="top" wrapperStyle={{ fontSize: 10 }} formatter={(value) => <span style={{ color: "var(--muted-foreground)" }}>{value}</span>} />
         </LineChart>
       </ResponsiveContainer>
     </div>

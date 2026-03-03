@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { computeMomentumScore, type MomentumInput } from "@/lib/momentum-score";
 import { cn } from "@/lib/utils";
+import { InfoTooltip } from "@/components/info-tooltip";
 
 interface MomentumScoreCardProps {
   summary: MomentumInput;
@@ -33,7 +34,7 @@ export function MomentumScoreCard({ summary, className, variant = "card" }: Mome
       >
         <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground shrink-0">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 19V5M5 12l7-7 7 7" /></svg>
-          <span>Momentum</span>
+          <span className="flex items-center gap-1">Momentum<InfoTooltip title="Combined score from clicks, position and query count change vs prior period" /></span>
         </div>
         <div className={cn("text-sm font-semibold tabular-nums shrink-0", labelStyle)}>{label}</div>
         <div className="flex items-center gap-1.5 text-xs truncate min-w-0 flex-wrap" title={subline}>

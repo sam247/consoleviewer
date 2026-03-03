@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { classifyQuery } from "@/lib/ai-query-detection";
+import { InfoTooltip } from "@/components/info-tooltip";
+import { TableFullViewModal } from "@/components/table-full-view-modal";
 
 export type TrendFilter = "all" | "growing" | "decaying" | "new" | "lost" | "highImprLowCtr" | "longForm" | "conversational";
 
@@ -18,6 +20,8 @@ type SortKey = "key" | "clicks" | "impressions" | "changePercent" | "position";
 
 interface DataTableProps {
   title: string;
+  /** Optional tooltip text for the section title (shows muted "i" icon) */
+  titleTooltip?: string;
   rows: DataTableRow[];
   maxRows?: number;
   className?: string;
@@ -28,6 +32,8 @@ interface DataTableProps {
   onRowClick?: (row: DataTableRow) => void;
   /** When set, an export CSV icon is shown in the header; callback should trigger CSV download */
   onExportCsv?: () => void;
+  /** When true (default), "View X more" opens a scrollable modal with full table and export; when false, expands inline */
+  expandInModal?: boolean;
 }
 
 const INITIAL_VISIBLE = 10;
@@ -59,6 +65,7 @@ const FILTER_LABELS: Record<TrendFilter, string> = {
 
 interface DataTableViewProps {
   title: string;
+  titleTooltip?: string;
   className?: string;
   showFilterBar: boolean;
   trend: TrendFilter;
@@ -74,10 +81,13 @@ interface DataTableViewProps {
   moreCount: number;
   onRowClick?: (row: DataTableRow) => void;
   onExportCsv?: () => void;
+  /** When set, "View X more" calls this instead of onToggleExpand (opens full-view modal) */
+  onOpenFullView?: () => void;
 }
 
 function DataTableView({
   title,
+  titleTooltip,
   className,
   showFilterBar,
   trend,
@@ -93,6 +103,7 @@ function DataTableView({
   moreCount,
   onRowClick,
   onExportCsv,
+  onOpenFullView,
 }: DataTableViewProps) {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -112,32 +123,10 @@ function DataTableView({
   return (
     <div className={cn("min-w-0 rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu p-0", className)}>
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap">
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="font-semibold text-sm text-foreground">{title}</span>
-          {onExportCsv && (
-            <div className="relative" ref={exportMenuRef}>
-              <button
-                type="button"
-                onClick={() => setExportMenuOpen((o) => !o)}
-                className="p-1 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms]"
-                title="Export"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-              </button>
-              {exportMenuOpen && (
-                <div className="absolute left-0 top-full mt-0.5 z-20 min-w-[100px] rounded border border-border bg-surface py-1 shadow-lg">
-                  <button
-                    type="button"
-                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                    onClick={() => { onExportCsv(); setExportMenuOpen(false); }}
-                  >
-                    Export CSV
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+        <div className="flex items-center gap-2 shrink-0 min-w-0">
+          <span className="font-semibold text-sm text-foreground flex items-center gap-1">{title}{titleTooltip && <InfoTooltip title={titleTooltip} />}</span>
         </div>
+        <div className="flex items-center gap-2 flex-wrap ml-auto">
         {showFilterBar && trend !== "new" && trend !== "lost" && (
           <div className="flex flex-wrap gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
             {filterOptions.filter((t) => t !== "new" && t !== "lost").map((t) => (
@@ -173,6 +162,30 @@ function DataTableView({
             </span>
           </div>
         )}
+        {onExportCsv && (
+          <div className="relative shrink-0" ref={exportMenuRef}>
+            <button
+              type="button"
+              onClick={() => setExportMenuOpen((o) => !o)}
+              className="p-1.5 rounded text-muted-foreground/80 hover:text-muted-foreground hover:bg-accent/50 transition-colors duration-[120ms] opacity-80 hover:opacity-100"
+              title="Export"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 top-full mt-0.5 z-20 min-w-[100px] rounded border border-border bg-surface py-1 shadow-lg">
+                <button
+                  type="button"
+                  className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                  onClick={() => { onExportCsv(); setExportMenuOpen(false); }}
+                >
+                  Export CSV
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        </div>
       </div>
       <div className="overflow-x-auto min-w-0">
         <div className="overflow-y-auto" style={{ maxHeight: BODY_MAX_HEIGHT }}>
@@ -271,10 +284,10 @@ function DataTableView({
           <div className="border-t border-border px-4 py-2 flex justify-center">
             <button
               type="button"
-              onClick={onToggleExpand}
+              onClick={onOpenFullView ?? onToggleExpand}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
             >
-              {expanded ? "View less" : `View ${moreCount} more`}
+              {onOpenFullView ? `View ${moreCount} more` : expanded ? "View less" : `View ${moreCount} more`}
             </button>
           </div>
         ) : null}
@@ -285,6 +298,7 @@ function DataTableView({
 
 export function DataTable({
   title,
+  titleTooltip,
   rows,
   maxRows: _maxRows = 10,
   className,
@@ -293,6 +307,7 @@ export function DataTable({
   showFilter = true,
   onRowClick,
   onExportCsv,
+  expandInModal = true,
 }: DataTableProps) {
   const [internalTrend, setInternalTrend] = useState<TrendFilter>("all");
   const trend = controlledTrend ?? internalTrend;
@@ -301,6 +316,7 @@ export function DataTable({
   const [sortKey, setSortKey] = useState<SortKey>("clicks");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [expanded, setExpanded] = useState(false);
+  const [fullViewOpen, setFullViewOpen] = useState(false);
 
   const hasPosition = useMemo(() => rows.some((r) => r.position != null), [rows]);
 
@@ -356,23 +372,35 @@ export function DataTable({
   };
 
   return (
-    <DataTableView
-      title={title}
-      className={className}
-      showFilterBar={showFilterBar}
-      trend={trend}
-      setTrend={setTrend}
-      hasPosition={hasPosition}
-      sortKey={sortKey}
-      sortDir={sortDir}
-      onSort={handleSort}
-      visibleRows={visibleRows}
-      hasMore={hasMore}
-      expanded={expanded}
-      onToggleExpand={() => setExpanded((e) => !e)}
-      moreCount={moreCount}
-      onRowClick={onRowClick}
-      onExportCsv={onExportCsv}
-    />
+    <>
+      <DataTableView
+        title={title}
+        titleTooltip={titleTooltip}
+        className={className}
+        showFilterBar={showFilterBar}
+        trend={trend}
+        setTrend={setTrend}
+        hasPosition={hasPosition}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSort={handleSort}
+        visibleRows={visibleRows}
+        hasMore={hasMore}
+        expanded={expanded}
+        onToggleExpand={() => setExpanded((e) => !e)}
+        moreCount={moreCount}
+        onRowClick={onRowClick}
+        onExportCsv={onExportCsv}
+        onOpenFullView={expandInModal ? () => setFullViewOpen(true) : undefined}
+      />
+      <TableFullViewModal
+        open={fullViewOpen}
+        onClose={() => setFullViewOpen(false)}
+        title={title}
+        rows={sorted}
+        hasPosition={hasPosition}
+        onExportCsv={onExportCsv}
+      />
+    </>
   );
 }

@@ -84,7 +84,7 @@ function HeaderMetricRow({
   return (
     <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
       <div className="flex items-baseline gap-1.5">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Clicks</span>
+        <span className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">Clicks<InfoTooltip title="Total clicks from Google Search Console for the selected date range" /></span>
         <span className="text-xl font-semibold tabular-nums text-foreground">{formatNum(summary.clicks)}</span>
         {summary.clicksChangePercent != null && (
           <span className={cn("text-xs tabular-nums", summary.clicksChangePercent >= 0 ? "text-positive" : "text-negative")}>
@@ -93,7 +93,7 @@ function HeaderMetricRow({
         )}
       </div>
       <div className="flex items-baseline gap-1.5">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Impr.</span>
+        <span className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">Impr.<InfoTooltip title="Total impressions in search results" /></span>
         <span className="text-xl font-semibold tabular-nums text-foreground">{formatNum(summary.impressions)}</span>
         {summary.impressionsChangePercent != null && (
           <span className={cn("text-xs tabular-nums", summary.impressionsChangePercent >= 0 ? "text-positive" : "text-negative")}>
@@ -102,7 +102,7 @@ function HeaderMetricRow({
         )}
       </div>
       <div className="flex items-baseline gap-1.5">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">CTR</span>
+        <span className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">CTR<InfoTooltip title="Click-through rate (clicks ÷ impressions)" /></span>
         <span className="text-xl font-semibold tabular-nums text-foreground">{ctr.toFixed(2)}%</span>
         {summary.ctrChangePercent != null && (
           <span className={cn("text-xs tabular-nums", summary.ctrChangePercent >= 0 ? "text-positive" : "text-negative")}>
@@ -111,7 +111,7 @@ function HeaderMetricRow({
         )}
       </div>
       <div className="flex items-baseline gap-1.5">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Avg pos.</span>
+        <span className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">Avg pos.<InfoTooltip title="Average position across all queries" /></span>
         <span className="text-xl font-semibold tabular-nums text-foreground">
           {summary.position != null ? summary.position.toFixed(1) : "—"}
         </span>
@@ -122,7 +122,7 @@ function HeaderMetricRow({
         )}
       </div>
       <div className="flex items-baseline gap-1.5">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Queries</span>
+        <span className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">Queries<InfoTooltip title="Number of distinct queries that received clicks or impressions" /></span>
         <span className="text-xl font-semibold tabular-nums text-foreground">
           {summary.queryCount != null ? formatNum(summary.queryCount) : "—"}
         </span>
@@ -316,6 +316,10 @@ export default function SiteDetailPage({
   type SavedSegment = { id: string; name: string; pattern: string };
   const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
   const [countriesDevicesOpen, setCountriesDevicesOpen] = useState(false);
+  type AddMetricId = "countries" | "devices" | null;
+  const [addedMetrics, setAddedMetrics] = useState<[AddMetricId, AddMetricId]>([null, null]);
+  const [addMetricModalOpen, setAddMetricModalOpen] = useState(false);
+  const [addMetricSlotTarget, setAddMetricSlotTarget] = useState<0 | 1 | null>(null);
   useEffect(() => {
     try {
       const raw = typeof localStorage !== "undefined" ? localStorage.getItem(SEGMENTS_KEY) : null;
@@ -638,11 +642,11 @@ export default function SiteDetailPage({
                   </div>
                   </div>
                   {queriesRows.length > 0 && (
-                    <div className="w-full max-w-[320px] lg:w-[320px] lg:min-w-[280px] flex-shrink-0 flex flex-col min-h-0">
+                    <div className="w-full max-w-[320px] lg:w-[320px] lg:min-w-[280px] flex-shrink-0 flex flex-col min-h-[320px] lg:min-h-0">
                       <QueryFootprint
                         queries={queriesRows}
                         daily={dailyForCharts}
-                        className="flex flex-col"
+                        className="flex flex-col min-h-full"
                         onBandSelect={setBandFilter}
                         selectedBand={bandFilter}
                         compareToPrior={compareToPrior}
@@ -738,15 +742,17 @@ export default function SiteDetailPage({
                 <div className="flex flex-col gap-4 flex-1 min-w-0">
                   <DataTable
                     title="Queries"
+                    titleTooltip="Top queries by clicks and impressions; filter by trend"
                     rows={queriesRowsForTable}
                     trendFilter={trendFilter}
                     onTrendFilterChange={setTrendFilter}
                     showFilter
                     onExportCsv={() => exportToCsv(queriesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "queries", startDate, endDate))}
                   />
-                  <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 flex flex-col min-h-0">
-                    <div className="px-4 py-3 shrink-0">
-                      <h3 className="text-sm font-semibold text-foreground mb-1.5">Query counting</h3>
+                  <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 flex flex-col flex-1 min-h-0">
+                    <div className="px-4 py-3 shrink-0 flex items-start justify-between gap-2">
+                      <div>
+                      <h3 className="text-sm font-semibold text-foreground mb-1.5 flex items-center gap-1">Query counting<InfoTooltip title="Count of queries appearing in top 3 and top 10" /></h3>
                       <p className="text-xs text-muted-foreground mb-2">Queries in top 10</p>
                       <div className="flex flex-wrap gap-3 text-sm mb-3">
                         <div>
@@ -790,6 +796,22 @@ export default function SiteDetailPage({
                           </div>
                         );
                       })()}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => exportToCsv(
+                          [
+                            { metric: "Total queries", value: queryCounting.total },
+                            { metric: "Top 10", value: queryCounting.top10 },
+                            { metric: "Top 3", value: queryCounting.top3 },
+                          ],
+                          formatExportFilename(siteSlug, "query-counting", startDate, endDate)
+                        )}
+                        className="p-1.5 rounded text-muted-foreground/80 hover:text-muted-foreground hover:bg-accent/50 transition-colors duration-[120ms] opacity-80 hover:opacity-100 shrink-0"
+                        title="Export CSV"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                      </button>
                     </div>
                     {dailyForCharts.length > 0 && (
                       <div className="px-4 pb-3 pt-0 flex-1 min-h-[120px] border-t border-border/50">
@@ -807,6 +829,7 @@ export default function SiteDetailPage({
                 <div className="flex flex-col gap-4 flex-1 min-w-0">
                   <DataTable
                     title="Pages"
+                    titleTooltip="Top pages by clicks and impressions; filter by trend"
                     rows={pagesRowsForTable}
                     trendFilter={trendFilter}
                     onTrendFilterChange={setTrendFilter}
@@ -820,8 +843,8 @@ export default function SiteDetailPage({
                     const sharePct = totalSiteClicks > 0 ? Math.round((totalGroupClicks / totalSiteClicks) * 100) : 0;
                     const siteTrend = data?.summary?.clicksChangePercent;
                     return (
-                      <div className="rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu">
-                        <div className="border-b border-border px-4 py-2.5">
+                      <div className="rounded-lg border border-border bg-surface overflow-hidden transition-transform duration-[120ms] hover:border-foreground/20 hover:scale-[1.01] transform-gpu flex flex-col flex-1 min-h-0">
+                        <div className="border-b border-border px-4 py-2.5 shrink-0">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">Content groups<InfoTooltip title="Group pages by path segment; filter by regex to analyse a subset" /></h3>
                             {contentFilterPattern.trim() && !contentGroupsFilteredPages.error && (
@@ -830,7 +853,7 @@ export default function SiteDetailPage({
                             <button
                               type="button"
                               onClick={() => exportToCsv(contentGroups.map((g) => ({ label: g.label, clicks: g.clicks, impressions: g.impressions, avgChangePercent: g.avgChangePercent ?? "" })), formatExportFilename(siteSlug, "content-groups", startDate, endDate))}
-                              className="p-1 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms]"
+                              className="p-1.5 rounded text-muted-foreground/80 hover:text-muted-foreground hover:bg-accent/50 transition-colors duration-[120ms] opacity-80 hover:opacity-100"
                               title="Export CSV"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -954,7 +977,7 @@ export default function SiteDetailPage({
                             <p className="text-xs text-muted-foreground mt-1">Grouped by: path (filtered)</p>
                           )}
                         </div>
-                        <div className="px-4 py-2.5 space-y-2">
+                        <div className="px-4 py-2.5 space-y-2 flex-1 min-h-0 overflow-y-auto">
                           {contentGroups.map((g) => (
                             <div key={g.label} className="rounded px-2 py-1 -mx-2 transition-colors duration-100 hover:bg-accent/50">
                               <div className="flex items-center justify-between gap-3 mb-0.5">
@@ -1010,8 +1033,22 @@ export default function SiteDetailPage({
                   </button>
                   {countriesDevicesOpen && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 border-t border-border p-4">
-                      {countriesRows.length > 0 && <DataTable title="Countries" rows={countriesRows} showFilter={false} />}
-                      {devicesRows.length > 0 && <DataTable title="Devices" rows={devicesRows} showFilter={false} />}
+                      {countriesRows.length > 0 && (
+                        <DataTable
+                          title="Countries"
+                          rows={countriesRows}
+                          showFilter={false}
+                          onExportCsv={() => exportToCsv(countriesRows as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "countries", startDate, endDate))}
+                        />
+                      )}
+                      {devicesRows.length > 0 && (
+                        <DataTable
+                          title="Devices"
+                          rows={devicesRows}
+                          showFilter={false}
+                          onExportCsv={() => exportToCsv(devicesRows as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "devices", startDate, endDate))}
+                        />
+                      )}
                     </div>
                   )}
                 </div>
@@ -1032,6 +1069,142 @@ export default function SiteDetailPage({
                   />
                 </div>
               </section>
+            )}
+
+            {/* Add a metric (trial): two slots, modal to pick Countries/Devices */}
+            <section aria-label="Add a metric" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {([0, 1] as const).map((slotIndex) => {
+                const metric = addedMetrics[slotIndex];
+                return (
+                  <div
+                    key={slotIndex}
+                    className="min-h-[200px] rounded-lg border border-border bg-muted/20 flex flex-col overflow-hidden"
+                  >
+                    {metric === null ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddMetricSlotTarget(slotIndex);
+                          setAddMetricModalOpen(true);
+                        }}
+                        className="flex-1 min-h-[200px] flex items-center justify-center text-sm text-muted-foreground hover:bg-muted/30 hover:text-foreground transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg"
+                      >
+                        Add a metric
+                      </button>
+                    ) : metric === "countries" && countriesRows.length > 0 ? (
+                      <div className="flex flex-col min-h-0 flex-1 rounded-lg border border-border bg-surface overflow-hidden">
+                        <DataTable
+                          title="Countries"
+                          rows={countriesRows}
+                          showFilter={false}
+                          expandInModal={true}
+                          onExportCsv={() => exportToCsv(countriesRows as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "countries", startDate, endDate))}
+                        />
+                      </div>
+                    ) : metric === "devices" && devicesRows.length > 0 ? (
+                      <div className="flex flex-col min-h-0 flex-1 rounded-lg border border-border bg-surface overflow-hidden">
+                        <DataTable
+                          title="Devices"
+                          rows={devicesRows}
+                          showFilter={false}
+                          expandInModal={true}
+                          onExportCsv={() => exportToCsv(devicesRows as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "devices", startDate, endDate))}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </section>
+
+            {addMetricModalOpen && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="add-metric-title"
+                onClick={(e) => e.target === e.currentTarget && (setAddMetricModalOpen(false), setAddMetricSlotTarget(null))}
+              >
+                <div
+                  className="w-full max-w-sm rounded-lg border border-border bg-surface shadow-lg px-4 py-4 space-y-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h2 id="add-metric-title" className="text-sm font-semibold text-foreground">
+                    Add a metric
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Choose a pre-built metric to show in the slot. Toggle off to remove.
+                  </p>
+                  <div className="space-y-2">
+                    {countriesRows.length > 0 && (
+                      <label className="flex items-center justify-between gap-3 cursor-pointer py-1.5">
+                        <span className="text-sm text-foreground">Countries</span>
+                        <input
+                          type="checkbox"
+                          checked={addedMetrics[0] === "countries" || addedMetrics[1] === "countries"}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              const target = addMetricSlotTarget ?? (addedMetrics[0] === null ? 0 : 1);
+                              setAddedMetrics((prev) => {
+                                const next: [AddMetricId, AddMetricId] = [...prev];
+                                next[target] = "countries";
+                                return next;
+                              });
+                            } else {
+                              setAddedMetrics((prev) => {
+                                const next: [AddMetricId, AddMetricId] = [...prev];
+                                if (next[0] === "countries") next[0] = null;
+                                if (next[1] === "countries") next[1] = null;
+                                return next;
+                              });
+                            }
+                          }}
+                          className="rounded border-border"
+                        />
+                      </label>
+                    )}
+                    {devicesRows.length > 0 && (
+                      <label className="flex items-center justify-between gap-3 cursor-pointer py-1.5">
+                        <span className="text-sm text-foreground">Devices</span>
+                        <input
+                          type="checkbox"
+                          checked={addedMetrics[0] === "devices" || addedMetrics[1] === "devices"}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              const target = addMetricSlotTarget ?? (addedMetrics[0] === null ? 0 : addedMetrics[1] === null ? 1 : 0);
+                              setAddedMetrics((prev) => {
+                                const next: [AddMetricId, AddMetricId] = [...prev];
+                                next[target] = "devices";
+                                return next;
+                              });
+                            } else {
+                              setAddedMetrics((prev) => {
+                                const next: [AddMetricId, AddMetricId] = [...prev];
+                                if (next[0] === "devices") next[0] = null;
+                                if (next[1] === "devices") next[1] = null;
+                                return next;
+                              });
+                            }
+                          }}
+                          className="rounded border-border"
+                        />
+                      </label>
+                    )}
+                    {countriesRows.length === 0 && devicesRows.length === 0 && (
+                      <p className="text-xs text-muted-foreground py-2">No metric data available for this property.</p>
+                    )}
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setAddMetricModalOpen(false); setAddMetricSlotTarget(null); }}
+                      className="rounded border border-border bg-muted/30 px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         )}

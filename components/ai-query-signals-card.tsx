@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { classifyQuery } from "@/lib/ai-query-detection";
 import type { DataTableRow } from "@/components/data-table";
+import { InfoTooltip } from "@/components/info-tooltip";
 
 interface AiQuerySignalsCardProps {
   queries: DataTableRow[];
@@ -54,8 +55,9 @@ export function AiQuerySignalsCard({ queries, daily }: AiQuerySignalsCardProps) 
     <div className="rounded-lg border border-border bg-surface flex flex-col min-h-0 transition-colors hover:border-foreground/20">
       <div className="border-b border-border px-4 py-2 shrink-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="text-sm font-semibold text-foreground">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-1">
             AI-style query signals
+            <InfoTooltip title="Queries that look like long-form or conversational search (LLM-style)" />
           </h3>
           <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5">
             Experimental

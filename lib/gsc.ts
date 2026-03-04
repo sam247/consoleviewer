@@ -541,7 +541,7 @@ function emptySiteDetail(siteUrl: string): Promise<SiteDetailData> {
   });
 }
 
-function getStubSiteDetail(siteUrl: string, brandedTerms?: string[]): Promise<SiteDetailData> {
+function getStubSiteDetail(siteUrl: string, _brandedTerms?: string[]): Promise<SiteDetailData> {
   const clicks = 1800 + Math.floor(Math.random() * 800);
   const impressions = 650000 + Math.floor(Math.random() * 100000);
   const priorClicks = Math.floor(clicks * 0.6);

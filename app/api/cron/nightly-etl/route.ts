@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getPool } from "@/lib/db";
 import { runNightlyEtl } from "@/lib/etl/nightly";
 
 export const runtime = "nodejs";
@@ -8,6 +9,17 @@ export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const pool = getPool();
+    await pool.query("SELECT 1");
+  } catch (dbErr) {
+    const msg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+    return NextResponse.json(
+      { ok: false, error: "Database unreachable", dbError: msg },
+      { status: 500 }
+    );
   }
 
   try {

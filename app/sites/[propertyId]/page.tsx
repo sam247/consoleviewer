@@ -291,7 +291,7 @@ export default function SiteDetailPage({
   params: { propertyId: string };
 }) {
   const { propertyId } = params;
-  const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
+  const { startDate, endDate } = useDateRange();
 
   const [queriesTrendFilter, setQueriesTrendFilter] = useState<TrendFilter>("all");
   const [pagesTrendFilter, setPagesTrendFilter] = useState<TrendFilter>("all");
@@ -355,22 +355,22 @@ export default function SiteDetailPage({
     queryFn: () => fetchSnapshot(propertyId),
   });
 
-  const { data: queriesData = [], isLoading: queriesLoading } = useQuery({
+  const { data: queriesData = [], isLoading: _queriesLoading } = useQuery({
     queryKey: ["queries", propertyId, startDate, endDate],
     queryFn: () => fetchQueries(propertyId, startDate, endDate),
   });
 
-  const { data: pagesData = [], isLoading: pagesLoading } = useQuery({
+  const { data: pagesData = [], isLoading: _pagesLoading } = useQuery({
     queryKey: ["pages", propertyId, startDate, endDate],
     queryFn: () => fetchPages(propertyId, startDate, endDate),
   });
 
-  const { data: opportunityData = [] } = useQuery({
+  const { data: _opportunityData = [] } = useQuery({
     queryKey: ["opportunity", propertyId],
     queryFn: () => fetchOpportunity(propertyId),
   });
 
-  const { data: movementsData = [] } = useQuery({
+  const { data: _movementsData = [] } = useQuery({
     queryKey: ["movements", propertyId],
     queryFn: () => fetchMovements(propertyId),
   });
@@ -405,9 +405,9 @@ export default function SiteDetailPage({
     snapshotLoading || (snapshotData != null && !snapshotData.snapshot);
 
   const snapshot = snapshotData?.snapshot ?? null;
-  const chartRows = snapshotData?.chart ?? [];
 
   const data = useMemo(() => {
+    const chartRows = snapshotData?.chart ?? [];
     const summary = snapshot
       ? {
           clicks: snapshot.clicks,
@@ -465,7 +465,7 @@ export default function SiteDetailPage({
       snapshotTop3: snapshot?.top3_count,
       snapshotTop10: snapshot?.top10_count,
     };
-  }, [snapshot, chartRows, queriesData, pagesData, siteUrl]);
+  }, [snapshot, snapshotData, queriesData, pagesData, siteUrl]);
   const addBrandedTerm = () => {
     const t = brandedTermInput.trim().toLowerCase();
     if (!t || brandedTerms.includes(t)) return;

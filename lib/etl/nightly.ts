@@ -1,4 +1,6 @@
 import { getPool } from "@/lib/db";
+import { getAccessToken } from "@/lib/google-auth";
+import { getAccessTokenForTeam } from "@/lib/gsc-tokens";
 import { querySearchAnalytics } from "@/lib/gsc";
 import { serprobotFetch, hasSerprobotKey } from "@/lib/serprobot";
 import { sha256Hex } from "@/lib/etl/hash";
@@ -53,13 +55,14 @@ async function fetchAllRows(
   siteUrl: string,
   startDate: string,
   endDate: string,
-  dimensions: string[]
+  dimensions: string[],
+  accessToken?: string | null
 ) {
   const rows: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }[] = [];
   let startRow = 0;
   while (true) {
     const res = await withRetry(() =>
-      querySearchAnalytics(siteUrl, startDate, endDate, dimensions, { rowLimit: ROW_LIMIT, startRow })
+      querySearchAnalytics(siteUrl, startDate, endDate, dimensions, { rowLimit: ROW_LIMIT, startRow }, accessToken)
     );
     const batch = res.rows ?? [];
     rows.push(...batch);
@@ -494,12 +497,15 @@ async function ingestGscForProperty(
         : toDateString(addDays(new Date(), -BACKFILL_DAYS));
   if (startDate > endDate) return { startDate, endDate, processed: false };
 
+  const accessToken = (await getAccessTokenForTeam(property.team_id)) ?? (await getAccessToken());
+  if (!accessToken) return { startDate, endDate, processed: false };
+
   const siteUrl = property.gsc_site_url || property.site_url;
 
-  const propertyDailyRows = await fetchAllRows(siteUrl, startDate, endDate, ["date"]);
-  const queryDailyRows = await fetchAllRows(siteUrl, startDate, endDate, ["date", "query"]);
-  const pageDailyRows = await fetchAllRows(siteUrl, startDate, endDate, ["date", "page"]);
-  const rawRows = await fetchAllRows(siteUrl, startDate, endDate, ["date", "query", "page"]);
+  const propertyDailyRows = await fetchAllRows(siteUrl, startDate, endDate, ["date"], accessToken);
+  const queryDailyRows = await fetchAllRows(siteUrl, startDate, endDate, ["date", "query"], accessToken);
+  const pageDailyRows = await fetchAllRows(siteUrl, startDate, endDate, ["date", "page"], accessToken);
+  const rawRows = await fetchAllRows(siteUrl, startDate, endDate, ["date", "query", "page"], accessToken);
 
   if (rawRows.length > MAX_RAW_ROWS) {
     throw new Error(`Raw rows exceeded limit (${rawRows.length} > ${MAX_RAW_ROWS})`);

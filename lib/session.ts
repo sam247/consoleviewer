@@ -26,9 +26,10 @@ function verify(signed: string, secret: string): boolean {
   return signed === expected;
 }
 
-export function createSessionCookie(): { name: string; value: string; options: { httpOnly: boolean; secure: boolean; sameSite: "lax"; maxAge: number; path: string } } {
+/** Payload format: logged_in:userId:timestamp or legacy logged_in:timestamp */
+export function createSessionCookie(userId?: string): { name: string; value: string; options: { httpOnly: boolean; secure: boolean; sameSite: "lax"; maxAge: number; path: string } } {
   const secret = getSecret();
-  const payload = `logged_in:${Date.now()}`;
+  const payload = userId ? `logged_in:${userId}:${Date.now()}` : `logged_in:${Date.now()}`;
   const value = sign(payload, secret);
   return {
     name: COOKIE_NAME,
@@ -43,13 +44,35 @@ export function createSessionCookie(): { name: string; value: string; options: {
   };
 }
 
+/** Parse session cookie and return userId if present (email). Legacy cookies have no userId. */
+export async function getSessionUserId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(COOKIE_NAME);
+  if (!cookie?.value) return null;
+  try {
+    const secret = getSecret();
+    if (!verify(cookie.value, secret)) return null;
+    const lastDot = cookie.value.lastIndexOf(".");
+    const value = lastDot === -1 ? cookie.value : cookie.value.slice(0, lastDot);
+    // logged_in:userId:timestamp or logged_in:timestamp
+    if (value.startsWith("logged_in:")) {
+      const rest = value.slice("logged_in:".length);
+      const colon = rest.indexOf(":");
+      if (colon !== -1) return rest.slice(0, colon); // userId
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function getSessionCookie(): string | undefined {
   return undefined;
 }
 
-export async function setSession(res: Response): Promise<Response> {
+export async function setSession(res: Response, userId?: string): Promise<Response> {
   const secret = getSecret();
-  const payload = `logged_in:${Date.now()}`;
+  const payload = userId ? `logged_in:${userId}:${Date.now()}` : `logged_in:${Date.now()}`;
   const value = sign(payload, secret);
   res.headers.append(
     "Set-Cookie",
@@ -76,10 +99,11 @@ export function getCookieName(): string {
 
 /**
  * Stable owner id for share_links and index_watchlist.
- * Skeleton: uses SHARE_LINK_OWNER_ID env or hash of session cookie.
- * Replace with real user id when auth is upgraded (e.g. Supabase Auth).
+ * Prefers session userId (email), then SHARE_LINK_OWNER_ID env, then hash of cookie.
  */
 export async function getOwnerUserId(): Promise<string | null> {
+  const sessionUserId = await getSessionUserId();
+  if (sessionUserId) return sessionUserId;
   const envId = process.env.SHARE_LINK_OWNER_ID;
   if (envId?.trim()) return envId.trim();
   const cookieStore = await cookies();

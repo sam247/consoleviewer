@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSessionCookie } from "@/lib/session";
+import { ensureTeamForUser } from "@/lib/team";
 
 export async function POST(request: NextRequest) {
   const email = process.env.APP_LOGIN_EMAIL;
@@ -22,7 +23,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
   try {
-    const { name, value, options } = createSessionCookie();
+    await ensureTeamForUser(givenEmail);
+    const { name, value, options } = createSessionCookie(givenEmail);
     const res = NextResponse.json({ ok: true }, { status: 200 });
     res.cookies.set(name, value, options);
     return res;

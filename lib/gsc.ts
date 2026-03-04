@@ -19,6 +19,10 @@ const GSC_BASE = "https://www.googleapis.com/webmasters/v3";
 async function gscFetch(path: string, options?: RequestInit): Promise<Response> {
   const token = await getAccessToken();
   if (!token) throw new Error("Not authenticated");
+  return gscFetchWithToken(path, token, options);
+}
+
+function gscFetchWithToken(path: string, token: string, options?: RequestInit): Promise<Response> {
   return fetch(`${GSC_BASE}${path}`, {
     ...options,
     headers: {
@@ -76,14 +80,15 @@ export async function querySearchAnalytics(
   startDate: string,
   endDate: string,
   dimensions: string[],
-  options?: SearchAnalyticsOptions
+  options?: SearchAnalyticsOptions,
+  accessToken?: string | null
 ): Promise<SearchAnalyticsResponse> {
-  const token = await getAccessToken();
+  const token = accessToken ?? (await getAccessToken());
   if (!token) {
     return getStubSearchAnalytics(dimensions);
   }
   const encodedSite = encodeURIComponent(siteUrl);
-  const res = await gscFetch(`/sites/${encodedSite}/searchAnalytics/query`, {
+  const res = await gscFetchWithToken(`/sites/${encodedSite}/searchAnalytics/query`, token, {
     method: "POST",
     body: JSON.stringify({
       startDate,

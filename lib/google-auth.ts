@@ -42,14 +42,18 @@ export async function exchangeCodeForTokens(
   return res.json() as Promise<TokenResponse>;
 }
 
-/** Get a valid access token using the stored refresh token. */
+/** Get a valid access token using the stored refresh token (env). */
 export async function getAccessToken(): Promise<string | null> {
   const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+  if (!refreshToken) return null;
+  return refreshAccessToken(refreshToken);
+}
+
+/** Exchange a refresh token for an access token. Uses env GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET. */
+export async function refreshAccessToken(refreshToken: string): Promise<string | null> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  if (!refreshToken || !clientId || !clientSecret) {
-    return null;
-  }
+  if (!clientId || !clientSecret) return null;
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
@@ -61,9 +65,7 @@ export async function getAccessToken(): Promise<string | null> {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
-  if (!res.ok) {
-    return null;
-  }
+  if (!res.ok) return null;
   const data = (await res.json()) as TokenResponse;
   return data.access_token ?? null;
 }

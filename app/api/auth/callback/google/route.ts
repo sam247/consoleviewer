@@ -1,53 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForTokens } from "@/lib/google-auth";
+import { getSessionUserId } from "@/lib/session";
+import { getPool } from "@/lib/db";
+
+function getRedirectBase(request: NextRequest): string {
+  return request.nextUrl.origin || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+}
+
+function decodeState(state: string): { team_id: string } | null {
+  try {
+    const json = Buffer.from(state, "base64url").toString("utf8");
+    const parsed = JSON.parse(json) as { team_id?: string };
+    if (typeof parsed?.team_id === "string") return { team_id: parsed.team_id };
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+async function isUserInTeam(userId: string, teamId: string): Promise<boolean> {
+  const pool = getPool();
+  const res = await pool.query(
+    `SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2`,
+    [teamId, userId]
+  );
+  return res.rowCount !== null && res.rowCount > 0;
+}
 
 export async function GET(request: NextRequest) {
+  const base = getRedirectBase(request);
   const code = request.nextUrl.searchParams.get("code");
+  const state = request.nextUrl.searchParams.get("state");
   const error = request.nextUrl.searchParams.get("error");
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
 
   if (error) {
-    return new NextResponse(
-      `<html><body><h1>Auth error</h1><p>${error}</p><a href="/">Back</a></body></html>`,
-      { headers: { "Content-Type": "text/html" } }
-    );
+    return NextResponse.redirect(new URL(`/onboarding/sites?error=${encodeURIComponent(error)}`, base));
+  }
+  if (!code || !redirectUri) {
+    return NextResponse.redirect(new URL("/onboarding/sites?error=missing_params", base));
+  }
+  if (!state) {
+    return NextResponse.redirect(new URL("/onboarding/sites?error=invalid_state", base));
   }
 
-  if (!code || !redirectUri) {
-    return new NextResponse(
-      "<html><body><h1>Missing code or GOOGLE_REDIRECT_URI</h1><a href=\"/\">Back</a></body></html>",
-      { status: 400, headers: { "Content-Type": "text/html" } }
-    );
+  const userId = await getSessionUserId();
+  if (!userId) {
+    return NextResponse.redirect(new URL("/login", base));
+  }
+
+  const decoded = decodeState(state);
+  if (!decoded || !(await isUserInTeam(userId, decoded.team_id))) {
+    return NextResponse.redirect(new URL("/onboarding/sites?error=invalid_state", base));
   }
 
   try {
     const tokens = await exchangeCodeForTokens(code, redirectUri);
     const refreshToken = tokens.refresh_token;
     if (!refreshToken) {
-      return new NextResponse(
-        "<html><body><h1>No refresh_token in response</h1><p>Try revoking app access at <a href='https://myaccount.google.com/permissions'>Google permissions</a> and sign in again with prompt=consent.</p><a href='/'>Back</a></body></html>",
-        { status: 400, headers: { "Content-Type": "text/html" } }
-      );
+      return NextResponse.redirect(new URL("/onboarding/sites?error=no_refresh_token", base));
     }
-    const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Consoleview – Add refresh token</title></head>
-<body style="font-family: system-ui; max-width: 560px; margin: 2rem auto; padding: 0 1rem;">
-  <h1>Refresh token</h1>
-  <p>Add this value to your Vercel project as <strong>GOOGLE_REFRESH_TOKEN</strong>, then redeploy.</p>
-  <pre style="background: #f5f5f5; padding: 1rem; overflow-x: auto; word-break: break-all;">${refreshToken}</pre>
-  <p><a href="/">Back to app</a> · <a href="/api/auth/google">Sign in again</a></p>
-</body>
-</html>`;
-    return new NextResponse(html, {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return new NextResponse(
-      `<html><body><h1>Token exchange failed</h1><pre>${encodeURIComponent(message)}</pre><a href="/">Back</a></body></html>`,
-      { status: 500, headers: { "Content-Type": "text/html" } }
+    const pool = getPool();
+    await pool.query(
+      `INSERT INTO team_gsc_tokens (team_id, refresh_token, created_at)
+       VALUES ($1, $2, now())
+       ON CONFLICT (team_id) DO UPDATE SET
+         refresh_token = EXCLUDED.refresh_token,
+         created_at = now()`,
+      [decoded.team_id, refreshToken]
     );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Token exchange failed";
+    return NextResponse.redirect(new URL(`/onboarding/sites?error=${encodeURIComponent(msg)}`, base));
   }
+
+  return NextResponse.redirect(new URL("/onboarding/sites", request.url));
 }

@@ -33,42 +33,44 @@ export async function GET(request: NextRequest) {
   const state = request.nextUrl.searchParams.get("state");
   const error = request.nextUrl.searchParams.get("error");
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
-  const baseUrl = getBaseUrl(request);
+  const base = getBaseUrl(request);
 
   if (error) {
-    return NextResponse.redirect(new URL(`/onboarding/sites?error=${encodeURIComponent(error)}`, baseUrl));
+    return NextResponse.redirect(new URL(`/onboarding/sites?error=${encodeURIComponent(error)}`, base));
   }
   if (!code || !state || !redirectUri) {
-    return NextResponse.redirect(new URL("/onboarding/sites?error=missing_params", baseUrl));
+    return NextResponse.redirect(new URL("/onboarding/sites?error=missing_params", base));
   }
 
   const userId = await getSessionUserId();
   if (!userId) {
-    return NextResponse.redirect(new URL("/login", baseUrl));
+    return NextResponse.redirect(new URL("/login", base));
   }
 
   const decoded = decodeState(state);
   if (!decoded || !(await isUserInTeam(userId, decoded.team_id))) {
-    return NextResponse.redirect(new URL("/onboarding/sites?error=invalid_state", baseUrl));
+    return NextResponse.redirect(new URL("/onboarding/sites?error=invalid_state", base));
   }
 
   try {
     const tokens = await exchangeCodeForTokens(code, redirectUri);
     const refreshToken = tokens.refresh_token;
     if (!refreshToken) {
-      return NextResponse.redirect(new URL("/onboarding/sites?error=no_refresh_token", baseUrl));
+      return NextResponse.redirect(new URL("/onboarding/sites?error=no_refresh_token", base));
     }
     const pool = getPool();
     await pool.query(
       `INSERT INTO team_gsc_tokens (team_id, refresh_token, created_at)
        VALUES ($1, $2, now())
-       ON CONFLICT (team_id) DO UPDATE SET refresh_token = EXCLUDED.refresh_token`,
+       ON CONFLICT (team_id) DO UPDATE SET
+         refresh_token = EXCLUDED.refresh_token,
+         created_at = now()`,
       [decoded.team_id, refreshToken]
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Token exchange failed";
-    return NextResponse.redirect(new URL(`/onboarding/sites?error=${encodeURIComponent(msg)}`, baseUrl));
+    return NextResponse.redirect(new URL(`/onboarding/sites?error=${encodeURIComponent(msg)}`, request.nextUrl.origin));
   }
 
-  return NextResponse.redirect(new URL("/onboarding/sites", baseUrl));
+  return NextResponse.redirect(new URL("/onboarding/sites", request.url));
 }

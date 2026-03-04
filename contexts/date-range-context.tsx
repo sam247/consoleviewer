@@ -25,7 +25,7 @@ type DateRangeContextValue = {
 
 const DateRangeContext = createContext<DateRangeContextValue | null>(null);
 
-const DEFAULT_RANGE: DateRangeKey = "28d";
+const DEFAULT_RANGE: DateRangeKey = "3m";
 
 const VALID_KEYS: DateRangeKey[] = ["7d", "28d", "30d", "3m", "6m", "12m", "16m", "qtd"];
 

@@ -30,7 +30,9 @@ export async function GET(request: NextRequest) {
         priorStartDate,
         priorEndDate,
       });
-      return NextResponse.json(data);
+      return NextResponse.json(data, {
+        headers: { "Cache-Control": "no-store" },
+      });
     }
 
     const data = await getOverviewMetrics(
@@ -39,7 +41,9 @@ export async function GET(request: NextRequest) {
       priorStartDate,
       priorEndDate
     );
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (e) {
     console.error(e);
     return NextResponse.json(

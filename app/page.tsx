@@ -24,7 +24,10 @@ async function fetchOverview(
     priorStartDate,
     priorEndDate,
   });
-  const res = await fetch(`/api/analytics/overview?${params}`);
+  const res = await fetch(`/api/analytics/overview?${params}`, {
+    credentials: "include",
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch overview");
   return res.json();
 }
@@ -89,10 +92,11 @@ export default function OverviewPage() {
   const hasTrackedKeywords =
     serpKeywords?.configured === true && (serpKeywords?.keywords?.length ?? 0) > 0;
 
-  const { data: rawMetrics = [], isLoading, error } = useQuery({
+  const { data: rawMetrics = [], isLoading, error, refetch } = useQuery({
     queryKey: ["overview", startDate, endDate, priorStartDate, priorEndDate],
     queryFn: () =>
       fetchOverview(startDate, endDate, priorStartDate, priorEndDate),
+    staleTime: 60 * 1000,
   });
 
   const metrics = useMemo(() => rawMetrics, [rawMetrics]);
@@ -153,8 +157,15 @@ export default function OverviewPage() {
           </div>
         )}
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
-            {error instanceof Error ? error.message : "Something went wrong"}
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200 flex flex-wrap items-center justify-between gap-2">
+            <span>{error instanceof Error ? error.message : "Something went wrong"}</span>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="rounded bg-red-200 px-2 py-1 text-xs font-medium text-red-900 hover:bg-red-300 dark:bg-red-900 dark:text-red-100 dark:hover:bg-red-800"
+            >
+              Try again
+            </button>
           </div>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -179,7 +190,7 @@ export default function OverviewPage() {
               )}
         </div>
         {!isLoading && sorted.length === 0 && (
-          <div className="py-12 text-center">
+          <div className="py-12 text-center space-y-3">
             <p className="text-muted-foreground text-sm">
               {search.trim()
                 ? "No properties match your search."
@@ -187,6 +198,14 @@ export default function OverviewPage() {
                   ? "All projects are hidden. Unhide some in Settings."
                   : "No properties yet. Connect Google Search Console to see your sites."}
             </p>
+            {!search.trim() && (
+              <a
+                href="/onboarding/sites"
+                className="inline-block rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90"
+              >
+                Add or manage sites
+              </a>
+            )}
           </div>
         )}
         </div>

@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/serprobot-sync",
       "schedule": "0 0 * * 0"
+    },
+    {
+      "path": "/api/cron/nightly-etl",
+      "schedule": "0 2 * * *"
     }
   ]
 }

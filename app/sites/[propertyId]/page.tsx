@@ -44,7 +44,8 @@ async function fetchSiteDetail(
   startDate: string,
   endDate: string,
   priorStartDate: string,
-  priorEndDate: string
+  priorEndDate: string,
+  brandedTerms?: string[]
 ) {
   const params = new URLSearchParams({
     site: siteUrl,
@@ -53,6 +54,9 @@ async function fetchSiteDetail(
     priorStartDate,
     priorEndDate,
   });
+  if (brandedTerms && brandedTerms.length > 0) {
+    params.set("brandedTerms", JSON.stringify(brandedTerms));
+  }
   const res = await fetch(`/api/analytics/detail?${params}`);
   if (!res.ok) throw new Error("Failed to fetch site detail");
   return res.json();
@@ -275,25 +279,6 @@ export default function SiteDetailPage({
   const siteUrl = decodePropertyId(propertyId);
   const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: [
-      "siteDetail",
-      siteUrl,
-      startDate,
-      endDate,
-      priorStartDate,
-      priorEndDate,
-    ],
-    queryFn: () =>
-      fetchSiteDetail(
-        siteUrl,
-        startDate,
-        endDate,
-        priorStartDate,
-        priorEndDate
-      ),
-  });
-
   const [queriesTrendFilter, setQueriesTrendFilter] = useState<TrendFilter>("all");
   const [pagesTrendFilter, setPagesTrendFilter] = useState<TrendFilter>("all");
   const [compareToPrior, setCompareToPrior] = useState(false);
@@ -358,6 +343,27 @@ export default function SiteDetailPage({
       // ignore
     }
   }, [BRANDED_TERMS_KEY]);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: [
+      "siteDetail",
+      siteUrl,
+      startDate,
+      endDate,
+      priorStartDate,
+      priorEndDate,
+      brandedTerms,
+    ],
+    queryFn: () =>
+      fetchSiteDetail(
+        siteUrl,
+        startDate,
+        endDate,
+        priorStartDate,
+        priorEndDate,
+        brandedTerms
+      ),
+  });
   const addBrandedTerm = () => {
     const t = brandedTermInput.trim().toLowerCase();
     if (!t || brandedTerms.includes(t)) return;
@@ -464,20 +470,6 @@ export default function SiteDetailPage({
   }, [data?.queries]);
 
   const dailyForCharts = useMemo(() => data?.daily ?? [], [data?.daily]);
-
-  const brandedFromQueries = useMemo(() => {
-    if (brandedTerms.length === 0) return null;
-    const queries = data?.queries ?? [];
-    let brandedClicks = 0;
-    let nonBrandedClicks = 0;
-    for (const r of queries as { key: string; clicks: number }[]) {
-      const q = (r.key ?? "").toLowerCase();
-      const isBranded = brandedTerms.some((t) => q.includes(t));
-      if (isBranded) brandedClicks += r.clicks ?? 0;
-      else nonBrandedClicks += r.clicks ?? 0;
-    }
-    return { brandedClicks, nonBrandedClicks };
-  }, [data?.queries, brandedTerms]);
 
   const contentGroupsFilteredPages = useMemo(() => {
     const raw = contentFilterPattern.trim();
@@ -771,11 +763,11 @@ export default function SiteDetailPage({
                     </div>
                     <div className="flex-1 min-h-0 min-w-0">
                       <BrandedChart
-                        brandedClicks={brandedFromQueries?.brandedClicks ?? data?.branded?.brandedClicks ?? 0}
-                        nonBrandedClicks={brandedFromQueries?.nonBrandedClicks ?? data?.branded?.nonBrandedClicks ?? (data?.summary?.clicks ?? 0)}
-                        brandedChangePercent={brandedFromQueries ? undefined : data?.branded?.brandedChangePercent}
-                        nonBrandedChangePercent={brandedFromQueries ? undefined : data?.branded?.nonBrandedChangePercent}
-                        daily={data?.daily}
+                        brandedClicks={data?.branded?.brandedClicks ?? 0}
+                        nonBrandedClicks={data?.branded?.nonBrandedClicks ?? (data?.summary?.clicks ?? 0)}
+                        brandedChangePercent={data?.branded?.brandedChangePercent}
+                        nonBrandedChangePercent={data?.branded?.nonBrandedChangePercent}
+                        daily={data?.brandedDaily}
                       />
                     </div>
                   </div>

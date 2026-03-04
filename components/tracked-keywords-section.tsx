@@ -132,10 +132,10 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], export
     >
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap shrink-0">
         <div className="flex items-center gap-2 shrink-0 min-w-0">
-          <span className="font-semibold text-sm text-foreground flex items-center gap-1">Keywords tracked<InfoTooltip title="Rank-tracked keywords (e.g. via SerpRobot) with position and trend" /></span>
+          <span className="font-semibold text-sm text-foreground flex items-center gap-1">Keywords tracked<InfoTooltip title="Rank-tracked keywords with position and trend" /></span>
           {showConnectMessage && (
             <p className="text-xs text-muted-foreground mt-0.5">
-              Connect SerpRobot in Settings to track keywords.
+              Add keywords to start tracking.
             </p>
           )}
         </div>
@@ -176,7 +176,7 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], export
         {keywords.length === 0 ? (
           <p className="text-sm text-muted-foreground px-4 py-3">
             {showConnectMessage
-              ? "Connect SerpRobot in Settings to track keywords."
+              ? "Add keywords to start tracking."
               : "No tracked keywords yet. Add keywords to start tracking."}
           </p>
         ) : (

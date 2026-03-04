@@ -138,8 +138,8 @@ export function BrandedChart({
                 minTickGap={14}
                 tickLine={false}
                 axisLine={false}
-                tickMargin={8}
-                padding={{ left: 8, right: 8 }}
+                tickMargin={6}
+                padding={{ left: 2, right: 2 }}
               />
               <YAxis
                 width={CHART_Y_AXIS_WIDTH_SECONDARY}
@@ -161,7 +161,7 @@ export function BrandedChart({
           ) : (
             <BarChart data={splitBars} margin={CHART_MARGIN_SECONDARY}>
               <CartesianGrid {...CHART_GRID_PROPS} />
-              <XAxis dataKey="label" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} tickMargin={8} />
+              <XAxis dataKey="label" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} tickMargin={6} />
               <YAxis
                 width={CHART_Y_AXIS_WIDTH_SECONDARY}
                 tick={CHART_AXIS_TICK}

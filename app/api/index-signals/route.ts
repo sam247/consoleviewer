@@ -57,7 +57,8 @@ export async function GET(request: NextRequest) {
         fmt(start),
         fmt(end),
         fmt(priorStart),
-        fmt(priorEnd)
+        fmt(priorEnd),
+        undefined
       ),
       querySearchAnalytics(siteUrl, fmt(priorStart), fmt(priorEnd), ["page"]),
     ]);

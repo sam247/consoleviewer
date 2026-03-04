@@ -61,17 +61,17 @@ export const CHART_EMPTY_STATE_MIN_H = {
 } as const;
 
 export const CHART_MARGIN_PRIMARY = {
-  top: 12,
-  right: 10,
-  left: 6,
-  bottom: 8,
+  top: 10,
+  right: 6,
+  left: 2,
+  bottom: 6,
 } as const;
 
 export const CHART_MARGIN_SECONDARY = {
   top: 10,
-  right: 10,
-  left: 4,
-  bottom: 8,
+  right: 6,
+  left: 2,
+  bottom: 6,
 } as const;
 
 export const CHART_MARGIN_SPARK = {
@@ -81,8 +81,8 @@ export const CHART_MARGIN_SPARK = {
   bottom: 4,
 } as const;
 
-export const CHART_Y_AXIS_WIDTH_PRIMARY = 34;
-export const CHART_Y_AXIS_WIDTH_SECONDARY = 34;
+export const CHART_Y_AXIS_WIDTH_PRIMARY = 30;
+export const CHART_Y_AXIS_WIDTH_SECONDARY = 30;
 
 export const CHART_GRID_PROPS = {
   stroke: "var(--border)",

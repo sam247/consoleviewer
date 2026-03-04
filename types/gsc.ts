@@ -89,6 +89,7 @@ export interface SiteDetailData {
   newPages: SiteDetailDimensionRow[];
   lostPages: SiteDetailLostRow[];
   branded: { brandedClicks: number; nonBrandedClicks: number; brandedChangePercent?: number; nonBrandedChangePercent?: number };
+  brandedDaily?: { date: string; brandedClicks: number; nonBrandedClicks: number }[];
 }
 
 /** Encoded property ID for URL path (base64url, single segment) */

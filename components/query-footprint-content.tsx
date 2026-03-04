@@ -181,8 +181,8 @@ export function QueryFootprintContent({
                     minTickGap={12}
                     tickLine={false}
                     axisLine={false}
-                    tickMargin={8}
-                    padding={{ left: 6, right: 6 }}
+                    tickMargin={6}
+                    padding={{ left: 2, right: 2 }}
                   />
                   <YAxis hide tick={CHART_AXIS_TICK} />
                   <Tooltip

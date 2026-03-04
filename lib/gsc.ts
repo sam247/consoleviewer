@@ -54,11 +54,29 @@ function getStubSites(): GCSSite[] {
   ];
 }
 
+type DimensionFilter = {
+  dimension: "query" | "page" | "date" | "country" | "device" | "searchAppearance";
+  operator: "contains" | "equals" | "includingRegex" | "excludingRegex";
+  expression: string;
+};
+
+type DimensionFilterGroup = {
+  groupType?: "and" | "or";
+  filters: DimensionFilter[];
+};
+
+type SearchAnalyticsOptions = {
+  dimensionFilterGroups?: DimensionFilterGroup[];
+  rowLimit?: number;
+  startRow?: number;
+};
+
 export async function querySearchAnalytics(
   siteUrl: string,
   startDate: string,
   endDate: string,
-  dimensions: string[]
+  dimensions: string[],
+  options?: SearchAnalyticsOptions
 ): Promise<SearchAnalyticsResponse> {
   const token = await getAccessToken();
   if (!token) {
@@ -67,7 +85,14 @@ export async function querySearchAnalytics(
   const encodedSite = encodeURIComponent(siteUrl);
   const res = await gscFetch(`/sites/${encodedSite}/searchAnalytics/query`, {
     method: "POST",
-    body: JSON.stringify({ startDate, endDate, dimensions }),
+    body: JSON.stringify({
+      startDate,
+      endDate,
+      dimensions,
+      ...(options?.dimensionFilterGroups ? { dimensionFilterGroups: options.dimensionFilterGroups } : {}),
+      ...(options?.rowLimit ? { rowLimit: options.rowLimit } : {}),
+      ...(options?.startRow ? { startRow: options.startRow } : {}),
+    }),
   });
   if (!res.ok) {
     if (res.status === 401) throw new Error("Invalid or expired token");
@@ -276,11 +301,12 @@ export async function getSiteDetail(
   startDate: string,
   endDate: string,
   priorStartDate: string,
-  priorEndDate: string
+  priorEndDate: string,
+  brandedTerms?: string[]
 ): Promise<SiteDetailData> {
   const token = await getAccessToken();
   if (!token) {
-    return getStubSiteDetail(siteUrl);
+    return getStubSiteDetail(siteUrl, brandedTerms);
   }
   try {
     const [summaryCur, summaryPrior, dailyRes, dailyPriorRes, queriesCur, queriesPrior, pagesCur, pagesPrior, countriesCur, countriesPrior, devicesCur, devicesPrior] = await Promise.all([
@@ -402,6 +428,53 @@ export async function getSiteDetail(
     const ctrChangePercent =
       priorCtr > 0 ? Math.round(((ctr - priorCtr) / priorCtr) * 100) : undefined;
 
+    const normalizedTerms = (brandedTerms ?? []).map((t) => t.trim()).filter(Boolean);
+    let brandedClicks = 0;
+    let brandedPriorClicks = 0;
+    let brandedDaily: { date: string; brandedClicks: number; nonBrandedClicks: number }[] | undefined;
+
+    if (normalizedTerms.length > 0) {
+      const brandedFilterGroups = [
+        {
+          groupType: "or" as const,
+          filters: normalizedTerms.map((term) => ({
+            dimension: "query" as const,
+            operator: "contains" as const,
+            expression: term,
+          })),
+        },
+      ];
+
+      const [brandedSummaryCur, brandedSummaryPrior, brandedDailyRes] = await Promise.all([
+        querySearchAnalytics(siteUrl, startDate, endDate, [], { dimensionFilterGroups: brandedFilterGroups }),
+        querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, [], { dimensionFilterGroups: brandedFilterGroups }),
+        querySearchAnalytics(siteUrl, startDate, endDate, ["date"], { dimensionFilterGroups: brandedFilterGroups }),
+      ]);
+
+      brandedClicks = brandedSummaryCur.rows?.[0]?.clicks ?? 0;
+      brandedPriorClicks = brandedSummaryPrior.rows?.[0]?.clicks ?? 0;
+
+      const brandedDailyMap = new Map(
+        (brandedDailyRes.rows ?? []).map((r) => [r.keys[0] ?? "", r.clicks ?? 0])
+      );
+
+      brandedDaily = daily.map((d) => {
+        const brandedDayClicks = brandedDailyMap.get(d.date) ?? 0;
+        return {
+          date: d.date,
+          brandedClicks: brandedDayClicks,
+          nonBrandedClicks: Math.max(0, (d.clicks ?? 0) - brandedDayClicks),
+        };
+      });
+    }
+
+    const nonBrandedClicks = Math.max(0, clicks - brandedClicks);
+    const nonBrandedPriorClicks = Math.max(0, priorClicks - brandedPriorClicks);
+    const brandedChangePercent =
+      brandedPriorClicks > 0 ? Math.round(((brandedClicks - brandedPriorClicks) / brandedPriorClicks) * 100) : 0;
+    const nonBrandedChangePercent =
+      nonBrandedPriorClicks > 0 ? Math.round(((nonBrandedClicks - nonBrandedPriorClicks) / nonBrandedPriorClicks) * 100) : 0;
+
     return {
       siteUrl,
       summary: {
@@ -427,11 +500,12 @@ export async function getSiteDetail(
       newPages,
       lostPages,
       branded: {
-        brandedClicks: 0,
-        nonBrandedClicks: clicks,
-        brandedChangePercent: 0,
-        nonBrandedChangePercent: priorClicks > 0 ? Math.round(((clicks - priorClicks) / priorClicks) * 100) : 0,
+        brandedClicks,
+        nonBrandedClicks,
+        brandedChangePercent,
+        nonBrandedChangePercent,
       },
+      brandedDaily,
     };
   } catch {
     return emptySiteDetail(siteUrl);
@@ -463,10 +537,11 @@ function emptySiteDetail(siteUrl: string): Promise<SiteDetailData> {
       brandedChangePercent: 0,
       nonBrandedChangePercent: 0,
     },
+    brandedDaily: [],
   });
 }
 
-function getStubSiteDetail(siteUrl: string): Promise<SiteDetailData> {
+function getStubSiteDetail(siteUrl: string, brandedTerms?: string[]): Promise<SiteDetailData> {
   const clicks = 1800 + Math.floor(Math.random() * 800);
   const impressions = 650000 + Math.floor(Math.random() * 100000);
   const priorClicks = Math.floor(clicks * 0.6);
@@ -528,5 +603,13 @@ function getStubSiteDetail(siteUrl: string): Promise<SiteDetailData> {
       brandedChangePercent: 12,
       nonBrandedChangePercent: 22,
     },
+    brandedDaily: daily.map((d) => {
+      const brandedClicks = Math.max(0, Math.round(d.clicks * 0.2 + (Math.random() - 0.5) * 6));
+      return {
+        date: d.date,
+        brandedClicks,
+        nonBrandedClicks: Math.max(0, d.clicks - brandedClicks),
+      };
+    }),
   });
 }

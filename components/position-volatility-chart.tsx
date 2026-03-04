@@ -109,8 +109,8 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
               minTickGap={14}
               tickLine={false}
               axisLine={false}
-              tickMargin={8}
-              padding={{ left: 8, right: 8 }}
+              tickMargin={6}
+              padding={{ left: 2, right: 2 }}
             />
             <YAxis
               width={CHART_Y_AXIS_WIDTH_SECONDARY}

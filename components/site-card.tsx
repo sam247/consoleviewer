@@ -424,7 +424,7 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
                   }}
                   className="text-muted-foreground hover:text-foreground hover:underline transition-colors"
                 >
-                  Connect SerpRobot to add keywords
+                  Add Keywords+
                 </button>
               ) : aiFooterLine ? (
                 aiFooterLine

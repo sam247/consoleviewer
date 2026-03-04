@@ -25,12 +25,17 @@ export type CannibalisationConflict = {
 };
 
 interface CannibalisationCardProps {
-  siteUrl: string;
-  startDate: string;
-  endDate: string;
+  /** When provided, data is used and no fetch is made (DB-backed flow). */
+  conflicts?: CannibalisationConflict[] | null;
+  isLoading?: boolean;
+  error?: Error | null;
+  /** Legacy: when conflicts not provided, fetch by site + date (GSC API). */
+  siteUrl?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
-async function fetchCannibalisation(
+async function fetchCannibalisationLegacy(
   site: string,
   startDate: string,
   endDate: string
@@ -42,18 +47,32 @@ async function fetchCannibalisation(
 }
 
 export function CannibalisationCard({
+  conflicts: conflictsProp,
+  isLoading: isLoadingProp,
+  error: errorProp,
   siteUrl,
   startDate,
   endDate,
 }: CannibalisationCardProps) {
   const [showAllRows, setShowAllRows] = useState(false);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["cannibalisation", siteUrl, startDate, endDate],
-    queryFn: () => fetchCannibalisation(siteUrl, startDate, endDate),
+  const useLegacy =
+    conflictsProp === undefined &&
+    siteUrl != null &&
+    startDate != null &&
+    endDate != null;
+
+  const { data: fetched, isLoading: queryLoading, error: queryError } = useQuery({
+    queryKey: useLegacy ? ["cannibalisation", siteUrl, startDate, endDate] : ["cannibalisation-noop"],
+    queryFn: useLegacy
+      ? () => fetchCannibalisationLegacy(siteUrl!, startDate!, endDate!)
+      : async () => ({ conflicts: [] as CannibalisationConflict[] }),
+    enabled: useLegacy,
   });
 
-  const conflicts = data?.conflicts ?? [];
+  const conflicts = conflictsProp ?? fetched?.conflicts ?? [];
+  const isLoading = isLoadingProp ?? (useLegacy ? queryLoading : false);
+  const error = errorProp ?? queryError ?? null;
   const hasMoreRows = conflicts.length > ROWS_INITIAL;
   const visibleConflicts = showAllRows ? conflicts : conflicts.slice(0, ROWS_INITIAL);
   const moreCount = Math.max(0, conflicts.length - ROWS_INITIAL);

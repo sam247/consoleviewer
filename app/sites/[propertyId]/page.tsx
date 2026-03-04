@@ -39,26 +39,41 @@ import {
   TABLE_ROW_CLASS,
 } from "@/components/ui/table-styles";
 
-async function fetchSiteDetail(
-  siteUrl: string,
-  startDate: string,
-  endDate: string,
-  priorStartDate: string,
-  priorEndDate: string,
-  brandedTerms?: string[]
-) {
-  const params = new URLSearchParams({
-    site: siteUrl,
-    startDate,
-    endDate,
-    priorStartDate,
-    priorEndDate,
-  });
-  if (brandedTerms && brandedTerms.length > 0) {
-    params.set("brandedTerms", JSON.stringify(brandedTerms));
-  }
-  const res = await fetch(`/api/analytics/detail?${params}`);
-  if (!res.ok) throw new Error("Failed to fetch site detail");
+async function fetchSnapshot(propertyId: string) {
+  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/snapshot`);
+  if (!res.ok) throw new Error("Failed to fetch snapshot");
+  return res.json();
+}
+
+async function fetchQueries(propertyId: string, startDate: string, endDate: string) {
+  const params = new URLSearchParams({ startDate, endDate });
+  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/queries?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch queries");
+  return res.json();
+}
+
+async function fetchPages(propertyId: string, startDate: string, endDate: string) {
+  const params = new URLSearchParams({ startDate, endDate });
+  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/pages?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch pages");
+  return res.json();
+}
+
+async function fetchOpportunity(propertyId: string) {
+  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/opportunity`);
+  if (!res.ok) throw new Error("Failed to fetch opportunity");
+  return res.json();
+}
+
+async function fetchMovements(propertyId: string) {
+  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/movements`);
+  if (!res.ok) throw new Error("Failed to fetch movements");
+  return res.json();
+}
+
+async function fetchCannibalisation(propertyId: string) {
+  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/cannibalisation`);
+  if (!res.ok) throw new Error("Failed to fetch cannibalisation");
   return res.json();
 }
 
@@ -276,7 +291,6 @@ export default function SiteDetailPage({
   params: { propertyId: string };
 }) {
   const { propertyId } = params;
-  const siteUrl = decodePropertyId(propertyId);
   const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
 
   const [queriesTrendFilter, setQueriesTrendFilter] = useState<TrendFilter>("all");
@@ -290,14 +304,6 @@ export default function SiteDetailPage({
   const trendExportMenuRef = useRef<HTMLDivElement>(null);
   const [trendExportMenuOpen, setTrendExportMenuOpen] = useState(false);
   const [contentMounted, setContentMounted] = useState(false);
-  const siteSlug = useMemo(() => {
-    try {
-      const host = new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`).hostname.replace(/^www\./, "");
-      return host.replace(/\./g, "-").toLowerCase();
-    } catch {
-      return propertyId.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
-    }
-  }, [siteUrl, propertyId]);
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (trendExportMenuRef.current && !trendExportMenuRef.current.contains(e.target as Node)) setTrendExportMenuOpen(false);
@@ -344,26 +350,122 @@ export default function SiteDetailPage({
     }
   }, [BRANDED_TERMS_KEY]);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: [
-      "siteDetail",
-      siteUrl,
-      startDate,
-      endDate,
-      priorStartDate,
-      priorEndDate,
-      brandedTerms,
-    ],
-    queryFn: () =>
-      fetchSiteDetail(
-        siteUrl,
-        startDate,
-        endDate,
-        priorStartDate,
-        priorEndDate,
-        brandedTerms
-      ),
+  const { data: snapshotData, isLoading: snapshotLoading, error: snapshotError } = useQuery({
+    queryKey: ["snapshot", propertyId],
+    queryFn: () => fetchSnapshot(propertyId),
   });
+
+  const { data: queriesData = [], isLoading: queriesLoading } = useQuery({
+    queryKey: ["queries", propertyId, startDate, endDate],
+    queryFn: () => fetchQueries(propertyId, startDate, endDate),
+  });
+
+  const { data: pagesData = [], isLoading: pagesLoading } = useQuery({
+    queryKey: ["pages", propertyId, startDate, endDate],
+    queryFn: () => fetchPages(propertyId, startDate, endDate),
+  });
+
+  const { data: opportunityData = [] } = useQuery({
+    queryKey: ["opportunity", propertyId],
+    queryFn: () => fetchOpportunity(propertyId),
+  });
+
+  const { data: movementsData = [] } = useQuery({
+    queryKey: ["movements", propertyId],
+    queryFn: () => fetchMovements(propertyId),
+  });
+
+  const { data: cannibalisationData, isLoading: cannibalisationLoading, error: cannibalisationError } = useQuery({
+    queryKey: ["cannibalisation", propertyId],
+    queryFn: () => fetchCannibalisation(propertyId),
+  });
+
+  const siteUrl = useMemo(() => {
+    if (snapshotData?.site_url) return snapshotData.site_url;
+    try {
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(propertyId)) return propertyId;
+      return decodePropertyId(propertyId);
+    } catch {
+      return propertyId;
+    }
+  }, [snapshotData?.site_url, propertyId]);
+
+  const siteSlug = useMemo(() => {
+    try {
+      const host = new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`).hostname.replace(/^www\./, "");
+      return host.replace(/\./g, "-").toLowerCase();
+    } catch {
+      return propertyId.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+    }
+  }, [siteUrl, propertyId]);
+
+  const isLoading = snapshotLoading;
+  const error = snapshotError;
+  const showOverviewSkeleton =
+    snapshotLoading || (snapshotData != null && !snapshotData.snapshot);
+
+  const snapshot = snapshotData?.snapshot ?? null;
+  const chartRows = snapshotData?.chart ?? [];
+
+  const data = useMemo(() => {
+    const summary = snapshot
+      ? {
+          clicks: snapshot.clicks,
+          impressions: snapshot.impressions,
+          clicksChangePercent: 0,
+          impressionsChangePercent: 0,
+          position: snapshot.avg_position,
+          positionChangePercent: undefined,
+          ctr: snapshot.ctr,
+          ctrChangePercent: undefined,
+          queryCount: snapshot.query_count,
+          queryCountChangePercent: undefined,
+        }
+      : null;
+    const daily = chartRows.map((d: { date: string; clicks: number; impressions: number }) => ({
+      date: d.date,
+      clicks: d.clicks,
+      impressions: d.impressions,
+      ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
+    }));
+    const queries = (queriesData as { query: string; clicks: number; impressions: number; avg_position?: number }[]).map((r) => ({
+      key: r.query,
+      clicks: r.clicks,
+      impressions: r.impressions,
+      changePercent: 0,
+      position: r.avg_position,
+    }));
+    const pages = (pagesData as { page: string; clicks: number; impressions: number; avg_position?: number }[]).map((r) => ({
+      key: r.page,
+      clicks: r.clicks,
+      impressions: r.impressions,
+      changePercent: 0,
+      position: r.avg_position,
+    }));
+    return {
+      siteUrl,
+      summary,
+      daily,
+      priorDaily: [],
+      queries,
+      pages,
+      countries: [] as { key: string; clicks: number; impressions: number; changePercent: number }[],
+      devices: [] as { key: string; clicks: number; impressions: number; changePercent: number }[],
+      newQueries: [] as { key: string; clicks: number; impressions: number; changePercent?: number; position?: number }[],
+      lostQueries: [] as { key: string; clicks: number; impressions: number }[],
+      newPages: [] as { key: string; clicks: number; impressions: number; changePercent?: number }[],
+      lostPages: [] as { key: string; clicks: number; impressions: number }[],
+      branded: {
+        brandedClicks: 0,
+        nonBrandedClicks: summary?.clicks ?? 0,
+        brandedChangePercent: 0,
+        nonBrandedChangePercent: 0,
+      },
+      brandedDaily: [] as { date: string; brandedClicks: number; nonBrandedClicks: number }[],
+      snapshotTop3: snapshot?.top3_count,
+      snapshotTop10: snapshot?.top10_count,
+    };
+  }, [snapshot, chartRows, queriesData, pagesData, siteUrl]);
   const addBrandedTerm = () => {
     const t = brandedTermInput.trim().toLowerCase();
     if (!t || brandedTerms.includes(t)) return;
@@ -462,12 +564,11 @@ export default function SiteDetailPage({
   const queryCounting = useMemo(() => {
     const q = data?.queries ?? [];
     const withPos = q as { position?: number }[];
-    return {
-      total: q.length,
-      top10: withPos.filter((r) => r.position != null && r.position <= 10).length,
-      top3: withPos.filter((r) => r.position != null && r.position <= 3).length,
-    };
-  }, [data?.queries]);
+    const total = data?.summary?.queryCount ?? q.length;
+    const top10 = data?.snapshotTop10 ?? withPos.filter((r) => r.position != null && r.position <= 10).length;
+    const top3 = data?.snapshotTop3 ?? withPos.filter((r) => r.position != null && r.position <= 3).length;
+    return { total, top10, top3 };
+  }, [data?.queries, data?.summary?.queryCount, data?.snapshotTop3, data?.snapshotTop10]);
 
   const dailyForCharts = useMemo(() => data?.daily ?? [], [data?.daily]);
 
@@ -590,22 +691,27 @@ export default function SiteDetailPage({
         ) : (
           <div className={cn("space-y-4 transition-opacity duration-200", contentMounted ? "opacity-100" : "opacity-0")}>
             {/* Section A — Header metric row + footprint summary */}
-            <section aria-label="Overview" className="border-b border-border pb-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-4">
-                <HeaderMetricRow summary={data?.summary} formatNum={formatNum} />
-                <div className="flex flex-wrap items-center gap-3 shrink-0">
-                  <div className="text-right">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Queries in band</div>
-                    <div className="text-sm font-semibold tabular-nums text-foreground mt-0.5">
-                      Top 10: {queryCounting.top10} · Top 3: {queryCounting.top3}
+            {showOverviewSkeleton ? (
+              <SkeletonBox className="h-20 border-b border-border pb-4" />
+            ) : (
+              <section aria-label="Overview" className="border-b border-border pb-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-4">
+                  <HeaderMetricRow summary={data?.summary} formatNum={formatNum} />
+                  <div className="flex flex-wrap items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <div className="text-xs uppercase tracking-wide text-muted-foreground">Queries in band</div>
+                      <div className="text-sm font-semibold tabular-nums text-foreground mt-0.5">
+                        Top 10: {queryCounting.top10} · Top 3: {queryCounting.top3}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             {/* Section B — Trend: graph + Query Footprint in one row; then AI-Style + Position volatility */}
-            {data?.daily?.length > 0 && (
+            {showOverviewSkeleton && <SkeletonBox className="h-80 min-h-[200px]" />}
+            {!showOverviewSkeleton && data?.daily?.length > 0 && (
               <section aria-label="Trend" className="space-y-4">
                 <div className="flex flex-col gap-4 min-w-0 lg:flex-row lg:items-stretch">
                   <div className="rounded-lg border border-border bg-surface transition-colors duration-[120ms] min-w-0 flex-1 flex flex-col" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
@@ -816,9 +922,9 @@ export default function SiteDetailPage({
                 <IndexSignalsCard propertyId={propertyId} pagesRows={pagesRows} />
               </div>
               <CannibalisationCard
-                siteUrl={siteUrl}
-                startDate={startDate}
-                endDate={endDate}
+                conflicts={cannibalisationData?.conflicts ?? null}
+                isLoading={cannibalisationLoading}
+                error={cannibalisationError ?? null}
               />
             </div>
 

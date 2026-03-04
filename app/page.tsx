@@ -168,6 +168,14 @@ export default function OverviewPage() {
             </button>
           </div>
         )}
+        {!isLoading && sorted.length > 0 && (
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium text-foreground">{sorted.length} site{sorted.length !== 1 ? "s" : ""}</h2>
+            <a href="/onboarding/sites" className="text-sm text-muted-foreground hover:text-foreground underline">
+              Manage or add sites
+            </a>
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {isLoading
             ? Array.from({ length: 6 }).map((_, i) => (

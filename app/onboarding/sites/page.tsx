@@ -96,7 +96,7 @@ export default function OnboardingSitesPage() {
         setImportError((data as { error?: string }).error ?? "Import failed");
         return;
       }
-      router.push("/sites");
+      router.push("/");
       router.refresh();
     } catch {
       setImportError("Import failed");

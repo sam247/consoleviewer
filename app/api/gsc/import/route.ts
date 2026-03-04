@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       `INSERT INTO properties (id, team_id, site_url, gsc_site_url, timezone, active, created_at)
        VALUES (gen_random_uuid(), $1, $2, $3, NULL, true, now())
        ON CONFLICT (team_id, site_url) DO UPDATE
-       SET gsc_site_url = EXCLUDED.gsc_site_url
+       SET gsc_site_url = EXCLUDED.gsc_site_url, active = true
        RETURNING id, site_url, gsc_site_url`,
       [teamId, site_url, gsc_site_url]
     );
@@ -83,6 +83,16 @@ export async function POST(request: NextRequest) {
         [row.id]
       );
     }
+  }
+
+  // Only show selected sites: deactivate any other team properties not in this import.
+  const selectedSiteUrls = toInsert.map((t) => t.site_url);
+  if (selectedSiteUrls.length > 0) {
+    await pool.query(
+      `UPDATE properties SET active = false
+       WHERE team_id = $1 AND active = true AND site_url != ALL($2::text[])`,
+      [teamId, selectedSiteUrls]
+    );
   }
 
   return NextResponse.json({ imported: imported.length, properties: imported });

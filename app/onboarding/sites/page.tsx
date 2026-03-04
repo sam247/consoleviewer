@@ -174,11 +174,11 @@ export default function OnboardingSitesPage() {
                 </li>
               ))}
             </ul>
-            <div className="border-t border-border px-4 py-3 flex items-center justify-between gap-4">
+            <div className="border-t border-border px-4 py-3 flex flex-col gap-2">
               <p className="text-xs text-muted-foreground">
-                {selected.size} of {sites.length} selected
+                {selected.size} of {sites.length} selected. Only these sites will appear in Your sites; re-importing replaces your list.
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-4">
                 {importError && <p className="text-sm text-red-600 dark:text-red-400">{importError}</p>}
                 <button
                   type="button"

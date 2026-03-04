@@ -34,10 +34,20 @@ export default function SitesPage() {
       <Header />
       <main className="flex-1 p-4 md:p-6">
         <div className="mx-auto max-w-[86rem]">
-          <h1 className="text-xl font-semibold text-foreground">Your sites</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Select a site to view Search Console data.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">Your sites</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Select a site to view Search Console data.
+              </p>
+            </div>
+            <Link
+              href="/onboarding/sites"
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+            >
+              Manage or add sites
+            </Link>
+          </div>
 
           {isLoading && (
             <p className="mt-6 text-sm text-muted-foreground">Loading…</p>

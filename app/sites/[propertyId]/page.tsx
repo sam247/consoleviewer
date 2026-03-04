@@ -401,8 +401,7 @@ export default function SiteDetailPage({
 
   const isLoading = snapshotLoading;
   const error = snapshotError;
-  const showOverviewSkeleton =
-    snapshotLoading || (snapshotData != null && !snapshotData.snapshot);
+  const showOverviewSkeleton = snapshotLoading;
 
   const snapshot = snapshotData?.snapshot ?? null;
 
@@ -711,7 +710,7 @@ export default function SiteDetailPage({
 
             {/* Section B — Trend: graph + Query Footprint in one row; then AI-Style + Position volatility */}
             {showOverviewSkeleton && <SkeletonBox className="h-80 min-h-[200px]" />}
-            {!showOverviewSkeleton && data?.daily?.length > 0 && (
+            {!showOverviewSkeleton && (
               <section aria-label="Trend" className="space-y-4">
                 <div className="flex flex-col gap-4 min-w-0 lg:flex-row lg:items-stretch">
                   <div className="rounded-lg border border-border bg-surface transition-colors duration-[120ms] min-w-0 flex-1 flex flex-col" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
@@ -792,16 +791,22 @@ export default function SiteDetailPage({
                       <SparkToggles />
                     </div>
                   </div>
-                  <div ref={trendChartContainerRef} className="flex-1 min-h-0 px-4 pb-3 pt-2">
-                    <TrendChart
-                      data={data.daily}
-                      priorData={data?.priorDaily}
-                      height={CHART_PLOT_H.primary}
-                      showImpressions
-                      useSeriesContext
-                      compareToPrior={compareToPrior}
-                      normalizeWhenMultiSeries={showPercentView}
-                    />
+                  <div ref={trendChartContainerRef} className="flex-1 min-h-0 px-4 pb-3 pt-2 flex flex-col">
+                    {data?.daily?.length === 0 ? (
+                      <div className="flex-1 flex items-center justify-center min-h-[200px] text-sm text-muted-foreground">
+                        No data for this period yet. Data syncs nightly from Search Console.
+                      </div>
+                    ) : (
+                      <TrendChart
+                        data={data?.daily ?? []}
+                        priorData={data?.priorDaily}
+                        height={CHART_PLOT_H.primary}
+                        showImpressions
+                        useSeriesContext
+                        compareToPrior={compareToPrior}
+                        normalizeWhenMultiSeries={showPercentView}
+                      />
+                    )}
                   </div>
                   </div>
                   {queriesRows.length > 0 && (

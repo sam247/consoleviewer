@@ -119,9 +119,8 @@ async function fetchFromGscApi(
   return result;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchFromDb(
-  pool: any,
+  pool: ReturnType<typeof getPool>,
   properties: { id: string; site_url: string; gsc_site_url: string | null }[],
   params: OverviewParams,
 ): Promise<SiteOverviewMetrics[]> {

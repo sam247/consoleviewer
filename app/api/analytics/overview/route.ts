@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/session";
+import { getTeamIdForUser } from "@/lib/team";
+import { getOverviewMetricsFromDb } from "@/lib/overview-db";
 import { getOverviewMetrics } from "@/lib/gsc";
 
 export async function GET(request: NextRequest) {
@@ -16,6 +19,20 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const userId = await getSessionUserId();
+    const teamId = userId ? await getTeamIdForUser(userId) : null;
+
+    if (teamId) {
+      const data = await getOverviewMetricsFromDb({
+        teamId,
+        startDate,
+        endDate,
+        priorStartDate,
+        priorEndDate,
+      });
+      return NextResponse.json(data);
+    }
+
     const data = await getOverviewMetrics(
       startDate,
       endDate,

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/session";
 import { resolvePropertyForUser } from "@/lib/property-resolver";
 import { getPool } from "@/lib/db";
+import { getAccessTokenForTeam } from "@/lib/gsc-tokens";
+import { querySearchAnalytics } from "@/lib/gsc";
 
 export async function GET(
   request: NextRequest,
@@ -47,5 +49,32 @@ export async function GET(
     [resolved.propertyId, startDate, endDate]
   );
 
-  return NextResponse.json(res.rows);
+  if (res.rows.length > 0) {
+    return NextResponse.json(res.rows);
+  }
+
+  // Fallback to live GSC API
+  const token = await getAccessTokenForTeam(resolved.teamId);
+  if (!token) return NextResponse.json([]);
+
+  const propRes = await pool.query<{ site_url: string; gsc_site_url: string | null }>(
+    `SELECT site_url, gsc_site_url FROM properties WHERE id = $1`,
+    [resolved.propertyId]
+  );
+  const gscUrl =
+    propRes.rows[0]?.gsc_site_url ||
+    `https://${(propRes.rows[0]?.site_url ?? "").replace(/^https?:\/\//, "")}`;
+
+  try {
+    const gscRes = await querySearchAnalytics(gscUrl, startDate, endDate, ["query"], { rowLimit: 50 }, token);
+    const rows = (gscRes.rows ?? []).map((r) => ({
+      query: r.keys[0] ?? "",
+      clicks: r.clicks,
+      impressions: r.impressions,
+      avg_position: r.position,
+    }));
+    return NextResponse.json(rows);
+  } catch {
+    return NextResponse.json([]);
+  }
 }

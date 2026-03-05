@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { cn } from "@/lib/utils";
 
@@ -11,10 +14,306 @@ function displayUrl(siteUrl: string): string {
   return siteUrl.replace(/\/$/, "") || siteUrl;
 }
 
-export default function SettingsPage() {
+interface UserProfile {
+  displayName: string;
+  email: string;
+  avatarUrl: string | null;
+}
+
+function useProfile() {
+  return useQuery<UserProfile>({
+    queryKey: ["userProfile"],
+    queryFn: async () => {
+      const res = await fetch("/api/user/profile", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load profile");
+      return res.json();
+    },
+  });
+}
+
+function useAuthStatus() {
+  return useQuery({
+    queryKey: ["authStatus"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/status", { credentials: "include" });
+      if (!res.ok) return { signedIn: false, gscConnected: false, avatarUrl: null };
+      return res.json() as Promise<{ signedIn: boolean; gscConnected: boolean; avatarUrl: string | null }>;
+    },
+  });
+}
+
+function ProfileSection() {
+  const { data: profile, isLoading } = useProfile();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setName(profile.displayName);
+      setEmail(profile.email);
+      setAvatarPreview(profile.avatarUrl);
+      setAvatarDataUrl(profile.avatarUrl);
+    }
+  }, [profile]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/user/profile", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: name,
+          email,
+          avatarUrl: avatarDataUrl,
+        }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+    },
+    onSuccess: () => {
+      setDirty(false);
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+      queryClient.invalidateQueries({ queryKey: ["authStatus"] });
+    },
+  });
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image must be under 2 MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setAvatarPreview(result);
+      setAvatarDataUrl(result);
+      setDirty(true);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleRemoveAvatar = useCallback(() => {
+    setAvatarPreview(null);
+    setAvatarDataUrl(null);
+    setDirty(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  if (isLoading) {
+    return <div className="animate-pulse h-32 rounded-lg bg-accent" />;
+  }
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-sm font-medium text-foreground mb-4">Profile</h2>
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className={cn(
+              "flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-border bg-accent",
+              "hover:border-foreground/40 transition-colors cursor-pointer"
+            )}
+          >
+            {avatarPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarPreview} alt="" className="size-full object-cover" />
+            ) : (
+              <span className="text-xs text-muted-foreground">Upload</span>
+            )}
+          </button>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm text-foreground">Profile picture</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+              >
+                {avatarPreview ? "Change" : "Upload"}
+              </button>
+              {avatarPreview && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  className="text-xs text-muted-foreground hover:text-destructive underline"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="profile-name" className="block text-sm text-foreground mb-1">
+            Name
+          </label>
+          <input
+            id="profile-name"
+            type="text"
+            value={name}
+            onChange={(e) => { setName(e.target.value); setDirty(true); }}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Your name"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="profile-email" className="block text-sm text-foreground mb-1">
+            Email
+          </label>
+          <input
+            id="profile-email"
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setDirty(true); }}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="you@example.com"
+          />
+        </div>
+
+        <button
+          type="button"
+          disabled={!dirty || saveMutation.isPending}
+          onClick={() => saveMutation.mutate()}
+          className={cn(
+            "rounded-md px-4 py-2 text-sm font-medium transition-colors",
+            dirty
+              ? "bg-foreground text-background hover:bg-foreground/90"
+              : "bg-accent text-muted-foreground cursor-not-allowed"
+          )}
+        >
+          {saveMutation.isPending ? "Saving…" : "Save changes"}
+        </button>
+        {saveMutation.isSuccess && !dirty && (
+          <span className="ml-3 text-sm text-green-600">Saved</span>
+        )}
+        {saveMutation.isError && (
+          <span className="ml-3 text-sm text-destructive">Failed to save. Try again.</span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function GscConnectionSection() {
+  const { data: authStatus } = useAuthStatus();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  const gscConnected = authStatus?.gscConnected ?? false;
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    try {
+      const res = await fetch("/api/gsc/disconnect", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["authStatus"] });
+        router.refresh();
+      }
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-sm font-medium text-foreground mb-2">Google Search Console</h2>
+      <p className="text-sm text-muted-foreground mb-4">
+        {gscConnected
+          ? "Your account is connected to Google Search Console."
+          : "Connect your Google Search Console account to import sites and data."}
+      </p>
+      {gscConnected ? (
+        <button
+          type="button"
+          onClick={handleDisconnect}
+          disabled={disconnecting}
+          className={cn(
+            "rounded-md border border-input bg-background px-4 py-2 text-sm font-medium",
+            "hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+            "disabled:opacity-50"
+          )}
+        >
+          {disconnecting ? "Disconnecting…" : "Disconnect GSC"}
+        </button>
+      ) : (
+        <a
+          href="/api/google/connect"
+          className={cn(
+            "inline-flex items-center rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background",
+            "hover:bg-foreground/90 transition-colors"
+          )}
+        >
+          Connect Google Search Console
+        </a>
+      )}
+    </section>
+  );
+}
+
+function HiddenProjectsSection() {
   const { hiddenSet, unhide } = useHiddenProjects();
   const hiddenList = Array.from(hiddenSet);
 
+  return (
+    <section className="mb-8">
+      <h2 className="text-sm font-medium text-foreground mb-2">Hidden projects</h2>
+      <p className="text-sm text-muted-foreground mb-4">
+        Projects you hide are listed here. Unhide to show them again on the dashboard.
+      </p>
+      {hiddenList.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No hidden projects.</p>
+      ) : (
+        <ul className="rounded-lg border border-border bg-surface divide-y divide-border">
+          {hiddenList.map((siteUrl) => (
+            <li
+              key={siteUrl}
+              className="flex items-center justify-between gap-4 px-4 py-3"
+            >
+              <span className="min-w-0 truncate text-sm text-foreground" title={siteUrl}>
+                {displayUrl(siteUrl)}
+              </span>
+              <button
+                type="button"
+                onClick={() => unhide(siteUrl)}
+                className={cn(
+                  "shrink-0 rounded-md border border-input bg-background px-3 py-1.5 text-sm",
+                  "hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+                )}
+              >
+                Unhide
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+export default function SettingsPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-border bg-background px-6 py-4">
@@ -27,41 +326,9 @@ export default function SettingsPage() {
       </header>
       <main className="flex-1 p-6 mx-auto max-w-2xl w-full">
         <h1 className="text-xl font-semibold text-foreground mb-6">Settings</h1>
-
-        <section className="mb-8">
-          <h2 className="text-sm font-medium text-foreground mb-2">Hidden projects</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            Projects you hide are listed here. Unhide to show them again on the dashboard.
-          </p>
-          {hiddenList.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hidden projects.</p>
-          ) : (
-            <ul className="rounded-lg border border-border bg-surface divide-y divide-border">
-              {hiddenList.map((siteUrl) => (
-                <li
-                  key={siteUrl}
-                  className="flex items-center justify-between gap-4 px-4 py-3"
-                >
-                  <span className="min-w-0 truncate text-sm text-foreground" title={siteUrl}>
-                    {displayUrl(siteUrl)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => unhide(siteUrl)}
-                    className={cn(
-                      "shrink-0 rounded-md border border-input bg-background px-3 py-1.5 text-sm",
-                      "hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
-                    )}
-                  >
-                    Unhide
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <p className="text-sm text-muted-foreground">Profile and account settings will appear here.</p>
+        <ProfileSection />
+        <GscConnectionSection />
+        <HiddenProjectsSection />
       </main>
     </div>
   );

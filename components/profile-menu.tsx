@@ -1,34 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useRef, useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
-interface ProfileMenuProps {
-  /** Optional profile image URL (e.g. from session or settings). When set, shown in the trigger. */
-  avatarUrl?: string | null;
-}
-
-export function ProfileMenu({ avatarUrl }: ProfileMenuProps = {}) {
+export function ProfileMenu() {
   const [open, setOpen] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const router = useRouter();
-  const queryClient = useQueryClient();
 
   const { data: authStatus } = useQuery({
     queryKey: ["authStatus"],
     queryFn: async () => {
       const res = await fetch("/api/auth/status", { credentials: "include" });
-      if (!res.ok) return { signedIn: false, gscConnected: false };
-      return res.json() as Promise<{ signedIn: boolean; gscConnected: boolean }>;
+      if (!res.ok) return { signedIn: false, gscConnected: false, avatarUrl: null };
+      return res.json() as Promise<{ signedIn: boolean; gscConnected: boolean; avatarUrl: string | null }>;
     },
   });
 
   const signedIn = authStatus?.signedIn ?? false;
-  const gscConnected = authStatus?.gscConnected ?? false;
+  const avatarUrl = authStatus?.avatarUrl ?? null;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -37,24 +28,6 @@ export function ProfileMenu({ avatarUrl }: ProfileMenuProps = {}) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const handleDisconnectGsc = async () => {
-    setDisconnecting(true);
-    try {
-      const res = await fetch("/api/gsc/disconnect", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (res.ok) {
-        setOpen(false);
-        queryClient.invalidateQueries({ queryKey: ["authStatus"] });
-        router.push("/onboarding/sites");
-        router.refresh();
-      }
-    } finally {
-      setDisconnecting(false);
-    }
-  };
 
   return (
     <div className="relative" ref={ref}>
@@ -70,7 +43,7 @@ export function ProfileMenu({ avatarUrl }: ProfileMenuProps = {}) {
         aria-label="Profile and settings"
       >
         {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- user profile image, URL from settings/session
+          // eslint-disable-next-line @next/next/no-img-element -- user profile image
           <img
             src={avatarUrl}
             alt=""
@@ -110,19 +83,6 @@ export function ProfileMenu({ avatarUrl }: ProfileMenuProps = {}) {
                   Settings
                 </Link>
               </li>
-              {gscConnected && (
-                <li role="none">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent disabled:opacity-50"
-                    onClick={handleDisconnectGsc}
-                    disabled={disconnecting}
-                  >
-                    {disconnecting ? "Disconnecting…" : "Disconnect GSC"}
-                  </button>
-                </li>
-              )}
               <li role="none">
                 <a
                   href="/api/auth/app-logout"
@@ -130,7 +90,7 @@ export function ProfileMenu({ avatarUrl }: ProfileMenuProps = {}) {
                   className="block px-4 py-2 text-sm text-foreground hover:bg-accent"
                   onClick={() => setOpen(false)}
                 >
-                  Sign out of the account
+                  Sign out
                 </a>
               </li>
             </>

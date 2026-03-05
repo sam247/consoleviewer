@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
 import { SiteCard } from "@/components/site-card";
@@ -66,8 +66,22 @@ function sortMetrics(metrics: SiteOverviewMetrics[], sortBy: SortKey): SiteOverv
 
 export default function OverviewPage() {
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortKey>("total");
-  const [filterBy, setFilterBy] = useState<FilterKey>("all");
+  const [sortBy, setSortByRaw] = useState<SortKey>(() => {
+    if (typeof window === "undefined") return "total";
+    return (localStorage.getItem("consoleview-sort") as SortKey) || "total";
+  });
+  const [filterBy, setFilterByRaw] = useState<FilterKey>(() => {
+    if (typeof window === "undefined") return "all";
+    return (localStorage.getItem("consoleview-filter") as FilterKey) || "all";
+  });
+  const setSortBy = useCallback((v: SortKey) => {
+    setSortByRaw(v);
+    try { localStorage.setItem("consoleview-sort", v); } catch { /* ignore */ }
+  }, []);
+  const setFilterBy = useCallback((v: FilterKey) => {
+    setFilterByRaw(v);
+    try { localStorage.setItem("consoleview-filter", v); } catch { /* ignore */ }
+  }, []);
   const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
   const { hiddenSet } = useHiddenProjects();
   const { pinnedSet } = usePinnedProjects();

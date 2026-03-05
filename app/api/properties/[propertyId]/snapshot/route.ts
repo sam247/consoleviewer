@@ -47,16 +47,20 @@ export async function GET(
   );
   const snap = snapshotRes.rows[0];
 
+  const sp = request.nextUrl.searchParams;
+  const startDate = sp.get("startDate");
+  const endDate = sp.get("endDate");
+  const end = endDate || new Date().toISOString().slice(0, 10);
+  const start = startDate || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+
   const chartRes = await pool.query<{ date: string; clicks: number; impressions: number }>(
     `SELECT date, clicks, impressions
      FROM gsc_property_daily
-     WHERE property_id = $1
-     ORDER BY date DESC
-     LIMIT 90`,
-    [resolved.propertyId]
+     WHERE property_id = $1 AND date BETWEEN $2::date AND $3::date
+     ORDER BY date`,
+    [resolved.propertyId, start, end]
   );
-  const chartDesc = chartRes.rows;
-  const chart = [...chartDesc].reverse();
+  const chart = chartRes.rows;
 
   // If DB has chart data, return it
   if (chart.length > 0) {
@@ -88,15 +92,7 @@ export async function GET(
     return NextResponse.json({ snapshot: null, chart: [], site_url });
   }
 
-  const sp = request.nextUrl.searchParams;
-  const startDate = sp.get("startDate");
-  const endDate = sp.get("endDate");
-
   const gscUrl = gsc_site_url || `https://${(site_url ?? "").replace(/^https?:\/\//, "")}`;
-
-  // Default to last 90 days if no date params
-  const end = endDate || new Date().toISOString().slice(0, 10);
-  const start = startDate || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
 
   try {
     const [totalRes, dailyRes] = await Promise.all([

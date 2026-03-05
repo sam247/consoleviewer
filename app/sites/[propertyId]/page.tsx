@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
 import { TrendChart } from "@/components/trend-chart";
@@ -39,8 +39,9 @@ import {
   TABLE_ROW_CLASS,
 } from "@/components/ui/table-styles";
 
-async function fetchSnapshot(propertyId: string) {
-  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/snapshot`);
+async function fetchSnapshot(propertyId: string, startDate: string, endDate: string) {
+  const params = new URLSearchParams({ startDate, endDate });
+  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/snapshot?${params}`);
   if (!res.ok) throw new Error("Failed to fetch snapshot");
   return res.json();
 }
@@ -295,8 +296,23 @@ export default function SiteDetailPage({
 
   const [queriesTrendFilter, setQueriesTrendFilter] = useState<TrendFilter>("all");
   const [pagesTrendFilter, setPagesTrendFilter] = useState<TrendFilter>("all");
-  const [compareToPrior, setCompareToPrior] = useState(false);
-  const [showPercentView, setShowPercentView] = useState(true);
+  const [compareToPrior, setCompareToPriorRaw] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("consoleview-compare-prior") === "true";
+  });
+  const [showPercentView, setShowPercentViewRaw] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem("consoleview-percent-view");
+    return v === null ? true : v === "true";
+  });
+  const setCompareToPrior = useCallback((v: boolean) => {
+    setCompareToPriorRaw(v);
+    try { localStorage.setItem("consoleview-compare-prior", String(v)); } catch { /* ignore */ }
+  }, []);
+  const setShowPercentView = useCallback((v: boolean) => {
+    setShowPercentViewRaw(v);
+    try { localStorage.setItem("consoleview-percent-view", String(v)); } catch { /* ignore */ }
+  }, []);
   const [contentFilterPattern, setContentFilterPattern] = useState("");
   const [contentFilterExclude, setContentFilterExclude] = useState(false);
   const [bandFilter, setBandFilter] = useState<BandFilter>(null);
@@ -351,8 +367,8 @@ export default function SiteDetailPage({
   }, [BRANDED_TERMS_KEY]);
 
   const { data: snapshotData, isLoading: snapshotLoading, error: snapshotError } = useQuery({
-    queryKey: ["snapshot", propertyId],
-    queryFn: () => fetchSnapshot(propertyId),
+    queryKey: ["snapshot", propertyId, startDate, endDate],
+    queryFn: () => fetchSnapshot(propertyId, startDate, endDate),
   });
 
   const { data: queriesData = [], isLoading: _queriesLoading } = useQuery({

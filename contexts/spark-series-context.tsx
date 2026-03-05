@@ -13,12 +13,26 @@ export type SparkSeriesKey = "clicks" | "impressions" | "ctr" | "position";
 
 export type SparkSeriesState = Record<SparkSeriesKey, boolean>;
 
+const STORAGE_KEY = "consoleview-spark-series";
+
 const DEFAULT_SERIES: SparkSeriesState = {
   clicks: true,
   impressions: true,
   ctr: false,
   position: false,
 };
+
+function loadSeries(): SparkSeriesState {
+  if (typeof window === "undefined") return DEFAULT_SERIES;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { ...DEFAULT_SERIES, ...parsed };
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_SERIES;
+}
 
 type SparkSeriesContextValue = {
   series: SparkSeriesState;
@@ -28,10 +42,14 @@ type SparkSeriesContextValue = {
 const SparkSeriesContext = createContext<SparkSeriesContextValue | null>(null);
 
 export function SparkSeriesProvider({ children }: { children: ReactNode }) {
-  const [series, setSeries] = useState<SparkSeriesState>(DEFAULT_SERIES);
+  const [series, setSeries] = useState<SparkSeriesState>(loadSeries);
 
   const toggle = useCallback((key: SparkSeriesKey) => {
-    setSeries((prev) => ({ ...prev, [key]: !prev[key] }));
+    setSeries((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
   }, []);
 
   const value = useMemo(

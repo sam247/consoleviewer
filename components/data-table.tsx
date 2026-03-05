@@ -12,6 +12,7 @@ import {
   TABLE_HEAD_CLASS,
   TABLE_ROW_CLASS,
 } from "@/components/ui/table-styles";
+import { PositionSparkline } from "@/components/position-sparkline";
 
 export type TrendFilter = "all" | "growing" | "decaying" | "new" | "lost" | "highImprLowCtr" | "longForm" | "conversational";
 
@@ -21,6 +22,8 @@ export interface DataTableRow {
   impressions: number;
   changePercent?: number;
   position?: number;
+  /** SERP feature appearances (e.g. RICH_RESULT, VIDEO) for badge display */
+  appearances?: string[];
 }
 
 type SortKey = "key" | "clicks" | "impressions" | "changePercent" | "position";
@@ -41,6 +44,8 @@ interface DataTableProps {
   onExportCsv?: () => void;
   /** When true (default), "View X more" opens a scrollable modal with full table and export; when false, expands inline */
   expandInModal?: boolean;
+  /** Optional: query key -> daily position array for sparkline column (queries table only) */
+  sparklines?: Record<string, number[]>;
 }
 
 const INITIAL_VISIBLE = 10;
@@ -90,6 +95,7 @@ interface DataTableViewProps {
   onExportCsv?: () => void;
   /** When set, "View X more" calls this instead of onToggleExpand (opens full-view modal) */
   onOpenFullView?: () => void;
+  sparklines?: Record<string, number[]>;
 }
 
 function DataTableView({
@@ -111,7 +117,9 @@ function DataTableView({
   onRowClick,
   onExportCsv,
   onOpenFullView,
+  sparklines,
 }: DataTableViewProps) {
+  const hasSparklines = Boolean(sparklines && Object.keys(sparklines).length > 0);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -232,6 +240,11 @@ function DataTableView({
                     </button>
                   </th>
                 )}
+                {hasSparklines && (
+                  <th className={cn("px-2 font-semibold text-right w-[60px]", TABLE_CELL_Y)} title="Position trend">
+                    <span className="text-muted-foreground">Trend</span>
+                  </th>
+                )}
                 <th className={cn("px-4 font-semibold text-right w-16", TABLE_CELL_Y)}>
                   <button type="button" onClick={() => onSort("changePercent")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
                     Change {sortKey === "changePercent" && (sortDir === "asc" ? "↑" : "↓")}
@@ -242,7 +255,7 @@ function DataTableView({
             <tbody>
               {visibleRows.length === 0 && (
                 <tr>
-                  <td colSpan={hasPosition ? 5 : 4} className="px-4 py-6 text-center text-xs text-muted-foreground">
+                  <td colSpan={hasPosition ? (hasSparklines ? 6 : 5) : hasSparklines ? 5 : 4} className="px-4 py-6 text-center text-xs text-muted-foreground">
                     No rows match the current filter.
                   </td>
                 </tr>
@@ -259,8 +272,23 @@ function DataTableView({
                   tabIndex={onRowClick ? 0 : undefined}
                   onKeyDown={onRowClick ? (e) => e.key === "Enter" && onRowClick(row) : undefined}
                 >
-                  <td className={cn("px-4 truncate min-w-0", TABLE_CELL_Y)} title={row.key}>
-                    {row.key}
+                  <td className={cn("px-4 min-w-0", TABLE_CELL_Y)} title={row.key}>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="truncate">{row.key}</span>
+                      {row.appearances && row.appearances.length > 0 && (
+                        <span className="flex shrink-0 gap-0.5">
+                          {row.appearances.slice(0, 3).map((a) => (
+                            <span
+                              key={a}
+                              className="text-[10px] bg-muted px-1 py-0.5 rounded text-muted-foreground"
+                              title={a}
+                            >
+                              {a === "RICH_RESULT" ? "Snippet" : a === "VIDEO" ? "Video" : a === "AMP_BLUE_LINK" ? "AMP" : a.replace(/_/g, " ").slice(0, 8)}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                     {formatNum(row.clicks)}
@@ -271,6 +299,11 @@ function DataTableView({
                   {hasPosition && (
                     <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                       {row.position != null ? row.position.toFixed(1) : "—"}
+                    </td>
+                  )}
+                  {hasSparklines && (
+                    <td className={cn("px-2 text-right align-middle", TABLE_CELL_Y)}>
+                      {sparklines?.[row.key] ? <PositionSparkline positions={sparklines[row.key]} /> : "—"}
                     </td>
                   )}
                   <td className={cn("px-4 text-right", TABLE_CELL_Y)}>
@@ -314,6 +347,7 @@ export function DataTable({
   onRowClick,
   onExportCsv,
   expandInModal = true,
+  sparklines,
 }: DataTableProps) {
   const [internalTrend, setInternalTrend] = useState<TrendFilter>("all");
   const trend = controlledTrend ?? internalTrend;
@@ -398,6 +432,7 @@ export function DataTable({
         onRowClick={onRowClick}
         onExportCsv={onExportCsv}
         onOpenFullView={expandInModal ? () => setFullViewOpen(true) : undefined}
+        sparklines={sparklines}
       />
       <TableFullViewModal
         open={fullViewOpen}

@@ -15,8 +15,8 @@ import { InsightsSection } from "@/components/sections/insights-section";
 import { VolatilityBrandedSection } from "@/components/sections/volatility-branded-section";
 import { OpportunitySection } from "@/components/sections/opportunity-section";
 import { IndexCannibalisationSection } from "@/components/sections/index-cannibalisation-section";
+import { CountriesDevicesCard } from "@/components/countries-devices-card";
 import { PerformanceTablesSection } from "@/components/sections/performance-tables-section";
-import { AddMetricSection } from "@/components/sections/add-metric-section";
 
 export default function SiteDetailPage({
   params,
@@ -35,6 +35,10 @@ export default function SiteDetailPage({
     siteSlug,
     startDate,
     endDate,
+    sparklines,
+    queryAppearances,
+    chartAnnotations,
+    refetchChartAnnotations,
     isLoading,
     error,
     cannibalisationData,
@@ -113,6 +117,9 @@ export default function SiteDetailPage({
                   endDate={endDate}
                   bandFilter={bandFilter}
                   onBandSelect={setBandFilter}
+                  chartAnnotations={chartAnnotations}
+                  onAddAnnotation={refetchChartAnnotations}
+                  propertyId={propertyId}
                 />
               )}
 
@@ -162,6 +169,11 @@ export default function SiteDetailPage({
                 cannibalisationError={cannibalisationError ?? null}
               />
 
+              <CountriesDevicesCard
+                countries={data.countries.map((r) => ({ key: r.key, clicks: r.clicks, impressions: r.impressions, changePercent: r.changePercent ?? 0 }))}
+                devices={data.devices.map((r) => ({ key: r.key, clicks: r.clicks, impressions: r.impressions, changePercent: r.changePercent ?? 0 }))}
+              />
+
               <PerformanceTablesSection
                 data={data}
                 queriesRows={queriesRows}
@@ -173,14 +185,9 @@ export default function SiteDetailPage({
                 siteSlug={siteSlug}
                 startDate={startDate}
                 endDate={endDate}
-              />
-
-              <AddMetricSection
-                countriesRows={data.countries}
-                devicesRows={data.devices}
-                siteSlug={siteSlug}
-                startDate={startDate}
-                endDate={endDate}
+                propertyId={propertyId}
+                querySparklines={sparklines}
+                queryAppearances={queryAppearances}
               />
             </div>
           )}

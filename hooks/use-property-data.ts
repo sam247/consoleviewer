@@ -6,25 +6,58 @@ import type { DataTableRow } from "@/components/data-table";
 import { useDateRange } from "@/contexts/date-range-context";
 import { decodePropertyId } from "@/types/gsc";
 
-async function fetchSnapshot(propertyId: string, startDate: string, endDate: string) {
-  const params = new URLSearchParams({ startDate, endDate });
-  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/snapshot?${params}`);
-  if (!res.ok) throw new Error("Failed to fetch snapshot");
-  return res.json();
-}
+type SiteDetailResponse = {
+  siteUrl: string;
+  summary: {
+    clicks: number;
+    impressions: number;
+    clicksChangePercent: number;
+    impressionsChangePercent: number;
+    position?: number;
+    positionChangePercent?: number;
+    ctr?: number;
+    ctrChangePercent?: number;
+    queryCount?: number;
+    queryCountChangePercent?: number;
+  };
+  daily: { date: string; clicks: number; impressions: number; ctr?: number; position?: number }[];
+  priorDaily?: { date: string; clicks: number; impressions: number; ctr?: number; position?: number }[];
+  queries: { key: string; clicks: number; impressions: number; changePercent: number; position?: number }[];
+  pages: { key: string; clicks: number; impressions: number; changePercent: number; position?: number }[];
+  countries: { key: string; clicks: number; impressions: number; changePercent: number }[];
+  devices: { key: string; clicks: number; impressions: number; changePercent: number }[];
+  newQueries: { key: string; clicks: number; impressions: number; changePercent: number; position?: number }[];
+  lostQueries: { key: string; clicks: number; impressions: number }[];
+  newPages: { key: string; clicks: number; impressions: number; changePercent: number; position?: number }[];
+  lostPages: { key: string; clicks: number; impressions: number }[];
+  branded: {
+    brandedClicks: number;
+    nonBrandedClicks: number;
+    brandedChangePercent?: number;
+    nonBrandedChangePercent?: number;
+  };
+  brandedDaily?: { date: string; brandedClicks: number; nonBrandedClicks: number }[];
+};
 
-async function fetchQueries(propertyId: string, startDate: string, endDate: string) {
-  const params = new URLSearchParams({ startDate, endDate });
-  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/queries?${params}`);
-  if (!res.ok) throw new Error("Failed to fetch queries");
-  return res.json();
-}
-
-async function fetchPages(propertyId: string, startDate: string, endDate: string) {
-  const params = new URLSearchParams({ startDate, endDate });
-  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/pages?${params}`);
-  if (!res.ok) throw new Error("Failed to fetch pages");
-  return res.json();
+async function fetchDetail(
+  propertyId: string,
+  startDate: string,
+  endDate: string,
+  priorStartDate: string,
+  priorEndDate: string
+) {
+  const params = new URLSearchParams({
+    startDate,
+    endDate,
+    priorStartDate,
+    priorEndDate,
+  });
+  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/detail?${params}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? "Failed to fetch detail");
+  }
+  return res.json() as Promise<SiteDetailResponse>;
 }
 
 async function fetchOpportunity(propertyId: string) {
@@ -45,6 +78,38 @@ async function fetchCannibalisation(propertyId: string) {
   return res.json();
 }
 
+async function fetchQuerySparklines(
+  propertyId: string,
+  startDate: string,
+  endDate: string,
+  queryKeys: string[]
+): Promise<Record<string, number[]>> {
+  if (queryKeys.length === 0) return {};
+  const params = new URLSearchParams({ startDate, endDate, queryKeys: JSON.stringify(queryKeys) });
+  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/query-sparklines?${params}`);
+  if (!res.ok) return {};
+  return res.json();
+}
+
+function toDataTableRow(
+  r: { key: string; clicks: number; impressions: number; changePercent?: number; position?: number }
+): DataTableRow {
+  return {
+    key: r.key,
+    clicks: r.clicks,
+    impressions: r.impressions,
+    changePercent: r.changePercent,
+    position: r.position,
+  };
+}
+
+function weightByPosition(pos: number): number {
+  if (pos <= 3) return 1;
+  if (pos <= 10) return 0.5;
+  if (pos <= 20) return 0.2;
+  return 0.05;
+}
+
 export type Summary = {
   clicks: number;
   impressions: number;
@@ -56,6 +121,7 @@ export type Summary = {
   ctrChangePercent?: number;
   queryCount?: number;
   queryCountChangePercent?: number;
+  visibilityScore?: number;
 };
 
 export type DailyRow = {
@@ -99,21 +165,15 @@ export function formatNum(n: number): string {
 }
 
 export function usePropertyData(propertyId: string) {
-  const { startDate, endDate } = useDateRange();
+  const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
 
-  const { data: snapshotData, isLoading: snapshotLoading, error: snapshotError } = useQuery({
-    queryKey: ["snapshot", propertyId, startDate, endDate],
-    queryFn: () => fetchSnapshot(propertyId, startDate, endDate),
-  });
-
-  const { data: queriesData = [] } = useQuery({
-    queryKey: ["queries", propertyId, startDate, endDate],
-    queryFn: () => fetchQueries(propertyId, startDate, endDate),
-  });
-
-  const { data: pagesData = [] } = useQuery({
-    queryKey: ["pages", propertyId, startDate, endDate],
-    queryFn: () => fetchPages(propertyId, startDate, endDate),
+  const {
+    data: detailData,
+    isLoading: detailLoading,
+    error: detailError,
+  } = useQuery({
+    queryKey: ["detail", propertyId, startDate, endDate, priorStartDate, priorEndDate],
+    queryFn: () => fetchDetail(propertyId, startDate, endDate, priorStartDate, priorEndDate),
   });
 
   useQuery({
@@ -131,15 +191,45 @@ export function usePropertyData(propertyId: string) {
     queryFn: () => fetchCannibalisation(propertyId),
   });
 
+  const topQueryKeys = useMemo(
+    () => (detailData?.queries ?? []).slice(0, 50).map((r) => r.key),
+    [detailData?.queries]
+  );
+  const { data: sparklinesData = {} } = useQuery({
+    queryKey: ["query-sparklines", propertyId, startDate, endDate, topQueryKeys.join("|")],
+    queryFn: () => fetchQuerySparklines(propertyId, startDate, endDate, topQueryKeys),
+    enabled: topQueryKeys.length > 0,
+  });
+
+  const { data: queryAppearancesData = {} } = useQuery({
+    queryKey: ["search-appearances", propertyId, startDate, endDate],
+    queryFn: async () => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/search-appearances?${params}`);
+      if (!res.ok) return {};
+      return res.json() as Promise<Record<string, string[]>>;
+    },
+  });
+
+  const { data: chartAnnotations = [], refetch: refetchAnnotations } = useQuery({
+    queryKey: ["chart-annotations", propertyId, startDate, endDate],
+    queryFn: async () => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/annotations?${params}`);
+      if (!res.ok) return [];
+      return res.json() as Promise<{ id: string; date: string; label: string; color: string }[]>;
+    },
+  });
+
   const siteUrl = useMemo(() => {
-    if (snapshotData?.site_url) return snapshotData.site_url;
+    if (detailData?.siteUrl) return detailData.siteUrl;
     try {
       if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(propertyId)) return propertyId;
       return decodePropertyId(propertyId);
     } catch {
       return propertyId;
     }
-  }, [snapshotData?.site_url, propertyId]);
+  }, [detailData?.siteUrl, propertyId]);
 
   const siteSlug = useMemo(() => {
     try {
@@ -150,84 +240,124 @@ export function usePropertyData(propertyId: string) {
     }
   }, [siteUrl, propertyId]);
 
-  const snapshot = snapshotData?.snapshot ?? null;
-
   const data: PropertyData = useMemo(() => {
-    const chartRows = snapshotData?.chart ?? [];
-    const summary: Summary | null = snapshot
+    if (!detailData) {
+      return {
+        siteUrl,
+        summary: null,
+        daily: [],
+        priorDaily: [],
+        queries: [],
+        pages: [],
+        countries: [],
+        devices: [],
+        newQueries: [],
+        lostQueries: [],
+        newPages: [],
+        lostPages: [],
+        branded: { brandedClicks: 0, nonBrandedClicks: 0, brandedChangePercent: 0, nonBrandedChangePercent: 0 },
+        brandedDaily: [],
+      };
+    }
+    const s = detailData.summary;
+    const queriesForVis = detailData.queries ?? [];
+    const withPosition = queriesForVis.filter((r) => r.position != null);
+    const impressionsInQueries = withPosition.reduce((acc, r) => acc + (r.impressions ?? 0), 0);
+    const weightedSum = withPosition.reduce(
+      (acc, r) => acc + (r.impressions ?? 0) * weightByPosition(r.position as number),
+      0
+    );
+    const visibilityScore =
+      impressionsInQueries > 0 ? Math.round((weightedSum / impressionsInQueries) * 1000) / 10 : undefined;
+    const summary: Summary | null = s
       ? {
-          clicks: snapshot.clicks,
-          impressions: snapshot.impressions,
-          clicksChangePercent: 0,
-          impressionsChangePercent: 0,
-          position: snapshot.avg_position,
-          positionChangePercent: undefined,
-          ctr: snapshot.ctr,
-          ctrChangePercent: undefined,
-          queryCount: snapshot.query_count,
-          queryCountChangePercent: undefined,
+          clicks: s.clicks,
+          impressions: s.impressions,
+          clicksChangePercent: s.clicksChangePercent,
+          impressionsChangePercent: s.impressionsChangePercent,
+          position: s.position,
+          positionChangePercent: s.positionChangePercent,
+          ctr: s.ctr,
+          ctrChangePercent: s.ctrChangePercent,
+          queryCount: s.queryCount,
+          queryCountChangePercent: s.queryCountChangePercent,
+          visibilityScore,
         }
       : null;
-    const daily: DailyRow[] = chartRows.map((d: { date: string; clicks: number; impressions: number; position?: number; position_sum?: number }) => ({
+    const daily: DailyRow[] = (detailData.daily ?? []).map((d) => ({
       date: d.date,
       clicks: d.clicks,
       impressions: d.impressions,
-      ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
-      position:
-        d.position != null
-          ? d.position
-          : d.impressions > 0 && d.position_sum != null
-            ? d.position_sum / d.impressions
-            : undefined,
+      ctr: d.ctr ?? (d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0),
+      position: d.position,
     }));
-    const queries: DataTableRow[] = (queriesData as { query: string; clicks: number; impressions: number; avg_position?: number }[]).map((r) => ({
-      key: r.query,
+    const priorDaily: DailyRow[] = (detailData.priorDaily ?? []).map((d) => ({
+      date: d.date,
+      clicks: d.clicks,
+      impressions: d.impressions,
+      ctr: d.ctr ?? (d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0),
+      position: d.position,
+    }));
+    const queries: DataTableRow[] = (detailData.queries ?? []).map(toDataTableRow);
+    const pages: DataTableRow[] = (detailData.pages ?? []).map(toDataTableRow);
+    const countries: DataTableRow[] = (detailData.countries ?? []).map((r) => ({
+      key: r.key,
       clicks: r.clicks,
       impressions: r.impressions,
-      changePercent: 0,
-      position: r.avg_position,
+      changePercent: r.changePercent,
     }));
-    const pages: DataTableRow[] = (pagesData as { page: string; clicks: number; impressions: number; avg_position?: number }[]).map((r) => ({
-      key: r.page,
+    const devices: DataTableRow[] = (detailData.devices ?? []).map((r) => ({
+      key: r.key,
       clicks: r.clicks,
       impressions: r.impressions,
-      changePercent: 0,
-      position: r.avg_position,
+      changePercent: r.changePercent,
     }));
+    const newQueries: DataTableRow[] = (detailData.newQueries ?? []).map(toDataTableRow);
+    const lostQueries: DataTableRow[] = (detailData.lostQueries ?? []).map((r) => ({
+      key: r.key,
+      clicks: r.clicks,
+      impressions: r.impressions,
+      changePercent: undefined,
+    }));
+    const newPages: DataTableRow[] = (detailData.newPages ?? []).map(toDataTableRow);
+    const lostPages: DataTableRow[] = (detailData.lostPages ?? []).map((r) => ({
+      key: r.key,
+      clicks: r.clicks,
+      impressions: r.impressions,
+      changePercent: undefined,
+    }));
+    const branded = detailData.branded
+      ? {
+          brandedClicks: detailData.branded.brandedClicks,
+          nonBrandedClicks: detailData.branded.nonBrandedClicks,
+          brandedChangePercent: detailData.branded.brandedChangePercent ?? 0,
+          nonBrandedChangePercent: detailData.branded.nonBrandedChangePercent ?? 0,
+        }
+      : { brandedClicks: 0, nonBrandedClicks: 0, brandedChangePercent: 0, nonBrandedChangePercent: 0 };
+    const snapshotTop3 = queries.filter((r) => r.position != null && r.position <= 3).length;
+    const snapshotTop10 = queries.filter((r) => r.position != null && r.position <= 10).length;
     return {
-      siteUrl,
+      siteUrl: detailData.siteUrl,
       summary,
       daily,
-      priorDaily: [],
+      priorDaily,
       queries,
       pages,
-      countries: [],
-      devices: [],
-      newQueries: [],
-      lostQueries: [],
-      newPages: [],
-      lostPages: [],
-      branded: {
-        brandedClicks: 0,
-        nonBrandedClicks: summary?.clicks ?? 0,
-        brandedChangePercent: 0,
-        nonBrandedChangePercent: 0,
-      },
-      brandedDaily: [],
-      snapshotTop3: snapshot?.top3_count,
-      snapshotTop10: snapshot?.top10_count,
+      countries,
+      devices,
+      newQueries,
+      lostQueries,
+      newPages,
+      lostPages,
+      branded,
+      brandedDaily: detailData.brandedDaily ?? [],
+      snapshotTop3,
+      snapshotTop10,
     };
-  }, [snapshot, snapshotData, queriesData, pagesData, siteUrl]);
+  }, [detailData, siteUrl]);
 
-  const queriesRows = useMemo<DataTableRow[]>(
-    () => data.queries,
-    [data.queries]
-  );
-
-  const pagesRows = useMemo<DataTableRow[]>(
-    () => data.pages,
-    [data.pages]
-  );
+  const queriesRows = useMemo<DataTableRow[]>(() => data.queries, [data.queries]);
+  const pagesRows = useMemo<DataTableRow[]>(() => data.pages, [data.pages]);
 
   const queryCounting = useMemo(() => {
     const q = data.queries;
@@ -249,8 +379,12 @@ export function usePropertyData(propertyId: string) {
     siteSlug,
     startDate,
     endDate,
-    isLoading: snapshotLoading,
-    error: snapshotError,
+    sparklines: sparklinesData as Record<string, number[]>,
+    queryAppearances: queryAppearancesData as Record<string, string[]>,
+    chartAnnotations: chartAnnotations as { id: string; date: string; label: string; color: string }[],
+    refetchChartAnnotations: refetchAnnotations,
+    isLoading: detailLoading,
+    error: detailError,
     cannibalisationData,
     cannibalisationLoading,
     cannibalisationError,

@@ -43,6 +43,8 @@ interface DataPoint {
   position?: number;
 }
 
+export type ChartAnnotation = { id?: string; date: string; label: string; color?: string };
+
 interface TrendChartProps {
   data: DataPoint[];
   priorData?: DataPoint[];
@@ -53,6 +55,7 @@ interface TrendChartProps {
   normalizeWhenMultiSeries?: boolean;
   margin?: { top?: number; right?: number; left?: number; bottom?: number };
   className?: string;
+  annotations?: ChartAnnotation[];
 }
 
 const CHART_CLICKS = "var(--chart-clicks)";
@@ -144,6 +147,7 @@ export function TrendChart({
   normalizeWhenMultiSeries = false,
   margin: marginOverride,
   className,
+  annotations = [],
 }: TrendChartProps) {
   const { series } = useSparkSeries();
   const chartMargin = buildChartMargin(height, marginOverride);
@@ -254,6 +258,15 @@ export function TrendChart({
 
           <CartesianGrid {...CHART_GRID_PROPS} />
           <ReferenceLine y={0} stroke="var(--border)" strokeOpacity={0.55} />
+          {annotations.map((a) => (
+            <ReferenceLine
+              key={a.id ?? a.date + a.label}
+              x={a.date}
+              stroke="var(--muted-foreground)"
+              strokeDasharray="3 2"
+              label={{ value: a.label, position: "insideTopRight", fontSize: 10 }}
+            />
+          ))}
           <XAxis
             dataKey="date"
             tick={CHART_AXIS_TICK}

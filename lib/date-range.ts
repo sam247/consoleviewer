@@ -20,6 +20,17 @@ export const DATE_RANGE_GROUPS: DateRangeGroup[] = [
     ],
   },
   {
+    label: "Business days (Mon–Fri)",
+    options: [
+      { value: "bw1", label: "1 business week" },
+      { value: "bw2", label: "2 business weeks" },
+      { value: "bw4", label: "4 business weeks" },
+      { value: "bm1", label: "1 business month" },
+      { value: "bm3", label: "3 business months" },
+      { value: "bq", label: "Business quarter" },
+    ],
+  },
+  {
     label: "Month / Quarter",
     options: [
       { value: "mtd", label: "Month to date" },
@@ -34,6 +45,14 @@ export const DATE_RANGE_GROUPS: DateRangeGroup[] = [
       { value: "ytd", label: "Year to date" },
       { value: "fy", label: "Financial year (Apr–Mar)" },
       { value: "lfy", label: "Last financial year" },
+      { value: "fy_uk", label: "FY: UK/India (Apr–Mar)" },
+      { value: "fy_us", label: "FY: US Federal (Oct–Sep)" },
+      { value: "fy_au", label: "FY: Australia (Jul–Jun)" },
+      { value: "fy_jp", label: "FY: Japan (Apr–Mar)" },
+      { value: "fy_de", label: "FY: Germany (Jan–Dec)" },
+      { value: "lfy_uk", label: "Last FY: UK/India" },
+      { value: "lfy_us", label: "Last FY: US Federal" },
+      { value: "lfy_au", label: "Last FY: Australia" },
     ],
   },
   {
@@ -64,6 +83,49 @@ function quarterStart(d: Date): Date {
 function financialYearStart(d: Date): Date {
   const year = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
   return new Date(year, 3, 1); // Apr 1
+}
+
+const FY_START_MONTH: Record<string, number> = {
+  uk: 3, in: 3, jp: 3,   // April (0-indexed 3)
+  us: 9,                  // October
+  au: 6,                  // July
+  de: 0,                  // January (calendar)
+};
+
+function financialYearStartForCountry(d: Date, country: string): Date {
+  const fyMonth = FY_START_MONTH[country] ?? 3;
+  const year = d.getMonth() >= fyMonth ? d.getFullYear() : d.getFullYear() - 1;
+  return new Date(year, fyMonth, 1);
+}
+
+function isWeekday(d: Date): boolean {
+  const day = d.getDay();
+  return day !== 0 && day !== 6;
+}
+
+function businessDaysAgo(n: number): { start: Date; end: Date } {
+  const end = new Date();
+  while (!isWeekday(end)) end.setDate(end.getDate() - 1);
+  let count = 0;
+  const start = new Date(end);
+  while (count < n - 1) {
+    start.setDate(start.getDate() - 1);
+    if (isWeekday(start)) count++;
+  }
+  return { start, end };
+}
+
+/** Returns { start, end } where [start, end] contains exactly n business days and end is the given date (or last weekday on or before it). */
+function businessDaysEndingAt(endDate: Date, n: number): { start: Date; end: Date } {
+  const end = new Date(endDate);
+  while (!isWeekday(end)) end.setDate(end.getDate() - 1);
+  let count = 0;
+  const start = new Date(end);
+  while (count < n - 1) {
+    start.setDate(start.getDate() - 1);
+    if (isWeekday(start)) count++;
+  }
+  return { start, end };
 }
 
 export function getDateRange(rangeKey: DateRangeKey, customStart?: string, customEnd?: string): {
@@ -136,6 +198,38 @@ export function getDateRange(rangeKey: DateRangeKey, customStart?: string, custo
     const start = financialYearStart(end);
     const priorEnd = new Date(start); priorEnd.setDate(priorEnd.getDate() - 1);
     const priorStart = financialYearStart(priorEnd);
+    return { startDate: fmt(start), endDate: fmt(end), priorStartDate: fmt(priorStart), priorEndDate: fmt(priorEnd) };
+  }
+
+  const countryFyMatch = rangeKey.match(/^fy_(uk|us|au|in|jp|de)$/);
+  if (countryFyMatch) {
+    const country = countryFyMatch[1];
+    const start = financialYearStartForCountry(now, country);
+    const priorFyEnd = new Date(start); priorFyEnd.setDate(priorFyEnd.getDate() - 1);
+    const priorFyStart = financialYearStartForCountry(priorFyEnd, country);
+    return { startDate: fmt(start), endDate: fmt(now), priorStartDate: fmt(priorFyStart), priorEndDate: fmt(priorFyEnd) };
+  }
+
+  const countryLfyMatch = rangeKey.match(/^lfy_(uk|us|au|in|jp|de)$/);
+  if (countryLfyMatch) {
+    const country = countryLfyMatch[1];
+    const thisFyStart = financialYearStartForCountry(now, country);
+    const end = new Date(thisFyStart); end.setDate(end.getDate() - 1);
+    const start = financialYearStartForCountry(end, country);
+    const priorEnd = new Date(start); priorEnd.setDate(priorEnd.getDate() - 1);
+    const priorStart = financialYearStartForCountry(priorEnd, country);
+    return { startDate: fmt(start), endDate: fmt(end), priorStartDate: fmt(priorStart), priorEndDate: fmt(priorEnd) };
+  }
+
+  const businessRanges: Record<string, number> = {
+    bw1: 5, bw2: 10, bw4: 20, bm1: 22, bm3: 66, bq: 66,
+  };
+  if (rangeKey in businessRanges) {
+    const n = businessRanges[rangeKey];
+    const { start, end } = businessDaysAgo(n);
+    const priorEnd = new Date(start);
+    priorEnd.setDate(priorEnd.getDate() - 1);
+    const { start: priorStart } = businessDaysEndingAt(priorEnd, n);
     return { startDate: fmt(start), endDate: fmt(end), priorStartDate: fmt(priorStart), priorEndDate: fmt(priorEnd) };
   }
 

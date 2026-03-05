@@ -20,6 +20,9 @@ export function TrendSection({
   endDate,
   bandFilter,
   onBandSelect,
+  chartAnnotations = [],
+  onAddAnnotation,
+  propertyId,
 }: {
   data: PropertyData;
   queriesRows: DataTableRow[];
@@ -29,7 +32,14 @@ export function TrendSection({
   endDate: string;
   bandFilter: BandFilter;
   onBandSelect: (b: BandFilter) => void;
+  chartAnnotations?: { id: string; date: string; label: string; color: string }[];
+  onAddAnnotation?: () => void;
+  propertyId?: string;
 }) {
+  const [addAnnotationOpen, setAddAnnotationOpen] = useState(false);
+  const [newAnnotationDate, setNewAnnotationDate] = useState("");
+  const [newAnnotationLabel, setNewAnnotationLabel] = useState("");
+  const [addAnnotationSubmitting, setAddAnnotationSubmitting] = useState(false);
   const [compareToPrior, setCompareToPriorRaw] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("consoleview-compare-prior") === "true";
@@ -141,8 +151,72 @@ export function TrendSection({
                 View as %
               </label>
               <SparkToggles />
+              {propertyId && onAddAnnotation && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewAnnotationDate(startDate);
+                    setNewAnnotationLabel("");
+                    setAddAnnotationOpen(true);
+                  }}
+                  className="p-1.5 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms] focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                  title="Add annotation"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                </button>
+              )}
             </div>
           </div>
+          {addAnnotationOpen && propertyId && onAddAnnotation && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && setAddAnnotationOpen(false)}>
+              <div className="w-full max-w-sm rounded-lg border border-border bg-surface shadow-lg px-4 py-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-sm font-semibold text-foreground">Add chart annotation</h3>
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-muted-foreground">Date</label>
+                  <input
+                    type="date"
+                    value={newAnnotationDate}
+                    onChange={(e) => setNewAnnotationDate(e.target.value)}
+                    className="w-full rounded border border-input bg-background px-3 py-2 text-sm"
+                  />
+                  <label className="block text-xs font-medium text-muted-foreground">Label</label>
+                  <input
+                    type="text"
+                    value={newAnnotationLabel}
+                    onChange={(e) => setNewAnnotationLabel(e.target.value)}
+                    placeholder="e.g. Algorithm update"
+                    className="w-full rounded border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setAddAnnotationOpen(false)} className="rounded border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent">Cancel</button>
+                  <button
+                    type="button"
+                    disabled={!newAnnotationDate || !newAnnotationLabel.trim() || addAnnotationSubmitting}
+                    onClick={async () => {
+                      setAddAnnotationSubmitting(true);
+                      try {
+                        const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/annotations`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ date: newAnnotationDate, label: newAnnotationLabel.trim() }),
+                        });
+                        if (res.ok) {
+                          onAddAnnotation();
+                          setAddAnnotationOpen(false);
+                        }
+                      } finally {
+                        setAddAnnotationSubmitting(false);
+                      }
+                    }}
+                    className="rounded bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <div ref={trendChartContainerRef} className="flex-1 min-h-0 px-4 pb-3 pt-2 flex flex-col">
             {data.daily.length === 0 ? (
               <div className="flex-1 flex items-center justify-center min-h-[200px] text-sm text-muted-foreground">
@@ -157,6 +231,7 @@ export function TrendSection({
                 useSeriesContext
                 compareToPrior={compareToPrior}
                 normalizeWhenMultiSeries={showPercentView}
+                annotations={chartAnnotations}
               />
             )}
           </div>

@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { exportToCsv, formatExportFilename } from "@/lib/export-csv";
 import type { PropertyData, DailyRow } from "@/hooks/use-property-data";
 import { formatNum } from "@/hooks/use-property-data";
+import { PageDetailPanel } from "@/components/page-detail-panel";
 
 type SavedSegment = { id: string; name: string; pattern: string };
 const SEGMENTS_KEY = "consoleview_content_segments";
@@ -39,6 +40,9 @@ export function PerformanceTablesSection({
   siteSlug,
   startDate,
   endDate,
+  propertyId,
+  querySparklines,
+  queryAppearances,
 }: {
   data: PropertyData;
   queriesRows: DataTableRow[];
@@ -50,8 +54,12 @@ export function PerformanceTablesSection({
   siteSlug: string;
   startDate: string;
   endDate: string;
+  propertyId?: string;
+  querySparklines?: Record<string, number[]>;
+  queryAppearances?: Record<string, string[]>;
 }) {
   const [queriesTrendFilter, setQueriesTrendFilter] = useState<TrendFilter>("all");
+  const [pageDetailUrl, setPageDetailUrl] = useState<string | null>(null);
   const [pagesTrendFilter, setPagesTrendFilter] = useState<TrendFilter>("all");
   const [contentFilterPattern, setContentFilterPattern] = useState("");
   const [contentFilterExclude, setContentFilterExclude] = useState(false);
@@ -184,6 +192,16 @@ export function PerformanceTablesSection({
 
   return (
     <section aria-label="Performance tables" className="space-y-4">
+      {propertyId && (
+        <PageDetailPanel
+          open={!!pageDetailUrl}
+          onClose={() => setPageDetailUrl(null)}
+          pageUrl={pageDetailUrl}
+          propertyId={propertyId}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      )}
       {bandFilter && (
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs font-medium text-muted-foreground bg-muted/60 rounded px-2 py-0.5">
@@ -208,11 +226,12 @@ export function PerformanceTablesSection({
           <DataTable
             title="Queries"
             titleTooltip="Top queries by clicks and impressions; filter by trend"
-            rows={queriesRowsForTable}
+            rows={queryAppearances ? queriesRowsForTable.map((r) => ({ ...r, appearances: queryAppearances[r.key] })) : queriesRowsForTable}
             trendFilter={queriesTrendFilter}
             onTrendFilterChange={setQueriesTrendFilter}
             showFilter
             onExportCsv={() => exportToCsv(queriesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "queries", startDate, endDate))}
+            sparklines={querySparklines}
           />
           <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 flex flex-col flex-1 min-h-0">
             <div className="px-4 py-3 shrink-0 flex items-start justify-between gap-2">
@@ -310,6 +329,7 @@ export function PerformanceTablesSection({
             onTrendFilterChange={setPagesTrendFilter}
             showFilter
             onExportCsv={() => exportToCsv(pagesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "pages", startDate, endDate))}
+            onRowClick={propertyId ? (row) => setPageDetailUrl(row.key) : undefined}
           />
           {(contentFilterPattern.trim() || contentGroups.length > 0) && (() => {
             const totalGroupClicks = contentGroups.reduce((s, g) => s + g.clicks, 0);

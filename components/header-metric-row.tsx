@@ -61,6 +61,14 @@ export function HeaderMetricRow({
           </span>
         )}
       </div>
+      {summary.visibilityScore != null && (
+        <div className="flex flex-wrap items-baseline gap-1.5">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">Visibility<InfoTooltip title="Weighted visibility index (0–100): higher when more impressions come from top positions" /></span>
+          <span className="text-xl font-semibold tabular-nums text-foreground">
+            {summary.visibilityScore.toFixed(1)}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

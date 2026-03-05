@@ -22,6 +22,9 @@ export interface SearchAnalyticsResponse {
 export type DateRangeKey =
   | "7d" | "28d" | "30d" | "3m" | "6m" | "12m" | "16m"
   | "l90d" | "mtd" | "lm" | "qtd" | "lq" | "ytd" | "fy" | "lfy"
+  | "bw1" | "bw2" | "bw4" | "bm1" | "bm3" | "bq"
+  | "fy_uk" | "fy_us" | "fy_au" | "fy_in" | "fy_jp" | "fy_de"
+  | "lfy_uk" | "lfy_us" | "lfy_au" | "lfy_in" | "lfy_jp" | "lfy_de"
   | "custom";
 
 /** Overview metrics for one site (aggregate + daily for sparkline) */

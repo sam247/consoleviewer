@@ -5,6 +5,8 @@ import { classifyQuery } from "@/lib/ai-query-detection";
 import type { DataTableRow } from "@/components/data-table";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { RowTableCard } from "@/components/ui/row-table-card";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -18,7 +20,11 @@ interface AiQuerySignalsCardProps {
   daily?: { date: string; impressions?: number; clicks?: number }[];
 }
 
+type AiSortKey = "key" | "clicks" | "impressions" | "position";
+
 export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
+  const { sortKey, sortDir, onSort } = useTableSort<AiSortKey>("impressions");
+
   const stats = useMemo(() => {
     const totalQueries = queries.length;
     const totalClicks = queries.reduce((s, r) => s + r.clicks, 0);
@@ -45,8 +51,14 @@ export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
     const llmStyle = queries.filter(
       (r) => classifyQuery(r.key) !== "none"
     );
+    const dir = sortDir === "asc" ? 1 : -1;
     const top5 = [...llmStyle]
-      .sort((a, b) => (b.impressions ?? 0) - (a.impressions ?? 0))
+      .sort((a, b) => {
+        if (sortKey === "key") return dir * a.key.localeCompare(b.key);
+        const aVal = a[sortKey] ?? 0;
+        const bVal = b[sortKey] ?? 0;
+        return dir * (Number(aVal) - Number(bVal));
+      })
       .slice(0, 5);
 
     return {
@@ -55,7 +67,7 @@ export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
       pctConvQueries,
       top5,
     };
-  }, [queries]);
+  }, [queries, sortKey, sortDir]);
 
   return (
     <RowTableCard
@@ -79,10 +91,10 @@ export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
-              <th className={cn("text-left px-4 font-semibold min-w-0 w-[35%]", TABLE_CELL_Y)}>Name</th>
-              <th className={cn("text-right px-4 font-semibold w-[20%]", TABLE_CELL_Y)}>Clicks</th>
-              <th className={cn("text-right px-4 font-semibold w-[20%]", TABLE_CELL_Y)}>Impr.</th>
-              <th className={cn("text-right px-4 font-semibold w-14", TABLE_CELL_Y)}>Pos</th>
+              <SortableHeader label="Name" column="key" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="min-w-0 w-[35%]" />
+              <SortableHeader label="Clicks" column="clicks" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
+              <SortableHeader label="Impr." column="impressions" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
+              <SortableHeader label="Pos" column="position" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-14" />
             </tr>
           </thead>
           <tbody>

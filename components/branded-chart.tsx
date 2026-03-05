@@ -124,8 +124,8 @@ export function BrandedChart({
       <div className="mb-1 text-[11px] text-muted-foreground">{hasBrandedTrend ? "Branded trend over time" : "Branded split"}</div>
 
       <ChartPlot
-        height={CHART_PLOT_H.secondary}
-        minHeight={CHART_EMPTY_STATE_MIN_H.secondary}
+        height={CHART_PLOT_H.spark}
+        minHeight={CHART_EMPTY_STATE_MIN_H.spark}
       >
         <ResponsiveContainer width="100%" height="100%">
           {hasBrandedTrend ? (

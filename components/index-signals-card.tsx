@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { DataTableRow } from "@/components/data-table";
 import { cn } from "@/lib/utils";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { SortableHeader } from "@/components/ui/sortable-header";
 
 const STORAGE_KEY = "consoleview-index-signals-open";
 const VISIBLE_ROWS = 20;
@@ -93,8 +95,20 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
     },
   });
 
+  type IdxSortKey = "url" | "signal" | "lastSeen" | "impressionsDelta";
+  const { sortKey, sortDir, onSort } = useTableSort<IdxSortKey>("url", "asc");
+
   const summary = data?.summary ?? { total: 0, warnings: 0, stable: 0 };
-  const signals = data?.signals ?? [];
+  const rawSignals = data?.signals ?? [];
+  const signals = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...rawSignals].sort((a, b) => {
+      if (sortKey === "url") return dir * a.url.localeCompare(b.url);
+      if (sortKey === "signal") return dir * a.signal.localeCompare(b.signal);
+      if (sortKey === "lastSeen") return dir * (a.lastSeen ?? "").localeCompare(b.lastSeen ?? "");
+      return dir * ((a.impressionsDelta ?? 0) - (b.impressionsDelta ?? 0));
+    });
+  }, [rawSignals, sortKey, sortDir]);
   const visible = signals.slice(0, VISIBLE_ROWS);
   const hasMore = signals.length > VISIBLE_ROWS;
   const siteUrl = data?.siteUrl ?? "";
@@ -175,10 +189,10 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                     <table className="w-full text-sm border-collapse">
                       <thead>
                         <tr className="border-b border-border">
-                          <th className="text-left py-2.5 px-4 text-xs text-muted-foreground font-medium">URL</th>
-                          <th className="text-left py-2.5 px-4 text-xs text-muted-foreground font-medium w-20">Signal</th>
-                          <th className="text-left py-2.5 px-4 text-xs text-muted-foreground font-medium w-28">Last seen</th>
-                          <th className="text-right py-2.5 px-4 text-xs text-muted-foreground font-medium w-20">Impr Δ</th>
+                          <SortableHeader label="URL" column="url" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="text-xs" />
+                          <SortableHeader label="Signal" column="signal" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-20 text-xs" />
+                          <SortableHeader label="Last seen" column="lastSeen" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-28 text-xs" />
+                          <SortableHeader label="Impr Δ" column="impressionsDelta" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-20 text-xs" />
                           <th className="text-right py-2.5 px-4 text-xs text-muted-foreground font-medium w-32">
                             <button
                               type="button"

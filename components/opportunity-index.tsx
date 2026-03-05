@@ -7,6 +7,8 @@ import type { DataTableRow } from "@/components/data-table";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
 import { exportToCsv } from "@/lib/export-csv";
 import { RowTableCard } from "@/components/ui/row-table-card";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -62,8 +64,12 @@ interface OpportunityIndexProps {
 
 const ROWS_INITIAL = 10;
 
+type OppSortKey = "key" | "position" | "impressions" | "ctr" | "score";
+
 export function OpportunityIndex({ queries, className, exportFilename }: OpportunityIndexProps) {
   const [fullViewOpen, setFullViewOpen] = useState(false);
+  const { sortKey, sortDir, onSort } = useTableSort<OppSortKey>("score");
+
   const allRows = useMemo(() => {
     const withScore = queries
       .filter((r) => r.position != null && r.impressions > 0)
@@ -75,8 +81,12 @@ export function OpportunityIndex({ queries, className, exportFilename }: Opportu
         score: opportunityScore(r),
       }))
       .filter((r) => r.score > 0);
-    return withScore.sort((a, b) => b.score - a.score);
-  }, [queries]);
+    const dir = sortDir === "asc" ? 1 : -1;
+    return withScore.sort((a, b) => {
+      if (sortKey === "key") return dir * a.key.localeCompare(b.key);
+      return dir * (a[sortKey] - b[sortKey]);
+    });
+  }, [queries, sortKey, sortDir]);
 
   const visibleRows = allRows.slice(0, ROWS_INITIAL);
   const hasMore = allRows.length > ROWS_INITIAL;
@@ -149,11 +159,11 @@ export function OpportunityIndex({ queries, className, exportFilename }: Opportu
           <table className={TABLE_BASE_CLASS}>
             <thead className={TABLE_HEAD_CLASS}>
               <tr>
-                <th className={cn("text-left px-4 font-semibold min-w-0 w-[35%]", TABLE_CELL_Y)}>Query</th>
-                <th className={cn("text-right px-4 font-semibold w-14", TABLE_CELL_Y)}>Pos</th>
-                <th className={cn("text-right px-4 font-semibold w-20", TABLE_CELL_Y)}>Impr.</th>
-                <th className={cn("text-right px-4 font-semibold w-14", TABLE_CELL_Y)}>CTR</th>
-                <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>Score</th>
+                <SortableHeader label="Query" column="key" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="min-w-0 w-[35%]" />
+                <SortableHeader label="Pos" column="position" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-14" />
+                <SortableHeader label="Impr." column="impressions" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-20" />
+                <SortableHeader label="CTR" column="ctr" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-14" />
+                <SortableHeader label="Score" column="score" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-16" />
               </tr>
             </thead>
             <tbody>

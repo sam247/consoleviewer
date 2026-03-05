@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { RowTableCard } from "@/components/ui/row-table-card";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -70,9 +72,21 @@ export function CannibalisationCard({
     enabled: useLegacy,
   });
 
-  const conflicts = conflictsProp ?? fetched?.conflicts ?? [];
+  type CannSortKey = "query" | "impressions" | "clicks" | "numUrls" | "bestPosition" | "score";
+  const { sortKey, sortDir, onSort } = useTableSort<CannSortKey>("score");
+
+  const rawConflicts = conflictsProp ?? fetched?.conflicts ?? [];
   const isLoading = isLoadingProp ?? (useLegacy ? queryLoading : false);
   const error = errorProp ?? queryError ?? null;
+
+  const conflicts = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...rawConflicts].sort((a, b) => {
+      if (sortKey === "query") return dir * a.query.localeCompare(b.query);
+      return dir * (a[sortKey] - b[sortKey]);
+    });
+  }, [rawConflicts, sortKey, sortDir]);
+
   const hasMoreRows = conflicts.length > ROWS_INITIAL;
   const visibleConflicts = showAllRows ? conflicts : conflicts.slice(0, ROWS_INITIAL);
   const moreCount = Math.max(0, conflicts.length - ROWS_INITIAL);
@@ -97,12 +111,12 @@ export function CannibalisationCard({
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
-              <th className={cn("text-left px-4 font-semibold min-w-0 w-[35%]", TABLE_CELL_Y)}>Query</th>
-              <th className={cn("text-right px-4 font-semibold w-20", TABLE_CELL_Y)}>Impr</th>
-              <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>Clicks</th>
-              <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>#URLs</th>
-              <th className={cn("text-right px-4 font-semibold w-24", TABLE_CELL_Y)}>Best pos</th>
-              <th className={cn("text-right px-4 font-semibold w-20", TABLE_CELL_Y)}>Score</th>
+              <SortableHeader label="Query" column="query" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="min-w-0 w-[35%]" />
+              <SortableHeader label="Impr" column="impressions" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-20" />
+              <SortableHeader label="Clicks" column="clicks" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-16" />
+              <SortableHeader label="#URLs" column="numUrls" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-16" />
+              <SortableHeader label="Best pos" column="bestPosition" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-24" />
+              <SortableHeader label="Score" column="score" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-20" />
             </tr>
           </thead>
           <tbody>

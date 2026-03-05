@@ -63,7 +63,7 @@ export function VolatilityBrandedSection({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-w-0">
       <PositionVolatilityChart daily={daily} />
-      <div className="rounded-lg border border-border bg-surface px-4 py-4 transition-colors flex flex-col min-w-0" style={{ minHeight: CHART_CARD_MIN_H.secondary }}>
+      <div className="rounded-lg border border-border bg-surface px-4 py-4 transition-colors flex flex-col min-w-0" style={{ minHeight: CHART_CARD_MIN_H.spark }}>
         <h2 className="text-sm font-semibold text-foreground mb-2">Branded vs non-branded</h2>
         <p className="text-xs text-muted-foreground mb-1.5">Branded terms (queries containing these count as branded)</p>
         <div className="flex flex-wrap items-center gap-2 mb-3">

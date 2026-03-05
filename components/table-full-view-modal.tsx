@@ -1,7 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { DataTableRow } from "@/components/data-table";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -24,6 +27,8 @@ interface TableFullViewModalProps {
   onExportCsv?: () => void;
 }
 
+type ModalSortKey = "key" | "clicks" | "impressions" | "position" | "changePercent";
+
 export function TableFullViewModal({
   open,
   onClose,
@@ -32,6 +37,18 @@ export function TableFullViewModal({
   hasPosition,
   onExportCsv,
 }: TableFullViewModalProps) {
+  const { sortKey, sortDir, onSort } = useTableSort<ModalSortKey>("clicks");
+
+  const sorted = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      if (sortKey === "key") return dir * a.key.localeCompare(b.key);
+      const aVal = a[sortKey] ?? 0;
+      const bVal = b[sortKey] ?? 0;
+      return dir * (Number(aVal) - Number(bVal));
+    });
+  }, [rows, sortKey, sortDir]);
+
   if (!open) return null;
 
   return (
@@ -76,30 +93,24 @@ export function TableFullViewModal({
           <table className={TABLE_BASE_CLASS}>
             <thead className={TABLE_HEAD_CLASS}>
               <tr>
-                <th className={cn("px-4 font-semibold text-left", TABLE_CELL_Y, hasPosition ? "w-[35%]" : "w-[40%]")}>
-                  Name
-                </th>
-                <th className={cn("px-4 font-semibold text-right", TABLE_CELL_Y, hasPosition ? "w-[16%]" : "w-[20%]")}>
-                  Clicks
-                </th>
-                <th className={cn("px-4 font-semibold text-right", TABLE_CELL_Y, hasPosition ? "w-[20%]" : "w-[20%]")}>
-                  Impr.
-                </th>
+                <SortableHeader label="Name" column="key" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className={hasPosition ? "w-[35%]" : "w-[40%]"} />
+                <SortableHeader label="Clicks" column="clicks" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className={hasPosition ? "w-[16%]" : "w-[20%]"} />
+                <SortableHeader label="Impr." column="impressions" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className={hasPosition ? "w-[20%]" : "w-[20%]"} />
                 {hasPosition && (
-                  <th className={cn("px-4 font-semibold text-right w-14", TABLE_CELL_Y)}>Pos</th>
+                  <SortableHeader label="Pos" column="position" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-14" />
                 )}
-                <th className={cn("px-4 font-semibold text-right w-16", TABLE_CELL_Y)}>Change</th>
+                <SortableHeader label="Change" column="changePercent" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-16" />
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {sorted.length === 0 ? (
                 <tr>
                   <td colSpan={hasPosition ? 5 : 4} className="px-4 py-6 text-center text-xs text-muted-foreground">
                     No rows to display.
                   </td>
                 </tr>
               ) : (
-                rows.map((row) => (
+                sorted.map((row) => (
                   <tr
                     key={row.key}
                     className={TABLE_ROW_CLASS}

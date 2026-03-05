@@ -7,6 +7,8 @@ import type { MockTrackedKeyword } from "@/lib/mock-rank";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { exportToCsv } from "@/lib/export-csv";
 import { cn } from "@/lib/utils";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -169,9 +171,22 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
     refetchIntervalInBackground: true,
   });
 
-  const keywords: KeywordRow[] = serpData?.configured
+  type KwSortKey = "keyword" | "position" | "delta1d" | "delta7d";
+  const { sortKey, sortDir, onSort } = useTableSort<KwSortKey>("keyword", "asc");
+
+  const rawKeywords: KeywordRow[] = serpData?.configured
     ? (serpData.keywords ?? [])
     : fallbackKeywords.map((k) => ({ ...k, position: k.position, status: "ready" as const }));
+
+  const keywords = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...rawKeywords].sort((a, b) => {
+      if (sortKey === "keyword") return dir * a.keyword.localeCompare(b.keyword);
+      const aVal = a[sortKey] ?? 9999;
+      const bVal = b[sortKey] ?? 9999;
+      return dir * (Number(aVal) - Number(bVal));
+    });
+  }, [rawKeywords, sortKey, sortDir]);
   const showConnectMessage = serpData?.configured === false;
   const canAddDelete =
     serpData?.configured === true && (isPropertyScoped || serpData?.canManageKeywords === true);
@@ -355,12 +370,12 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
             <table className={TABLE_BASE_CLASS}>
               <thead className={TABLE_HEAD_CLASS}>
                 <tr>
-                  <th className={cn("text-left px-4 font-semibold min-w-0 w-[35%]", TABLE_CELL_Y)}>Name</th>
-                  <th className={cn("text-right px-4 font-semibold w-20", TABLE_CELL_Y)}>Position</th>
-                  <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>1D Δ</th>
-                  <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>7D Δ</th>
-                  <th className={cn("text-right px-4 font-semibold w-20", TABLE_CELL_Y)}>Trend</th>
-                  {canAddDelete && <th className={cn("w-10 px-2", TABLE_CELL_Y)} aria-label="Remove" />}
+                  <SortableHeader label="Name" column="keyword" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="min-w-0 w-[35%]" />
+                  <SortableHeader label="Position" column="position" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-20" />
+                  <SortableHeader label="1D Δ" column="delta1d" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-16" />
+                  <SortableHeader label="7D Δ" column="delta7d" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-16" />
+                  <th className={cn("text-right px-4 font-semibold w-20", "py-2")}>Trend</th>
+                  {canAddDelete && <th className={cn("w-10 px-2", "py-2")} aria-label="Remove" />}
                 </tr>
               </thead>
               <tbody>

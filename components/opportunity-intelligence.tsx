@@ -5,9 +5,10 @@ import { cn } from "@/lib/utils";
 import type { DataTableRow } from "@/components/data-table";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
 import { RowTableCard } from "@/components/ui/row-table-card";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import {
   TABLE_BASE_CLASS,
-  TABLE_CELL_Y,
   TABLE_HEAD_CLASS,
   TABLE_ROW_CLASS,
 } from "@/components/ui/table-styles";
@@ -67,6 +68,8 @@ function oppRowToDataTableRow(r: OpportunityRow): DataTableRow {
   };
 }
 
+type OppSortKey = "key" | "position" | "impressions" | "ctr" | "changePercent";
+
 function OppTable({
   rows,
   emptyText,
@@ -78,9 +81,21 @@ function OppTable({
   sectionTitle: string;
   onOpenFullView?: (title: string, rows: OpportunityRow[]) => void;
 }) {
-  const visible = rows.slice(0, ROWS_INITIAL);
-  const hasMore = rows.length > ROWS_INITIAL;
-  const moreCount = hasMore ? rows.length - ROWS_INITIAL : 0;
+  const { sortKey, sortDir, onSort } = useTableSort<OppSortKey>("impressions");
+
+  const sorted = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      if (sortKey === "key") return dir * a.key.localeCompare(b.key);
+      const aVal = a[sortKey] ?? 0;
+      const bVal = b[sortKey] ?? 0;
+      return dir * (Number(aVal) - Number(bVal));
+    });
+  }, [rows, sortKey, sortDir]);
+
+  const visible = sorted.slice(0, ROWS_INITIAL);
+  const hasMore = sorted.length > ROWS_INITIAL;
+  const moreCount = hasMore ? sorted.length - ROWS_INITIAL : 0;
 
   if (rows.length === 0) {
     return <p className="text-xs text-muted-foreground px-4 py-2">{emptyText}</p>;
@@ -92,23 +107,23 @@ function OppTable({
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
-              <th className={cn("text-left px-4 font-semibold min-w-0 w-[35%]", TABLE_CELL_Y)}>Query</th>
-              <th className={cn("text-right px-4 font-semibold w-14", TABLE_CELL_Y)} title="Avg position">Pos</th>
-              <th className={cn("text-right px-4 font-semibold w-20", TABLE_CELL_Y)}>Impr.</th>
-              <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>CTR</th>
-              <th className={cn("text-right px-4 font-semibold w-16", TABLE_CELL_Y)}>Change</th>
+              <SortableHeader label="Query" column="key" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="min-w-0 w-[35%]" />
+              <SortableHeader label="Pos" column="position" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-14" />
+              <SortableHeader label="Impr." column="impressions" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-20" />
+              <SortableHeader label="CTR" column="ctr" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-16" />
+              <SortableHeader label="Change" column="changePercent" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-16" />
             </tr>
           </thead>
           <tbody>
             {visible.map((row) => (
               <tr key={row.key} className={TABLE_ROW_CLASS}>
-                <td className={cn("px-4 truncate min-w-0", TABLE_CELL_Y)} title={row.key}>
+                <td className={cn("px-4 truncate min-w-0", "py-2")} title={row.key}>
                   {row.key}
                 </td>
-                <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)} title="Avg position">{row.position.toFixed(1)}</td>
-                <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>{formatNum(row.impressions)}</td>
-                <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>{row.ctr.toFixed(2)}%</td>
-                <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
+                <td className={cn("px-4 text-right tabular-nums text-muted-foreground", "py-2")} title="Avg position">{row.position.toFixed(1)}</td>
+                <td className={cn("px-4 text-right tabular-nums text-muted-foreground", "py-2")}>{formatNum(row.impressions)}</td>
+                <td className={cn("px-4 text-right tabular-nums text-muted-foreground", "py-2")}>{row.ctr.toFixed(2)}%</td>
+                <td className={cn("px-4 text-right tabular-nums", "py-2")}>
                   {row.changePercent != null ? (
                     <span className={cn(row.changePercent >= 0 ? "text-positive" : "text-negative")}>
                       {row.changePercent >= 0 ? "↑" : "↓"} {row.changePercent >= 0 ? "+" : ""}{row.changePercent}%

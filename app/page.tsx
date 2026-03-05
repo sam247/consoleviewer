@@ -87,7 +87,7 @@ export default function OverviewPage() {
   const { hiddenSet } = useHiddenProjects();
   const { pinnedSet } = usePinnedProjects();
 
-  const { data: gscStatus } = useQuery({
+  const { data: gscStatus, isLoading: authLoading } = useQuery({
     queryKey: ["authStatus"],
     queryFn: async () => {
       const res = await fetch("/api/auth/status");
@@ -95,6 +95,8 @@ export default function OverviewPage() {
       return res.json() as Promise<{ gscConnected: boolean }>;
     },
   });
+
+  const gscConnected = gscStatus?.gscConnected ?? false;
 
   const { data: serpKeywords } = useQuery({
     queryKey: ["serprobotKeywords"],
@@ -112,6 +114,7 @@ export default function OverviewPage() {
     queryFn: () =>
       fetchOverview(startDate, endDate, priorStartDate, priorEndDate),
     staleTime: 60 * 1000,
+    enabled: gscConnected,
   });
 
   const metrics = useMemo(() => rawMetrics, [rawMetrics]);
@@ -148,84 +151,103 @@ export default function OverviewPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header
-        showSearch
+        showSearch={gscConnected}
         searchValue={search}
         onSearchChange={setSearch}
-        sortSelect={<SortSelect value={sortBy} onChange={setSortBy} />}
-        filterSelect={<FilterSelect value={filterBy} onChange={setFilterBy} />}
-        shareScope="dashboard"
+        sortSelect={gscConnected ? <SortSelect value={sortBy} onChange={setSortBy} /> : undefined}
+        filterSelect={gscConnected ? <FilterSelect value={filterBy} onChange={setFilterBy} /> : undefined}
+        shareScope={gscConnected ? "dashboard" : undefined}
       />
       <main className="flex-1 p-4 md:p-6">
         <div className="mx-auto max-w-[86rem]">
-        {gscStatus && !gscStatus.gscConnected && (
-          <p className="mb-4 text-sm text-muted-foreground">
-            You’re seeing sample data.{" "}
-            <Link href="/settings" className="text-foreground underline hover:no-underline">
-              Connect Google Search Console in Settings
-            </Link>{" "}
-            to load your sites.
-          </p>
-        )}
-        {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200 flex flex-wrap items-center justify-between gap-2">
-            <span>{error instanceof Error ? error.message : "Something went wrong"}</span>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="rounded bg-red-200 px-2 py-1 text-xs font-medium text-red-900 hover:bg-red-300 dark:bg-red-900 dark:text-red-100 dark:hover:bg-red-800"
-            >
-              Try again
-            </button>
-          </div>
-        )}
-        {!isLoading && sorted.length > 0 && (
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium text-foreground">{sorted.length} site{sorted.length !== 1 ? "s" : ""}</h2>
-            <a href="/onboarding/sites" className="text-sm text-muted-foreground hover:text-foreground underline">
-              Manage or add sites
-            </a>
-          </div>
-        )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {isLoading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <SiteCardSkeleton key={`skeleton-${i}`} />
-              ))
-            : (
-                <Suspense
-                  fallback={Array.from({ length: Math.min(sorted.length || 6, 12) }).map((_, i) => (
-                    <SiteCardSkeleton key={`suspense-${i}`} />
-                  ))}
-                >
-                  {sorted.map((m) => (
-                    <SiteCard
-                      key={m.siteUrl}
-                      metrics={m}
-                      hasKeywords={hasTrackedKeywords}
-                    />
-                  ))}
-                </Suspense>
-              )}
-        </div>
-        {!isLoading && sorted.length === 0 && (
-          <div className="py-12 text-center space-y-3">
-            <p className="text-muted-foreground text-sm">
-              {search.trim()
-                ? "No properties match your search."
-                : notHidden.length === 0 && metrics.length > 0
-                  ? "All projects are hidden. Unhide some in Settings."
-                  : "No properties yet. Connect Google Search Console to see your sites."}
-            </p>
-            {!search.trim() && (
-              <a
-                href="/onboarding/sites"
+          {authLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <SiteCardSkeleton key={`auth-skeleton-${i}`} />
+              ))}
+            </div>
+          ) : !gscConnected ? (
+            <div className="py-16 text-center space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 opacity-20 pointer-events-none select-none">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <SiteCardSkeleton key={`muted-${i}`} />
+                ))}
+              </div>
+              <p className="text-lg font-medium text-foreground">Connect Google Search Console</p>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Connect your account to see your sites, clicks, impressions, and rankings.
+              </p>
+              <Link
+                href="/settings"
                 className="inline-block rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90"
               >
-                Add or manage sites
-              </a>
-            )}
-          </div>
-        )}
+                Go to Settings
+              </Link>
+            </div>
+          ) : (
+            <>
+              {error && (
+                <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200 flex flex-wrap items-center justify-between gap-2">
+                  <span>{error instanceof Error ? error.message : "Something went wrong"}</span>
+                  <button
+                    type="button"
+                    onClick={() => refetch()}
+                    className="rounded bg-red-200 px-2 py-1 text-xs font-medium text-red-900 hover:bg-red-300 dark:bg-red-900 dark:text-red-100 dark:hover:bg-red-800"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+              {!isLoading && sorted.length > 0 && (
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-medium text-foreground">{sorted.length} site{sorted.length !== 1 ? "s" : ""}</h2>
+                  <a href="/onboarding/sites" className="text-sm text-muted-foreground hover:text-foreground underline">
+                    Manage or add sites
+                  </a>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {isLoading
+                  ? Array.from({ length: 6 }).map((_, i) => (
+                      <SiteCardSkeleton key={`skeleton-${i}`} />
+                    ))
+                  : (
+                      <Suspense
+                        fallback={Array.from({ length: Math.min(sorted.length || 6, 12) }).map((_, i) => (
+                          <SiteCardSkeleton key={`suspense-${i}`} />
+                        ))}
+                      >
+                        {sorted.map((m) => (
+                          <SiteCard
+                            key={m.siteUrl}
+                            metrics={m}
+                            hasKeywords={hasTrackedKeywords}
+                          />
+                        ))}
+                      </Suspense>
+                    )}
+              </div>
+              {!isLoading && sorted.length === 0 && (
+                <div className="py-12 text-center space-y-3">
+                  <p className="text-muted-foreground text-sm">
+                    {search.trim()
+                      ? "No properties match your search."
+                      : notHidden.length === 0 && metrics.length > 0
+                        ? "All projects are hidden. Unhide some in Settings."
+                        : "No properties yet. Connect Google Search Console to see your sites."}
+                  </p>
+                  {!search.trim() && (
+                    <a
+                      href="/onboarding/sites"
+                      className="inline-block rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90"
+                    >
+                      Add or manage sites
+                    </a>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </main>
     </div>

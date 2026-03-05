@@ -171,25 +171,23 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-                    <span className="text-xs text-muted-foreground">URL · Signal · Last seen · Impr Δ</span>
-                    <button
-                      type="button"
-                      onClick={() => setAddModalOpen(true)}
-                      className="text-sm font-medium text-foreground hover:underline"
-                    >
-                      Add URL to watchlist
-                    </button>
-                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse">
                       <thead>
-                        <tr className="border-b border-border/50">
-                          <th className="text-left py-2.5 px-4 text-muted-foreground font-medium">URL</th>
-                          <th className="text-left py-2.5 px-4 text-muted-foreground font-medium w-24">Signal</th>
-                          <th className="text-left py-2.5 px-4 text-muted-foreground font-medium w-28">Last seen</th>
-                          <th className="text-right py-2.5 px-4 text-muted-foreground font-medium w-20">Impr Δ</th>
-                          <th className="text-right py-2.5 px-4 text-muted-foreground font-medium w-20">Actions</th>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-2.5 px-4 text-xs text-muted-foreground font-medium">URL</th>
+                          <th className="text-left py-2.5 px-4 text-xs text-muted-foreground font-medium w-20">Signal</th>
+                          <th className="text-left py-2.5 px-4 text-xs text-muted-foreground font-medium w-28">Last seen</th>
+                          <th className="text-right py-2.5 px-4 text-xs text-muted-foreground font-medium w-20">Impr Δ</th>
+                          <th className="text-right py-2.5 px-4 text-xs text-muted-foreground font-medium w-32">
+                            <button
+                              type="button"
+                              onClick={() => setAddModalOpen(true)}
+                              className="font-medium text-foreground hover:underline"
+                            >
+                              Add URL to watchlist
+                            </button>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -198,7 +196,7 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                             key={row.id}
                             className="border-b border-border/50 last:border-b-0 hover:bg-accent/60 transition-colors duration-100"
                           >
-                            <td className="py-2.5 px-4 text-foreground truncate max-w-[200px]" title={row.url}>
+                            <td className="py-2.5 px-4 text-foreground truncate max-w-xs" title={row.url}>
                               {row.url}
                             </td>
                             <td className="py-2.5 px-4">

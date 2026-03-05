@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PositionVolatilityChart } from "@/components/position-volatility-chart";
 import { BrandedChart } from "@/components/branded-chart";
 import type { PropertyData, DailyRow } from "@/hooks/use-property-data";
@@ -46,6 +46,20 @@ export function VolatilityBrandedSection({
     try { localStorage.setItem(BRANDED_TERMS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
   };
 
+  const branded = useMemo(() => {
+    const totalClicks = data.summary?.clicks ?? 0;
+    const terms = brandedTerms.map((t) => t.toLowerCase());
+    if (terms.length === 0) {
+      return { brandedClicks: 0, nonBrandedClicks: totalClicks };
+    }
+    let bc = 0;
+    for (const q of data.queries) {
+      const key = q.key.toLowerCase();
+      if (terms.some((t) => key.includes(t))) bc += q.clicks;
+    }
+    return { brandedClicks: bc, nonBrandedClicks: Math.max(0, totalClicks - bc) };
+  }, [brandedTerms, data.queries, data.summary?.clicks]);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-w-0">
       <PositionVolatilityChart daily={daily} />
@@ -87,11 +101,8 @@ export function VolatilityBrandedSection({
         </div>
         <div className="flex-1 min-h-0 min-w-0">
           <BrandedChart
-            brandedClicks={data.branded?.brandedClicks ?? 0}
-            nonBrandedClicks={data.branded?.nonBrandedClicks ?? (data.summary?.clicks ?? 0)}
-            brandedChangePercent={data.branded?.brandedChangePercent}
-            nonBrandedChangePercent={data.branded?.nonBrandedChangePercent}
-            daily={data.brandedDaily}
+            brandedClicks={branded.brandedClicks}
+            nonBrandedClicks={branded.nonBrandedClicks}
           />
         </div>
       </div>

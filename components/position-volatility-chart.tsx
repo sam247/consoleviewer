@@ -12,13 +12,10 @@ import {
   YAxis,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { ChartPlot } from "@/components/ui/chart-plot";
 import {
   CHART_AXIS_TICK,
-  CHART_EMPTY_STATE_MIN_H,
   CHART_GRID_PROPS,
   CHART_MARGIN_SECONDARY,
-  CHART_PLOT_H,
   CHART_TOOLTIP_STYLE,
   CHART_Y_AXIS_WIDTH_SECONDARY,
   ChartFrame,
@@ -93,68 +90,69 @@ export function PositionVolatilityChart({ daily, className }: PositionVolatility
         )}
       </div>
 
-      <ChartPlot
-        height={CHART_PLOT_H.secondary}
-        minHeight={CHART_EMPTY_STATE_MIN_H.secondary}
-        isEmpty={dataWithPosition.length === 0}
-        emptyMessage="No position data in this range."
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={dataWithPosition} margin={CHART_MARGIN_SECONDARY}>
-            <CartesianGrid {...CHART_GRID_PROPS} />
-            <XAxis
-              dataKey="date"
-              tick={CHART_AXIS_TICK}
-              tickFormatter={tickFormatter}
-              minTickGap={14}
-              tickLine={false}
-              axisLine={false}
-              tickMargin={6}
-              padding={{ left: 2, right: 2 }}
-            />
-            <YAxis
-              width={CHART_Y_AXIS_WIDTH_SECONDARY}
-              domain={["dataMin", "dataMax"]}
-              tick={CHART_AXIS_TICK}
-              tickFormatter={(v) => String(Number(v).toFixed(1))}
-              reversed
-              tickLine={false}
-              axisLine={false}
-              tickMargin={6}
-            />
-            <Tooltip
-              cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
-              contentStyle={CHART_TOOLTIP_STYLE}
-              labelFormatter={(v) =>
-                new Date(v).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
-              }
-              formatter={(value: number | undefined) => [(value ?? 0).toFixed(1), "Position"]}
-            />
-            <ReferenceLine
-              y={10}
-              stroke="var(--chart-ctr)"
-              strokeDasharray="4 4"
-              strokeOpacity={0.75}
-              strokeWidth={1}
-            />
-            <ReferenceLine
-              y={20}
-              stroke="var(--muted-foreground)"
-              strokeDasharray="4 4"
-              strokeOpacity={0.65}
-              strokeWidth={1}
-            />
-            <Line
-              type="monotone"
-              dataKey="position"
-              stroke="var(--chart-position)"
-              strokeWidth={1.8}
-              dot={false}
-              name="Avg position"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </ChartPlot>
+      <div className="flex-1 min-h-[180px] min-w-0">
+        {dataWithPosition.length === 0 ? (
+          <div className="flex h-full w-full items-center justify-center rounded-md border border-dashed border-border/70 bg-muted/20 px-3 text-xs text-muted-foreground">
+            No position data in this range.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={dataWithPosition} margin={CHART_MARGIN_SECONDARY}>
+              <CartesianGrid {...CHART_GRID_PROPS} />
+              <XAxis
+                dataKey="date"
+                tick={CHART_AXIS_TICK}
+                tickFormatter={tickFormatter}
+                minTickGap={14}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
+                padding={{ left: 2, right: 2 }}
+              />
+              <YAxis
+                width={CHART_Y_AXIS_WIDTH_SECONDARY}
+                domain={["dataMin", "dataMax"]}
+                tick={CHART_AXIS_TICK}
+                tickFormatter={(v) => String(Number(v).toFixed(1))}
+                reversed
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
+              />
+              <Tooltip
+                cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+                contentStyle={CHART_TOOLTIP_STYLE}
+                labelFormatter={(v) =>
+                  new Date(v).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
+                }
+                formatter={(value: number | undefined) => [(value ?? 0).toFixed(1), "Position"]}
+              />
+              <ReferenceLine
+                y={10}
+                stroke="var(--chart-ctr)"
+                strokeDasharray="4 4"
+                strokeOpacity={0.75}
+                strokeWidth={1}
+              />
+              <ReferenceLine
+                y={20}
+                stroke="var(--muted-foreground)"
+                strokeDasharray="4 4"
+                strokeOpacity={0.65}
+                strokeWidth={1}
+              />
+              <Line
+                type="monotone"
+                dataKey="position"
+                stroke="var(--chart-position)"
+                strokeWidth={1.8}
+                dot={false}
+                name="Avg position"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
     </ChartFrame>
   );
 }

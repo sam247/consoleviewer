@@ -14,6 +14,12 @@ export type TrackedKeywordRow = {
 };
 
 const ACTION_UNSUPPORTED_RE = /(unknown|invalid).*(action)|action.*(unknown|invalid|not found)|not supported/i;
+const WRITE_NOT_ENABLED_MESSAGE =
+  "Keyword add/remove is disabled for this SerpRobot integration. The v1 API is read-only unless write access is enabled.";
+
+function canManageKeywords(): boolean {
+  return process.env.SERPROBOT_ENABLE_KEYWORD_WRITE === "true";
+}
 
 async function trySerprobotActions(
   actions: string[],
@@ -42,6 +48,7 @@ export async function GET(request: NextRequest) {
   if (!hasSerprobotKey()) {
     return NextResponse.json({
       configured: false,
+      canManageKeywords: false,
       keywords: [],
       message: "Connect SerpRobot in Settings to track keywords.",
     });
@@ -59,6 +66,7 @@ export async function GET(request: NextRequest) {
     if (!pid) {
       return NextResponse.json({
         configured: true,
+        canManageKeywords: canManageKeywords(),
         keywords: [],
         message: "No SerpRobot project found. Create a project in SerpRobot or pass projectId.",
       });
@@ -84,11 +92,20 @@ export async function GET(request: NextRequest) {
         sparkData: [position],
       };
     });
-    return NextResponse.json({ configured: true, keywords, projectId: pid });
+    return NextResponse.json({
+      configured: true,
+      canManageKeywords: canManageKeywords(),
+      keywords,
+      projectId: pid,
+      message: canManageKeywords()
+        ? undefined
+        : "Read-only mode: add/remove keywords in SerpRobot dashboard.",
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "SerpRobot request failed";
     return NextResponse.json({
       configured: true,
+      canManageKeywords: canManageKeywords(),
       keywords: [],
       error: message,
     });
@@ -113,6 +130,9 @@ export async function POST(request: NextRequest) {
   }
   if (!hasSerprobotKey()) {
     return NextResponse.json({ error: "SerpRobot not configured" }, { status: 400 });
+  }
+  if (!canManageKeywords()) {
+    return NextResponse.json({ error: WRITE_NOT_ENABLED_MESSAGE }, { status: 400 });
   }
   let body: { phrase?: string; projectId?: string };
   try {
@@ -149,6 +169,9 @@ export async function DELETE(request: NextRequest) {
   }
   if (!hasSerprobotKey()) {
     return NextResponse.json({ error: "SerpRobot not configured" }, { status: 400 });
+  }
+  if (!canManageKeywords()) {
+    return NextResponse.json({ error: WRITE_NOT_ENABLED_MESSAGE }, { status: 400 });
   }
   const keywordId = request.nextUrl.searchParams.get("keywordId")?.trim();
   const phrase = request.nextUrl.searchParams.get("phrase")?.trim();

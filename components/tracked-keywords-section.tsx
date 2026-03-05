@@ -49,6 +49,7 @@ interface TrackedKeywordsSectionProps {
 
 async function fetchSerprobotKeywords(): Promise<{
   configured: boolean;
+  canManageKeywords?: boolean;
   keywords: MockTrackedKeyword[];
   message?: string;
 }> {
@@ -76,7 +77,7 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], export
     ? ((serpData.keywords ?? []) as KeywordRow[])
     : fallbackKeywords.map((k) => ({ ...k }));
   const showConnectMessage = serpData?.configured === false;
-  const canAddDelete = serpData?.configured === true;
+  const canAddDelete = serpData?.configured === true && serpData?.canManageKeywords === true;
 
   const handleAdd = async () => {
     const phrase = addInput.trim();
@@ -152,6 +153,11 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], export
           {showConnectMessage && (
             <p className="text-xs text-muted-foreground mt-0.5">
               Add keywords to start tracking.
+            </p>
+          )}
+          {!showConnectMessage && serpData?.canManageKeywords === false && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Read-only mode. Add/remove keywords in SerpRobot dashboard.
             </p>
           )}
         </div>

@@ -60,7 +60,26 @@ export async function serprobotFetch(
   const url = `${SERPROBOT_BASE}?${search.toString()}`;
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`SerpRobot API error: ${res.status}`);
+    let detail = "";
+    try {
+      const text = await res.text();
+      if (text) {
+        try {
+          const parsed = JSON.parse(text) as unknown;
+          const logical = parseSerprobotError(parsed);
+          detail = logical ?? text;
+        } catch {
+          detail = text;
+        }
+      }
+    } catch {
+      // ignore parse errors; fallback to status only
+    }
+    throw new Error(
+      detail
+        ? `SerpRobot API error: ${res.status} - ${detail}`
+        : `SerpRobot API error: ${res.status}`
+    );
   }
   const data = (await res.json()) as unknown;
   const logicalError = parseSerprobotError(data);

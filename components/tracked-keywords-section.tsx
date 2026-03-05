@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LineChart, Line, YAxis, ResponsiveContainer } from "recharts";
 import type { MockTrackedKeyword } from "@/lib/mock-rank";
@@ -13,6 +13,47 @@ import {
   TABLE_HEAD_CLASS,
   TABLE_ROW_CLASS,
 } from "@/components/ui/table-styles";
+
+type KeywordStatus = "checking" | "ready" | "error";
+
+type KeywordRow = {
+  id?: string;
+  keyword: string;
+  position: number | null;
+  delta1d: number;
+  delta7d: number;
+  sparkData: number[];
+  status?: KeywordStatus;
+  lastCheckedAt?: string | null;
+  warning?: string;
+};
+
+type TrackedKeywordsResponse = {
+  configured: boolean;
+  canManageKeywords?: boolean;
+  keywords: KeywordRow[];
+  message?: string;
+  error?: string;
+  correlationId?: string;
+};
+
+const GOOGLE_REGIONS = [
+  { value: "www.google.co.uk", label: "UK" },
+  { value: "www.google.com", label: "US" },
+  { value: "www.google.com.au", label: "AU" },
+  { value: "www.google.ca", label: "CA" },
+  { value: "www.google.ie", label: "IE" },
+  { value: "www.google.co.nz", label: "NZ" },
+  { value: "www.google.co.za", label: "ZA" },
+  { value: "www.google.de", label: "DE" },
+  { value: "www.google.fr", label: "FR" },
+  { value: "www.google.es", label: "ES" },
+  { value: "www.google.it", label: "IT" },
+  { value: "www.google.nl", label: "NL" },
+  { value: "www.google.co.in", label: "IN" },
+  { value: "www.google.com.br", label: "BR" },
+  { value: "www.google.co.jp", label: "JP" },
+] as const;
 
 function MiniSparkline({ data }: { data: number[] }) {
   const chartData = useMemo(
@@ -41,29 +82,58 @@ function MiniSparkline({ data }: { data: number[] }) {
 }
 
 interface TrackedKeywordsSectionProps {
-  /** Optional fallback keywords; by default we only render real SerpRobot data. */
   keywords?: MockTrackedKeyword[];
-  /** Property scope for DB-backed keyword tracking. */
   propertyId?: string;
-  /** Optional export filename (without .csv) for CSV export. */
   exportFilename?: string;
 }
 
-async function fetchTrackedKeywords(propertyId?: string): Promise<{
-  configured: boolean;
-  canManageKeywords?: boolean;
-  keywords: MockTrackedKeyword[];
-  message?: string;
-}> {
+function parseKeywordError(payload: unknown, fallback: string): string {
+  if (payload && typeof payload === "object") {
+    const data = payload as Record<string, unknown>;
+    const msg =
+      typeof data.error === "string"
+        ? data.error
+        : typeof data.message === "string"
+          ? data.message
+          : null;
+    const correlation =
+      typeof data.correlationId === "string" ? ` [ref ${data.correlationId}]` : "";
+    if (msg) return `${msg}${correlation}`;
+  }
+  return fallback;
+}
+
+function isTransientNetworkError(error: unknown): boolean {
+  return error instanceof TypeError;
+}
+
+async function fetchTrackedKeywords(propertyId?: string): Promise<TrackedKeywordsResponse> {
   const endpoint = propertyId
     ? `/api/properties/${encodeURIComponent(propertyId)}/tracked-keywords`
     : "/api/serprobot/keywords";
-  const res = await fetch(endpoint);
-  if (!res.ok) return { configured: false, keywords: [] };
-  return res.json();
+  let attempts = 0;
+  while (attempts < 2) {
+    attempts += 1;
+    try {
+      const res = await fetch(endpoint, { cache: "no-store" });
+      const payload = (await res.json().catch(() => ({}))) as unknown;
+      if (!res.ok) {
+        const message = parseKeywordError(payload, "Failed to load tracked keywords");
+        return { configured: false, keywords: [], error: message };
+      }
+      return payload as TrackedKeywordsResponse;
+    } catch (error) {
+      if (attempts < 2 && isTransientNetworkError(error)) continue;
+      const message = error instanceof Error ? error.message : "Failed to load tracked keywords";
+      return { configured: false, keywords: [], error: message };
+    }
+  }
+  return { configured: false, keywords: [], error: "Failed to load tracked keywords" };
 }
 
-type KeywordRow = MockTrackedKeyword & { id?: string };
+function regionStorageKey(propertyId: string) {
+  return `kw-region-${propertyId}`;
+}
 
 export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], propertyId, exportFilename }: TrackedKeywordsSectionProps) {
   const queryClient = useQueryClient();
@@ -72,17 +142,39 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [region, setRegionState] = useState("www.google.co.uk");
+
+  const queryKey = ["serprobotKeywords", propertyId ?? "global"] as const;
+  const isPropertyScoped = Boolean(propertyId);
+
+  useEffect(() => {
+    if (!propertyId) return;
+    const saved = localStorage.getItem(regionStorageKey(propertyId));
+    if (saved) setRegionState(saved);
+  }, [propertyId]);
+
+  const setRegion = (value: string) => {
+    setRegionState(value);
+    if (propertyId) localStorage.setItem(regionStorageKey(propertyId), value);
+  };
 
   const { data: serpData } = useQuery({
-    queryKey: ["serprobotKeywords", propertyId ?? "global"],
+    queryKey,
     queryFn: () => fetchTrackedKeywords(propertyId),
+    refetchInterval: (query) => {
+      const data = query.state.data as TrackedKeywordsResponse | undefined;
+      if (!data?.configured) return false;
+      return data.keywords?.some((row) => row.status === "checking") ? 4000 : false;
+    },
+    refetchIntervalInBackground: true,
   });
 
   const keywords: KeywordRow[] = serpData?.configured
-    ? ((serpData.keywords ?? []) as KeywordRow[])
-    : fallbackKeywords.map((k) => ({ ...k }));
+    ? (serpData.keywords ?? [])
+    : fallbackKeywords.map((k) => ({ ...k, position: k.position, status: "ready" as const }));
   const showConnectMessage = serpData?.configured === false;
-  const canAddDelete = serpData?.configured === true && serpData?.canManageKeywords === true;
+  const canAddDelete =
+    serpData?.configured === true && (isPropertyScoped || serpData?.canManageKeywords === true);
 
   const handleAdd = async () => {
     const phrase = addInput.trim();
@@ -94,10 +186,30 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
       const endpoint = propertyId
         ? `/api/properties/${encodeURIComponent(propertyId)}/tracked-keywords`
         : "/api/serprobot/keywords";
+      queryClient.setQueryData(queryKey, (prev: TrackedKeywordsResponse | undefined) => {
+        if (!prev?.configured) return prev;
+        return {
+          ...prev,
+          keywords: [
+            {
+              id: `pending-${Date.now()}`,
+              keyword: phrase,
+              position: null,
+              delta1d: 0,
+              delta7d: 0,
+              sparkData: [],
+              status: "checking" as const,
+              lastCheckedAt: null,
+            },
+            ...(prev.keywords ?? []),
+          ],
+        };
+      });
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phrase }),
+        body: JSON.stringify({ phrase, region }),
+        cache: "no-store",
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; hint?: string; warning?: string };
       if (!res.ok) {
@@ -105,13 +217,14 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
         throw new Error(message);
       }
       setAddInput("");
-      await queryClient.invalidateQueries({ queryKey: ["serprobotKeywords", propertyId ?? "global"] });
+      await queryClient.invalidateQueries({ queryKey });
       if (data.warning) {
         setActionSuccess(`Added "${phrase}" (rank check pending: ${data.warning})`);
       } else {
         setActionSuccess(`Added "${phrase}"`);
       }
     } catch (e) {
+      await queryClient.invalidateQueries({ queryKey });
       const message = e instanceof Error ? e.message : "Failed to add keyword";
       setActionError(message);
     } finally {
@@ -138,7 +251,7 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
         const message = data.error ? (data.hint ? `${data.error} (${data.hint})` : data.error) : "Failed to remove keyword";
         throw new Error(message);
       }
-      await queryClient.invalidateQueries({ queryKey: ["serprobotKeywords", propertyId ?? "global"] });
+      await queryClient.invalidateQueries({ queryKey });
       setActionSuccess(`Removed "${row.keyword}"`);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to remove keyword";
@@ -151,7 +264,7 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
   const handleExport = () => {
     const rows = keywords.map((r) => ({
       keyword: r.keyword,
-      position: r.position,
+      position: r.position ?? undefined,
       delta1d: r.delta1d,
       delta7d: r.delta7d,
     }));
@@ -167,11 +280,11 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
         <div className="flex items-center gap-2 shrink-0 min-w-0">
           <span className="font-semibold text-sm text-foreground flex items-center gap-1">Keywords tracked<InfoTooltip title="Rank-tracked keywords with position and trend" /></span>
           {showConnectMessage && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Add keywords to start tracking.
+            <p className="text-xs text-destructive/80 mt-0.5">
+              {serpData?.error ?? "Unable to load tracked keywords."}
             </p>
           )}
-          {!showConnectMessage && serpData?.canManageKeywords === false && (
+          {!showConnectMessage && !isPropertyScoped && serpData?.canManageKeywords === false && (
             <p className="text-xs text-muted-foreground mt-0.5">
               Read-only mode. Add/remove keywords in SerpRobot dashboard.
             </p>
@@ -180,6 +293,16 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
         <div className="flex items-center gap-2 flex-wrap ml-auto">
           {canAddDelete && (
             <div className="flex items-center gap-1.5">
+              <select
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                className="rounded border border-border bg-background px-1.5 py-1 text-xs focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                title="Google region for rank checks"
+              >
+                {GOOGLE_REGIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
               <input
                 type="text"
                 value={addInput}
@@ -250,7 +373,30 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
                       {row.keyword}
                     </td>
                     <td className={cn("px-4 text-right tabular-nums text-foreground", TABLE_CELL_Y)}>
-                      {row.position.toFixed(1)}
+                      {row.status === "checking" ? (
+                        <span className="inline-flex items-center justify-end gap-1.5 text-muted-foreground">
+                          <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+                            <circle cx="12" cy="12" r="9" className="stroke-current opacity-25" strokeWidth="3" />
+                            <path
+                              className="fill-current opacity-90"
+                              d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3Z"
+                            />
+                          </svg>
+                          <span className="text-xs">Checking…</span>
+                        </span>
+                      ) : row.position != null ? (
+                        row.position.toFixed(1)
+                      ) : (
+                        <span
+                          className={cn(
+                            "text-xs",
+                            row.status === "error" ? "text-destructive" : "text-muted-foreground"
+                          )}
+                          title={row.warning}
+                        >
+                          {row.status === "error" ? "Error" : "—"}
+                        </span>
+                      )}
                     </td>
                     <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                       <span className={row.delta1d < 0 ? "text-positive" : row.delta1d > 0 ? "text-negative" : "text-muted-foreground"}>

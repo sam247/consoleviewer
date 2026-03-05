@@ -212,6 +212,14 @@ export function TrendChart({
     });
   }, [compareToPrior, data, priorData, useNormalized, useSeriesContext, visibleSeries]);
 
+  const useDualAxis =
+    !useNormalized &&
+    showClicks &&
+    showImpr &&
+    !showCtr &&
+    !showPosition &&
+    (data?.length ?? 0) > 0;
+
   const yDomain = useMemo((): [number, number] | undefined => {
     if (!chartData.length) return undefined;
     const keys: (keyof DataPoint)[] = ["clicks", "impressions", "ctr", "position"];
@@ -233,6 +241,50 @@ export function TrendChart({
     return [Math.max(0, min - pad), max + pad];
   }, [chartData]);
 
+  const leftDomain = useMemo((): [number, number] | undefined => {
+    if (!chartData.length || !useDualAxis) return undefined;
+    let min = Infinity;
+    let max = -Infinity;
+    chartData.forEach((d) => {
+      const v = d.clicks;
+      if (typeof v === "number" && Number.isFinite(v)) {
+        min = Math.min(min, v);
+        max = Math.max(max, v);
+      }
+      const vp = (d as Record<string, number>).clicksPrior;
+      if (typeof vp === "number" && Number.isFinite(vp)) {
+        min = Math.min(min, vp);
+        max = Math.max(max, vp);
+      }
+    });
+    if (min === Infinity || max === -Infinity) return undefined;
+    const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
+    return [Math.max(0, min - pad), max + pad];
+  }, [chartData, useDualAxis]);
+
+  const rightDomain = useMemo((): [number, number] | undefined => {
+    if (!chartData.length || !useDualAxis) return undefined;
+    let min = Infinity;
+    let max = -Infinity;
+    chartData.forEach((d) => {
+      const v = d.impressions;
+      if (typeof v === "number" && Number.isFinite(v)) {
+        min = Math.min(min, v);
+        max = Math.max(max, v);
+      }
+      if (compareToPrior && (d as Record<string, number>).impressionsPrior != null) {
+        const vp = (d as Record<string, number>).impressionsPrior;
+        if (Number.isFinite(vp)) {
+          min = Math.min(min, vp);
+          max = Math.max(max, vp);
+        }
+      }
+    });
+    if (min === Infinity || max === -Infinity) return undefined;
+    const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
+    return [Math.max(0, min - pad), max + pad];
+  }, [chartData, useDualAxis, compareToPrior]);
+
   if (!data?.length) {
     return (
       <ChartPlot
@@ -245,10 +297,14 @@ export function TrendChart({
     );
   }
 
+  const marginWithDualAxis = useDualAxis
+    ? { ...chartMargin, right: (chartMargin.right ?? 6) + yAxisWidth }
+    : chartMargin;
+
   return (
     <ChartPlot height={height} minHeight={height} className={className}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={chartMargin}>
+        <LineChart data={chartData} margin={marginWithDualAxis}>
           <defs>
             <linearGradient id="trend-fill-clicks" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={CHART_CLICKS} stopOpacity={0.2} />
@@ -278,16 +334,44 @@ export function TrendChart({
             padding={{ left: 2, right: 2 }}
           />
 
-          <YAxis
-            width={yAxisWidth}
-            domain={useNormalized ? [0, 1] : yDomain ?? ["auto", "auto"]}
-            tick={CHART_AXIS_TICK}
-            tickCount={5}
-            tickFormatter={(value) => (useNormalized ? `${Math.round(Number(value) * 100)}%` : compactNumber(Number(value)))}
-            tickLine={false}
-            axisLine={false}
-            tickMargin={6}
-          />
+          {useDualAxis ? (
+            <>
+              <YAxis
+                yAxisId="left"
+                width={yAxisWidth}
+                domain={leftDomain ?? ["auto", "auto"]}
+                tick={CHART_AXIS_TICK}
+                tickCount={5}
+                tickFormatter={(value) => compactNumber(Number(value))}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                width={yAxisWidth}
+                domain={rightDomain ?? ["auto", "auto"]}
+                tick={CHART_AXIS_TICK}
+                tickCount={5}
+                tickFormatter={(value) => compactNumber(Number(value))}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
+              />
+            </>
+          ) : (
+            <YAxis
+              width={yAxisWidth}
+              domain={useNormalized ? [0, 1] : yDomain ?? ["auto", "auto"]}
+              tick={CHART_AXIS_TICK}
+              tickCount={5}
+              tickFormatter={(value) => (useNormalized ? `${Math.round(Number(value) * 100)}%` : compactNumber(Number(value)))}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={6}
+            />
+          )}
 
           <Tooltip
             cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
@@ -328,7 +412,13 @@ export function TrendChart({
 
           {showClicks && !useNormalized && (
             <>
-              <Area type="monotone" dataKey="clicks" fill="url(#trend-fill-clicks)" stroke="none" />
+              <Area
+                type="monotone"
+                dataKey="clicks"
+                fill="url(#trend-fill-clicks)"
+                stroke="none"
+                {...(useDualAxis && { yAxisId: "left" })}
+              />
               <Line
                 type="monotone"
                 dataKey="clicks"
@@ -337,6 +427,7 @@ export function TrendChart({
                 dot={false}
                 activeDot={{ r: 3, strokeWidth: 1.5, fill: CHART_CLICKS, stroke: "var(--surface)" }}
                 name="Clicks"
+                {...(useDualAxis && { yAxisId: "left" })}
               />
               {compareToPrior && priorData?.length && (
                 <Line
@@ -348,6 +439,7 @@ export function TrendChart({
                   strokeDasharray="5 4"
                   strokeOpacity={0.5}
                   name="Clicks (prior)"
+                  {...(useDualAxis && { yAxisId: "left" })}
                 />
               )}
             </>
@@ -363,6 +455,7 @@ export function TrendChart({
                 dot={false}
                 strokeOpacity={0.85}
                 name="Impressions"
+                {...(useDualAxis && { yAxisId: "right" })}
               />
               {compareToPrior && priorData?.length && (
                 <Line
@@ -374,6 +467,7 @@ export function TrendChart({
                   strokeDasharray="5 4"
                   strokeOpacity={0.45}
                   name="Impressions (prior)"
+                  {...(useDualAxis && { yAxisId: "right" })}
                 />
               )}
             </>

@@ -8,6 +8,7 @@ import { ProfileMenu } from "./profile-menu";
 import { ShareModal } from "./share-modal";
 import { SparkToggles } from "./spark-toggles";
 import { ThemeToggle } from "./theme-toggle";
+import { AiHeaderButton } from "./ai-feature-card";
 
 interface HeaderProps {
   searchValue?: string;
@@ -67,6 +68,7 @@ export function Header({
                 </button>
               )}
               <SparkToggles />
+              <AiHeaderButton />
               <ThemeToggle />
               <DateRangeSelect />
               <ProfileMenu />

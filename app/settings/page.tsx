@@ -14,6 +14,44 @@ function displayUrl(siteUrl: string): string {
   return siteUrl.replace(/\/$/, "") || siteUrl;
 }
 
+const AVATAR_MAX_PX = 256;
+const AVATAR_JPEG_QUALITY = 0.85;
+const AVATAR_MAX_BYTES = 350_000; // Keep request body under 1MB with name/email
+
+function resizeImageToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const scale = Math.min(1, AVATAR_MAX_PX / Math.max(w, h));
+      const cw = Math.round(w * scale);
+      const ch = Math.round(h * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = cw;
+      canvas.height = ch;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Canvas not supported"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, cw, ch);
+      let dataUrl = canvas.toDataURL("image/jpeg", AVATAR_JPEG_QUALITY);
+      if (dataUrl.length > AVATAR_MAX_BYTES) {
+        dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+      }
+      resolve(dataUrl);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load image"));
+    };
+    img.src = url;
+  });
+}
+
 interface UserProfile {
   displayName: string;
   email: string;
@@ -62,8 +100,10 @@ function ProfileSection() {
     }
   }, [profile]);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
   const saveMutation = useMutation({
     mutationFn: async () => {
+      setSaveError(null);
       const res = await fetch("/api/user/profile", {
         method: "PUT",
         credentials: "include",
@@ -74,12 +114,17 @@ function ProfileSection() {
           avatarUrl: avatarDataUrl,
         }),
       });
-      if (!res.ok) throw new Error("Save failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? "Save failed");
     },
     onSuccess: () => {
       setDirty(false);
+      setSaveError(null);
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
       queryClient.invalidateQueries({ queryKey: ["authStatus"] });
+    },
+    onError: (err) => {
+      setSaveError(err instanceof Error ? err.message : "Failed to save");
     },
   });
 
@@ -90,14 +135,13 @@ function ProfileSection() {
       alert("Image must be under 2 MB");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setAvatarPreview(result);
-      setAvatarDataUrl(result);
-      setDirty(true);
-    };
-    reader.readAsDataURL(file);
+    resizeImageToDataUrl(file)
+      .then((dataUrl) => {
+        setAvatarPreview(dataUrl);
+        setAvatarDataUrl(dataUrl);
+        setDirty(true);
+      })
+      .catch(() => alert("Could not process image. Try a different file."));
   }, []);
 
   const handleRemoveAvatar = useCallback(() => {
@@ -205,8 +249,8 @@ function ProfileSection() {
         {saveMutation.isSuccess && !dirty && (
           <span className="ml-3 text-sm text-green-600">Saved</span>
         )}
-        {saveMutation.isError && (
-          <span className="ml-3 text-sm text-destructive">Failed to save. Try again.</span>
+        {saveError && (
+          <span className="ml-3 text-sm text-destructive">{saveError}</span>
         )}
       </div>
     </section>

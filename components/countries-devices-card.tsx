@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, PieChart, Pie, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatNum } from "@/hooks/use-property-data";
+import { TABLE_ROW_CLASS } from "@/components/ui/table-styles";
 
 type DimensionRow = {
   key: string;
@@ -116,7 +117,7 @@ export function CountriesDevicesCard({
                     </thead>
                     <tbody>
                       {topCountries.map((r) => (
-                        <tr key={r.code} className="border-b border-border/50">
+                        <tr key={r.code} className={TABLE_ROW_CLASS}>
                           <td className="py-1.5 pr-2 text-foreground">{r.name}</td>
                           <td className="py-1.5 pr-2 text-right tabular-nums">{formatNum(r.clicks)}</td>
                           <td className="py-1.5 pr-2 text-right tabular-nums">{formatNum(r.impressions)}</td>
@@ -181,7 +182,7 @@ export function CountriesDevicesCard({
                     </thead>
                     <tbody>
                       {devices.map((r) => (
-                        <tr key={r.key} className="border-b border-border/50">
+                        <tr key={r.key} className={TABLE_ROW_CLASS}>
                           <td className="py-1.5 pr-2 text-foreground capitalize">{r.key}</td>
                           <td className="py-1.5 pr-2 text-right tabular-nums">{formatNum(r.clicks)}</td>
                           <td className="py-1.5 pr-2 text-right tabular-nums">{formatNum(r.impressions)}</td>

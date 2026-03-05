@@ -6,6 +6,7 @@ import type { DataTableRow } from "@/components/data-table";
 import { cn } from "@/lib/utils";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { SortableHeader } from "@/components/ui/sortable-header";
+import { TABLE_ROW_CLASS } from "@/components/ui/table-styles";
 
 const STORAGE_KEY = "consoleview-index-signals-open";
 const VISIBLE_ROWS = 20;
@@ -208,7 +209,7 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                         {visible.map((row) => (
                           <tr
                             key={row.id}
-                            className="border-b border-border/50 last:border-b-0 hover:bg-accent/60 transition-colors duration-100"
+                            className={TABLE_ROW_CLASS}
                           >
                             <td className="py-2.5 px-4 text-foreground truncate max-w-xs" title={row.url}>
                               {row.url}

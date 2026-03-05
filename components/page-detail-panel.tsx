@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { formatNum } from "@/hooks/use-property-data";
+import { TABLE_ROW_CLASS } from "@/components/ui/table-styles";
 
 type QueryRow = { query: string; clicks: number; impressions: number; position: number };
 
@@ -131,7 +132,7 @@ export function PageDetailPanel({
               </thead>
               <tbody>
                 {sorted.map((row) => (
-                  <tr key={row.query} className="border-b border-border/50 hover:bg-muted/30">
+                  <tr key={row.query} className={TABLE_ROW_CLASS}>
                     <td className={cn(td, "max-w-[200px] truncate")} title={row.query}>{row.query}</td>
                     <td className={cn(td, "tabular-nums")}>{formatNum(row.clicks)}</td>
                     <td className={cn(td, "tabular-nums")}>{formatNum(row.impressions)}</td>

@@ -53,8 +53,8 @@ export async function GET(
   const end = endDate || new Date().toISOString().slice(0, 10);
   const start = startDate || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
 
-  const chartRes = await pool.query<{ date: string; clicks: number; impressions: number }>(
-    `SELECT date, clicks, impressions
+  const chartRes = await pool.query<{ date: string; clicks: number; impressions: number; position_sum: number }>(
+    `SELECT date, clicks, impressions, position_sum
      FROM gsc_property_daily
      WHERE property_id = $1 AND date BETWEEN $2::date AND $3::date
      ORDER BY date`,
@@ -106,6 +106,7 @@ export async function GET(
         date: r.keys[0] ?? "",
         clicks: r.clicks,
         impressions: r.impressions,
+        position: r.position,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 

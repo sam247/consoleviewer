@@ -43,24 +43,29 @@ function MiniSparkline({ data }: { data: number[] }) {
 interface TrackedKeywordsSectionProps {
   /** Optional fallback keywords; by default we only render real SerpRobot data. */
   keywords?: MockTrackedKeyword[];
+  /** Property scope for DB-backed keyword tracking. */
+  propertyId?: string;
   /** Optional export filename (without .csv) for CSV export. */
   exportFilename?: string;
 }
 
-async function fetchSerprobotKeywords(): Promise<{
+async function fetchTrackedKeywords(propertyId?: string): Promise<{
   configured: boolean;
   canManageKeywords?: boolean;
   keywords: MockTrackedKeyword[];
   message?: string;
 }> {
-  const res = await fetch("/api/serprobot/keywords");
+  const endpoint = propertyId
+    ? `/api/properties/${encodeURIComponent(propertyId)}/tracked-keywords`
+    : "/api/serprobot/keywords";
+  const res = await fetch(endpoint);
   if (!res.ok) return { configured: false, keywords: [] };
   return res.json();
 }
 
 type KeywordRow = MockTrackedKeyword & { id?: string };
 
-export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], exportFilename }: TrackedKeywordsSectionProps) {
+export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], propertyId, exportFilename }: TrackedKeywordsSectionProps) {
   const queryClient = useQueryClient();
   const [addInput, setAddInput] = useState("");
   const [addLoading, setAddLoading] = useState(false);
@@ -69,8 +74,8 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], export
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const { data: serpData } = useQuery({
-    queryKey: ["serprobotKeywords"],
-    queryFn: fetchSerprobotKeywords,
+    queryKey: ["serprobotKeywords", propertyId ?? "global"],
+    queryFn: () => fetchTrackedKeywords(propertyId),
   });
 
   const keywords: KeywordRow[] = serpData?.configured
@@ -86,19 +91,26 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], export
     setActionError(null);
     setActionSuccess(null);
     try {
-      const res = await fetch("/api/serprobot/keywords", {
+      const endpoint = propertyId
+        ? `/api/properties/${encodeURIComponent(propertyId)}/tracked-keywords`
+        : "/api/serprobot/keywords";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phrase }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; hint?: string };
+      const data = (await res.json().catch(() => ({}))) as { error?: string; hint?: string; warning?: string };
       if (!res.ok) {
         const message = data.error ? (data.hint ? `${data.error} (${data.hint})` : data.error) : "Failed to add keyword";
         throw new Error(message);
       }
       setAddInput("");
-      await queryClient.invalidateQueries({ queryKey: ["serprobotKeywords"] });
-      setActionSuccess(`Added "${phrase}"`);
+      await queryClient.invalidateQueries({ queryKey: ["serprobotKeywords", propertyId ?? "global"] });
+      if (data.warning) {
+        setActionSuccess(`Added "${phrase}" (rank check pending: ${data.warning})`);
+      } else {
+        setActionSuccess(`Added "${phrase}"`);
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to add keyword";
       setActionError(message);
@@ -114,15 +126,19 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], export
     setActionSuccess(null);
     try {
       const url = row.id
-        ? `/api/serprobot/keywords?keywordId=${encodeURIComponent(row.id)}`
-        : `/api/serprobot/keywords?phrase=${encodeURIComponent(row.keyword)}`;
+        ? (propertyId
+          ? `/api/properties/${encodeURIComponent(propertyId)}/tracked-keywords?keywordId=${encodeURIComponent(row.id)}`
+          : `/api/serprobot/keywords?keywordId=${encodeURIComponent(row.id)}`)
+        : (propertyId
+          ? `/api/properties/${encodeURIComponent(propertyId)}/tracked-keywords?phrase=${encodeURIComponent(row.keyword)}`
+          : `/api/serprobot/keywords?phrase=${encodeURIComponent(row.keyword)}`);
       const res = await fetch(url, { method: "DELETE" });
       const data = (await res.json().catch(() => ({}))) as { error?: string; hint?: string };
       if (!res.ok) {
         const message = data.error ? (data.hint ? `${data.error} (${data.hint})` : data.error) : "Failed to remove keyword";
         throw new Error(message);
       }
-      await queryClient.invalidateQueries({ queryKey: ["serprobotKeywords"] });
+      await queryClient.invalidateQueries({ queryKey: ["serprobotKeywords", propertyId ?? "global"] });
       setActionSuccess(`Removed "${row.keyword}"`);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to remove keyword";

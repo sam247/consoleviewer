@@ -1,51 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasValidSession, getOwnerUserId } from "@/lib/session";
-import { getSupabaseServer } from "@/lib/supabase";
+import { getSessionUserId } from "@/lib/session";
+import { resolvePropertyForUser } from "@/lib/property-resolver";
+import { getPool } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
-  if (!(await hasValidSession())) {
+  const userId = await getSessionUserId();
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const ownerId = await getOwnerUserId();
-  if (!ownerId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const supabase = getSupabaseServer();
-  if (!supabase) {
-    return NextResponse.json({ watchlist: [] }, { status: 200 });
   }
   const propertyId = request.nextUrl.searchParams.get("propertyId");
   if (!propertyId?.trim()) {
     return NextResponse.json({ error: "propertyId required" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
-    .from("index_watchlist")
-    .select("id, url, label, created_at")
-    .eq("owner_user_id", ownerId)
-    .eq("property_id", propertyId)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const resolved = await resolvePropertyForUser(userId, propertyId.trim());
+  if (!resolved) {
+    return NextResponse.json({ error: "Property not found" }, { status: 404 });
   }
-  return NextResponse.json({ watchlist: data ?? [] });
+
+  const res = await getPool().query<{
+    id: string;
+    url: string;
+    label: string | null;
+    created_at: string;
+  }>(
+    `SELECT id::text AS id, url, label, created_at::text
+     FROM index_watchlist
+     WHERE owner_user_id = $1
+       AND property_id = $2
+     ORDER BY created_at DESC`,
+    [userId, resolved.propertyId]
+  );
+
+  return NextResponse.json({ watchlist: res.rows ?? [] });
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await hasValidSession())) {
+  const userId = await getSessionUserId();
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const ownerId = await getOwnerUserId();
-  if (!ownerId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const supabase = getSupabaseServer();
-  if (!supabase) {
-    return NextResponse.json(
-      { error: "Watchlist not configured. Set Supabase env vars." },
-      { status: 503 }
-    );
   }
   let body: { propertyId: string; url: string; label?: string };
   try {
@@ -58,22 +51,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "propertyId and url required" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
-    .from("index_watchlist")
-    .insert({
-      owner_user_id: ownerId,
-      property_id: propertyId.trim(),
-      url: url.trim(),
-      label: label?.trim() || null,
-    })
-    .select("id, url, label, created_at")
-    .single();
+  const resolved = await resolvePropertyForUser(userId, propertyId.trim());
+  if (!resolved) {
+    return NextResponse.json({ error: "Property not found" }, { status: 404 });
+  }
 
-  if (error) {
-    if (error.code === "23505") {
+  try {
+    const insertRes = await getPool().query<{
+      id: string;
+      url: string;
+      label: string | null;
+      created_at: string;
+    }>(
+      `INSERT INTO index_watchlist (owner_user_id, property_id, url, label)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id::text AS id, url, label, created_at::text`,
+      [userId, resolved.propertyId, url.trim(), label?.trim() || null]
+    );
+    return NextResponse.json(insertRes.rows[0]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("duplicate key")) {
       return NextResponse.json({ error: "URL already in watchlist" }, { status: 409 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-  return NextResponse.json(data);
 }

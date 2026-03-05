@@ -437,11 +437,17 @@ export default function SiteDetailPage({
           queryCountChangePercent: undefined,
         }
       : null;
-    const daily = chartRows.map((d: { date: string; clicks: number; impressions: number }) => ({
+    const daily = chartRows.map((d: { date: string; clicks: number; impressions: number; position?: number; position_sum?: number }) => ({
       date: d.date,
       clicks: d.clicks,
       impressions: d.impressions,
       ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
+      position:
+        d.position != null
+          ? d.position
+          : d.impressions > 0 && d.position_sum != null
+            ? d.position_sum / d.impressions
+            : undefined,
     }));
     const queries = (queriesData as { query: string; clicks: number; impressions: number; avg_position?: number }[]).map((r) => ({
       key: r.query,
@@ -845,6 +851,7 @@ export default function SiteDetailPage({
                   )}
                   <div className="min-w-0">
                     <TrackedKeywordsSection
+                      propertyId={propertyId}
                       exportFilename={formatExportFilename(siteSlug, "keywords-tracked", startDate, endDate)}
                     />
                   </div>

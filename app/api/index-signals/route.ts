@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasValidSession, getOwnerUserId } from "@/lib/session";
-import { getSupabaseServer } from "@/lib/supabase";
+import { getSessionUserId } from "@/lib/session";
+import { resolvePropertyForUser } from "@/lib/property-resolver";
+import { getPool } from "@/lib/db";
 import { getSiteDetail, querySearchAnalytics } from "@/lib/gsc";
-import { decodePropertyId } from "@/types/gsc";
 
 export type IndexSignalRow = {
   id: string;
@@ -15,11 +15,8 @@ export type IndexSignalRow = {
 };
 
 export async function GET(request: NextRequest) {
-  if (!(await hasValidSession())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const ownerId = await getOwnerUserId();
-  if (!ownerId) {
+  const userId = await getSessionUserId();
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const propertyId = request.nextUrl.searchParams.get("propertyId");
@@ -27,17 +24,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "propertyId required" }, { status: 400 });
   }
 
-  const siteUrl = decodePropertyId(propertyId);
-  const supabase = getSupabaseServer();
-  let watchlist: { id: string; url: string; label: string | null }[] = [];
-  if (supabase) {
-    const { data } = await supabase
-      .from("index_watchlist")
-      .select("id, url, label")
-      .eq("owner_user_id", ownerId)
-      .eq("property_id", propertyId);
-    watchlist = data ?? [];
+  const resolved = await resolvePropertyForUser(userId, propertyId.trim());
+  if (!resolved) {
+    return NextResponse.json({ error: "Property not found" }, { status: 404 });
   }
+
+  const pool = getPool();
+  const propRes = await pool.query<{ site_url: string; gsc_site_url: string | null }>(
+    `SELECT site_url, gsc_site_url FROM properties WHERE id = $1 LIMIT 1`,
+    [resolved.propertyId]
+  );
+  const siteUrl = propRes.rows[0]?.gsc_site_url || propRes.rows[0]?.site_url || "";
+  const wlRes = await pool.query<{ id: string; url: string; label: string | null }>(
+    `SELECT id::text AS id, url, label
+     FROM index_watchlist
+     WHERE owner_user_id = $1
+       AND property_id = $2`,
+    [userId, resolved.propertyId]
+  );
+  const watchlist = wlRes.rows ?? [];
 
   const end = new Date();
   const start = new Date();

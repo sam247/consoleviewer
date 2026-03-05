@@ -108,7 +108,7 @@ export default function OnboardingSitesPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 p-4 md:p-6 max-w-2xl mx-auto w-full">
+      <main className="flex-1 p-4 md:p-6 max-w-[86rem] mx-auto w-full">
         <h1 className="text-xl font-semibold text-foreground">Connect Search Console</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Connect your Google account and choose which sites to import.
@@ -142,8 +142,8 @@ export default function OnboardingSitesPage() {
         )}
 
         {!loading && sites && sites.length > 0 && (
-          <div className="mt-6 rounded-lg border border-border bg-surface overflow-hidden">
-            <div className="border-b border-border px-4 py-3 flex items-center justify-between">
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-foreground">Select sites to import</span>
               <button
                 type="button"
@@ -153,28 +153,40 @@ export default function OnboardingSitesPage() {
                 Select all
               </button>
             </div>
-            <ul className="divide-y divide-border">
-              {sites.map((site) => (
-                <li key={site.siteUrl} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30">
-                  <input
-                    type="checkbox"
-                    id={site.siteUrl}
-                    checked={selected.has(site.siteUrl)}
-                    onChange={() => toggle(site.siteUrl)}
-                    className="rounded border-input"
-                  />
-                  <label htmlFor={site.siteUrl} className="flex-1 text-sm text-foreground cursor-pointer">
-                    {displaySiteUrl(site.siteUrl)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {sites.map((site) => {
+                const isSelected = selected.has(site.siteUrl);
+                return (
+                  <label
+                    key={site.siteUrl}
+                    className="flex flex-col rounded-lg border border-border bg-surface p-4 cursor-pointer hover:bg-muted/30 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background"
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggle(site.siteUrl)}
+                        className="mt-0.5 rounded border-input shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span
+                          className="text-sm font-medium text-foreground truncate block"
+                          title={site.siteUrl}
+                        >
+                          {displaySiteUrl(site.siteUrl)}
+                        </span>
+                        {site.permissionLevel && (
+                          <span className="text-[10px] text-muted-foreground uppercase mt-0.5 block">
+                            {site.permissionLevel.replace(/^site/, "")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </label>
-                  {site.permissionLevel && (
-                    <span className="text-[10px] text-muted-foreground uppercase">
-                      {site.permissionLevel.replace(/^site/, "")}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <div className="border-t border-border px-4 py-3 flex flex-col gap-2">
+                );
+              })}
+            </div>
+            <div className="mt-6 border-t border-border pt-4 flex flex-col gap-2">
               <p className="text-xs text-muted-foreground">
                 {selected.size} of {sites.length} selected. Only these sites will appear in Your sites; re-importing replaces your list.
               </p>

@@ -169,13 +169,13 @@ export function PerformanceTablesSection({
     try { localStorage.setItem(SEGMENTS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
   };
 
-  const countriesRows: DataTableRow[] = data.countries?.map((r) => ({
+  const _countriesRows: DataTableRow[] = data.countries?.map((r) => ({
     key: r.key,
     clicks: r.clicks,
     impressions: r.impressions,
     changePercent: r.changePercent,
   })) ?? [];
-  const devicesRows: DataTableRow[] = data.devices?.map((r) => ({
+  const _devicesRows: DataTableRow[] = data.devices?.map((r) => ({
     key: r.key,
     clicks: r.clicks,
     impressions: r.impressions,

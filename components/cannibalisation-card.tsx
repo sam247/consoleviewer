@@ -94,7 +94,7 @@ export function CannibalisationCard({
   return (
     <RowTableCard
       title="Cannibalisation"
-      subtitle={`${conflicts.length} conflicts`}
+      subtitle={`Queries ranking with multiple URLs competing for the same position · ${conflicts.length} conflicts`}
       footer={
         hasMoreRows ? (
           <button

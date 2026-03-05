@@ -13,12 +13,14 @@ export function OpportunitySection({
   siteSlug,
   startDate,
   endDate,
+  propertyId,
 }: {
   queriesRows: DataTableRow[];
   pagesRows: DataTableRow[];
   siteSlug: string;
   startDate: string;
   endDate: string;
+  propertyId?: string;
 }) {
   const [trendFilter, setTrendFilter] = useState<TrendFilter>("all");
 
@@ -38,6 +40,7 @@ export function OpportunitySection({
         pagesRows={pagesRows}
         trendFilter={trendFilter}
         onTrendFilterChange={setTrendFilter}
+        propertyId={propertyId}
       />
     </div>
   );

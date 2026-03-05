@@ -292,8 +292,9 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
       aria-label="Keywords tracked"
     >
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5 gap-2 flex-wrap shrink-0">
-        <div className="flex items-center gap-2 shrink-0 min-w-0">
+        <div className="shrink-0 min-w-0">
           <span className="font-semibold text-sm text-foreground flex items-center gap-1">Keywords tracked<InfoTooltip title="Rank-tracked keywords with position and trend" /></span>
+          <p className="text-xs text-muted-foreground mt-0.5">Daily rank tracking for your target keywords</p>
           {showConnectMessage && (
             <p className="text-xs text-destructive/80 mt-0.5">
               {serpData?.error ?? "Unable to load tracked keywords."}

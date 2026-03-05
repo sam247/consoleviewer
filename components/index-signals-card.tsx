@@ -138,12 +138,15 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
       <button
         type="button"
         onClick={toggle}
-        className="flex w-full items-center justify-between gap-2 py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded px-4 py-2.5"
+        className="flex w-full items-center justify-between gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded px-4 py-2.5"
         aria-expanded={expanded}
       >
-        <span className="text-sm font-semibold text-foreground">Index signals</span>
-        <span className="text-xs text-muted-foreground">
-          Watchlist: {summary.total} URLs · Warnings: {summary.warnings} · Stable: {summary.stable}
+        <div className="min-w-0">
+          <span className="text-sm font-semibold text-foreground block">Index signals</span>
+          <span className="text-xs text-muted-foreground block mt-0.5">Track important URLs for indexation health and impression changes</span>
+        </div>
+        <span className="text-xs text-muted-foreground shrink-0">
+          {summary.total} URLs · {summary.warnings} warnings · {summary.stable} stable
         </span>
         <svg
           className={cn("size-4 text-muted-foreground transition-transform duration-200 shrink-0", expanded && "rotate-180")}
@@ -156,9 +159,6 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
           <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      <p className="text-xs text-muted-foreground px-4 pb-2">
-        Based on Search Console and optional page checks.
-      </p>
       <div
         className={cn(
           "overflow-hidden transition-[max-height] duration-200 ease-out",
@@ -228,7 +228,7 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                                 </span>
                               )}
                             </td>
-                            <td className="py-2.5 px-4 text-muted-foreground">
+                            <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap">
                               {row.lastSeen ?? "No data in range"}
                             </td>
                             <td className="py-2.5 px-4 text-right tabular-nums">
@@ -245,24 +245,26 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                                 "—"
                               )}
                             </td>
-                            <td className="py-2.5 px-4 text-right">
-                              {siteUrl && (
-                                <a
-                                  href={`https://search.google.com/search-console?resource_id=${encodeURIComponent(siteUrl)}&page=${encodeURIComponent(row.url)}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-foreground underline hover:no-underline"
+                            <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                              <span className="inline-flex items-center gap-2">
+                                {siteUrl && (
+                                  <a
+                                    href={`https://search.google.com/search-console?resource_id=${encodeURIComponent(siteUrl)}&page=${encodeURIComponent(row.url)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-foreground underline hover:no-underline"
+                                  >
+                                    Open in GSC
+                                  </a>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => deleteMutation.mutate(row.id)}
+                                  className="text-xs text-muted-foreground hover:text-foreground"
                                 >
-                                  Open in GSC
-                                </a>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => deleteMutation.mutate(row.id)}
-                                className="ml-2 text-xs text-muted-foreground hover:text-foreground"
-                              >
-                                Remove
-                              </button>
+                                  Remove
+                                </button>
+                              </span>
                             </td>
                           </tr>
                         ))}

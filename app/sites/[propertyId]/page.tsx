@@ -101,7 +101,7 @@ export default function SiteDetailPage({
             </div>
           ) : (
             <div className={cn("space-y-4 transition-opacity duration-200", contentMounted ? "opacity-100" : "opacity-0")}>
-              <OverviewSection summary={data.summary} queryCounting={queryCounting} />
+              <OverviewSection summary={data.summary} queryCounting={queryCounting} endDate={endDate} />
 
               {data.daily.length > 0 && (
                 <TrendSection
@@ -151,6 +151,7 @@ export default function SiteDetailPage({
                 siteSlug={siteSlug}
                 startDate={startDate}
                 endDate={endDate}
+                propertyId={propertyId}
               />
 
               <IndexCannibalisationSection

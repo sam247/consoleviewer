@@ -73,7 +73,7 @@ export default function SharedViewPage({
   params: { token: string };
 }) {
   const token = params.token;
-  const [rangeKey] = useState<"7d" | "28d" | "30d" | "3m" | "6m" | "12m" | "16m" | "qtd">("28d");
+  const [rangeKey] = useState<import("@/types/gsc").DateRangeKey>("28d");
   const range = useMemo(() => getDateRange(rangeKey), [rangeKey]);
   const { startDate, endDate, priorStartDate, priorEndDate } = range;
 

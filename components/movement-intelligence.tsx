@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { DataTableRow, TrendFilter } from "@/components/data-table";
 import { cn } from "@/lib/utils";
 
@@ -23,16 +24,29 @@ function buildInsightSentence(
   return `${label} lost ${pct}% clicks${posInfo}.`;
 }
 
+async function fetchAiSummary(signals: { direction: string; sentence: string }[], propertyId?: string) {
+  const res = await fetch("/api/ai/movement-summary", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ signals, propertyId }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.summary as string | null;
+}
+
 export function MovementIntelligence({
   queriesRows,
   pagesRows,
   trendFilter,
   onTrendFilterChange,
+  propertyId,
 }: {
   queriesRows: DataTableRow[];
   pagesRows: DataTableRow[];
   trendFilter: TrendFilter;
   onTrendFilterChange: (t: TrendFilter) => void;
+  propertyId?: string;
 }) {
   const topGrowingQuery = useMemo(() => {
     return queriesRows
@@ -62,6 +76,16 @@ export function MovementIntelligence({
     topDecayingPage && { direction: "decaying" as const, sentence: buildInsightSentence("page", "decaying", topDecayingPage) },
   ].filter(Boolean) as { direction: "growing" | "decaying"; sentence: string }[];
 
+  const signalsKey = useMemo(() => signals.map((s) => s.sentence).join("|"), [signals]);
+
+  const { data: aiSummary, isLoading: aiLoading } = useQuery({
+    queryKey: ["ai-movement-summary", propertyId, signalsKey],
+    queryFn: () => fetchAiSummary(signals, propertyId),
+    enabled: signals.length > 0,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
   const boldMetrics = (sentence: string) => {
     const parts = sentence.split(/([+-]?\d+(?:\.\d+)?%|top \d+|pos \d+(?:\.\d+)?)/gi);
     return parts.map((part, i) =>
@@ -76,7 +100,10 @@ export function MovementIntelligence({
   return (
     <section aria-label="Movement intelligence" className="rounded-lg border border-border bg-surface overflow-hidden transition-colors duration-[120ms] hover:border-foreground/20">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <h2 className="text-sm font-semibold text-foreground">Movement intelligence</h2>
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Movement intelligence</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Top gaining and losing queries and pages over the selected period</p>
+        </div>
         <div className="flex gap-0.5 rounded-md border border-input bg-background p-0.5">
           {(["all", "growing", "decaying", "new", "lost"] as const).map((t) => (
             <button
@@ -111,9 +138,21 @@ export function MovementIntelligence({
 
       <div className="px-4 py-2.5 border-t border-border/40">
         <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 font-medium">AI summary</p>
-        <p className="text-sm text-muted-foreground/60 italic">
-          Detailed opportunity and trend summary will appear here. Coming soon.
-        </p>
+        {aiLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground/60">
+            <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <circle cx="12" cy="12" r="9" className="stroke-current opacity-25" strokeWidth="3" />
+              <path className="fill-current opacity-90" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3Z" />
+            </svg>
+            <span className="italic">Generating insight...</span>
+          </div>
+        ) : aiSummary ? (
+          <p className="text-sm text-foreground/80">{aiSummary}</p>
+        ) : (
+          <p className="text-sm text-muted-foreground/60 italic">
+            {signals.length === 0 ? "No movement signals to analyse." : "AI summary unavailable."}
+          </p>
+        )}
       </div>
     </section>
   );

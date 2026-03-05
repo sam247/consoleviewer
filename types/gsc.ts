@@ -19,7 +19,10 @@ export interface SearchAnalyticsResponse {
 }
 
 /** Date range preset for UI */
-export type DateRangeKey = "7d" | "28d" | "30d" | "3m" | "6m" | "12m" | "16m" | "qtd";
+export type DateRangeKey =
+  | "7d" | "28d" | "30d" | "3m" | "6m" | "12m" | "16m"
+  | "l90d" | "mtd" | "lm" | "qtd" | "lq" | "ytd" | "fy" | "lfy"
+  | "custom";
 
 /** Overview metrics for one site (aggregate + daily for sparkline) */
 export interface SiteOverviewMetrics {

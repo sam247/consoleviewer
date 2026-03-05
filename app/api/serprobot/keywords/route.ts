@@ -13,6 +13,28 @@ export type TrackedKeywordRow = {
   sparkData: number[];
 };
 
+const ACTION_UNSUPPORTED_RE = /(unknown|invalid).*(action)|action.*(unknown|invalid|not found)|not supported/i;
+
+async function trySerprobotActions(
+  actions: string[],
+  params: Record<string, string>
+): Promise<void> {
+  let lastError: unknown = null;
+  for (const action of actions) {
+    try {
+      await serprobotFetch(action, params);
+      return;
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (!ACTION_UNSUPPORTED_RE.test(message)) {
+        throw error;
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("SerpRobot action failed");
+}
+
 export async function GET(request: NextRequest) {
   if (!(await hasValidSession())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -107,7 +129,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No SerpRobot project found" }, { status: 400 });
   }
   try {
-    await serprobotFetch("add_keyword", { project_id: projectId, phrase });
+    await trySerprobotActions(
+      ["add_keyword", "keyword_add", "add_keywords"],
+      { project_id: projectId, phrase }
+    );
     return NextResponse.json({ ok: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : "SerpRobot request failed";
@@ -132,11 +157,17 @@ export async function DELETE(request: NextRequest) {
   }
   try {
     if (keywordId) {
-      await serprobotFetch("delete_keyword", { keyword_id: keywordId });
+      await trySerprobotActions(
+        ["delete_keyword", "keyword_delete", "remove_keyword"],
+        { keyword_id: keywordId }
+      );
     } else if (phrase) {
       const projectId = await resolveProjectId(null);
       if (!projectId) return NextResponse.json({ error: "No SerpRobot project found" }, { status: 400 });
-      await serprobotFetch("delete_keyword", { project_id: projectId, phrase });
+      await trySerprobotActions(
+        ["delete_keyword", "keyword_delete", "remove_keyword"],
+        { project_id: projectId, phrase }
+      );
     }
     return NextResponse.json({ ok: true });
   } catch (e) {

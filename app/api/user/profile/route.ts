@@ -8,18 +8,25 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const pool = getPool();
-  const res = await pool.query(
-    `SELECT display_name, email, avatar_url FROM user_profiles WHERE user_id = $1`,
-    [userId]
-  );
-
-  const row = res.rows[0];
-  return NextResponse.json({
-    displayName: row?.display_name ?? "",
-    email: row?.email ?? userId,
-    avatarUrl: row?.avatar_url ?? null,
-  });
+  try {
+    const pool = getPool();
+    const res = await pool.query(
+      `SELECT display_name, email, avatar_url FROM user_profiles WHERE user_id = $1`,
+      [userId]
+    );
+    const row = res.rows[0];
+    return NextResponse.json({
+      displayName: row?.display_name ?? "",
+      email: row?.email ?? userId,
+      avatarUrl: row?.avatar_url ?? null,
+    });
+  } catch {
+    return NextResponse.json({
+      displayName: "",
+      email: userId,
+      avatarUrl: null,
+    });
+  }
 }
 
 export async function PUT(req: NextRequest) {

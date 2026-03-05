@@ -7,7 +7,7 @@ import type { DateRangeKey } from "@/types/gsc";
 import { cn } from "@/lib/utils";
 
 export function DateRangeSelect() {
-  const { rangeKey, setRangeKey, customStart, customEnd, setCustomDates, startDate, endDate } = useDateRange();
+  const { rangeKey, setRangeKey, customStart, customEnd, setCustomDates } = useDateRange();
   const [open, setOpen] = useState(false);
   const [localStart, setLocalStart] = useState(customStart);
   const [localEnd, setLocalEnd] = useState(customEnd);

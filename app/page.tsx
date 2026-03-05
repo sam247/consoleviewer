@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
@@ -157,18 +158,13 @@ export default function OverviewPage() {
       <main className="flex-1 p-4 md:p-6">
         <div className="mx-auto max-w-[86rem]">
         {gscStatus && !gscStatus.gscConnected && (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-            <p className="font-medium">Connect Google Search Console</p>
-            <p className="mt-1 text-muted-foreground">
-              You’re seeing sample data. Sign in with Google to load your sites.
-            </p>
-            <a
-              href="/api/auth/google"
-              className="mt-2 inline-block rounded-md bg-foreground px-3 py-1.5 text-sm text-background hover:opacity-90"
-            >
-              Sign in with Google
-            </a>
-          </div>
+          <p className="mb-4 text-sm text-muted-foreground">
+            You’re seeing sample data.{" "}
+            <Link href="/settings" className="text-foreground underline hover:no-underline">
+              Connect Google Search Console in Settings
+            </Link>{" "}
+            to load your sites.
+          </p>
         )}
         {error && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200 flex flex-wrap items-center justify-between gap-2">

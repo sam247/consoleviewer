@@ -258,11 +258,11 @@ export function TrendChart({
     const pairs: { metric: SparkSeriesKey; engine: SearchEngine; dataKey: string; label: string; stroke: string; strokeDasharray?: string; strokeWidth: number }[] = [];
     for (const s of visibleSeries) {
       for (const engine of selectedEngines) {
-        const dataKey = `${s.dataKey}_${engine}` as keyof SparklineDataPoint;
+        const dataKey = `${s.dataKey}_${engine}`;
         pairs.push({
           metric: s.key,
           engine,
-          dataKey: `${s.dataKey}_${engine}`,
+          dataKey,
           label: `${s.label} (${engine === "google" ? "Google" : "Bing"})`,
           stroke: ENGINE_COLORS[engine],
           ...METRIC_STYLE[s.key],

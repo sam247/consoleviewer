@@ -31,7 +31,7 @@ export function EngineSelector({
         const next = selectedEngines.filter((e) => e !== engine);
         onChange(next.length > 0 ? next : ["google"]);
       } else {
-        onChange([...selectedEngines, engine].sort((a, b) => (a === "google" ? -1 : 1)));
+        onChange([...selectedEngines, engine].sort((a, _b) => (a === "google" ? -1 : 1)));
       }
     },
     [onChange, selectedEngines]

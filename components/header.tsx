@@ -9,7 +9,6 @@ import { ShareModal } from "./share-modal";
 import { SparkToggles } from "./spark-toggles";
 import { ThemeToggle } from "./theme-toggle";
 import { AiHeaderButton } from "./ai-feature-card";
-import { HeaderIntegrations } from "./header-integrations";
 
 interface HeaderProps {
   searchValue?: string;
@@ -57,7 +56,6 @@ export function Header({
               )}
             </div>
             <div className="flex shrink-0 items-center gap-2 md:gap-3 min-h-9 h-9">
-              <HeaderIntegrations />
               {sortSelect}
               {filterSelect}
               {showShare && (

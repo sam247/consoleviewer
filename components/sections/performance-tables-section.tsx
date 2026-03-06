@@ -16,6 +16,7 @@ import { exportToCsv, formatExportFilename } from "@/lib/export-csv";
 import type { PropertyData } from "@/hooks/use-property-data";
 import { formatNum } from "@/hooks/use-property-data";
 import { PageDetailPanel } from "@/components/page-detail-panel";
+import { useEngineSelectionOptional } from "@/contexts/engine-selection-context";
 
 type SavedSegment = { id: string; name: string; pattern: string };
 const SEGMENTS_KEY = "consoleview_content_segments";
@@ -52,6 +53,31 @@ export function PerformanceTablesSection({
   const [contentFilterExclude, setContentFilterExclude] = useState(false);
   const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
   const [contentGroupsFullViewOpen, setContentGroupsFullViewOpen] = useState(false);
+  const engineSelection = useEngineSelectionOptional();
+  const selectedEngines = engineSelection?.selectedEngines ?? ["google"];
+
+  const applyEngineSelectionToRow = (r: DataTableRow): DataTableRow => {
+    const hasGoogle = selectedEngines.includes("google");
+    const hasBing = selectedEngines.includes("bing");
+    if (hasGoogle && hasBing) return r;
+    if (hasGoogle && !hasBing) {
+      return {
+        ...r,
+        clicksBing: undefined,
+        impressionsBing: undefined,
+        positionBing: undefined,
+      };
+    }
+    return {
+      ...r,
+      clicks: r.clicksBing ?? 0,
+      impressions: r.impressionsBing ?? 0,
+      position: r.positionBing,
+      clicksGoogle: undefined,
+      impressionsGoogle: undefined,
+      positionGoogle: undefined,
+    };
+  };
 
   useEffect(() => {
     try {
@@ -88,17 +114,18 @@ export function PerformanceTablesSection({
 
   const queriesRowsForTable = useMemo(() => {
     let rows = queriesTrendFilter === "new" ? newQueriesRows : queriesTrendFilter === "lost" ? lostQueriesRows : queriesRows;
+    rows = rows.map(applyEngineSelectionToRow);
     if (bandFilter) {
       rows = rows.filter((r) => r.position != null && r.position >= bandFilter.min && r.position <= bandFilter.max);
     }
     return rows;
-  }, [queriesTrendFilter, queriesRows, newQueriesRows, lostQueriesRows, bandFilter]);
+  }, [queriesTrendFilter, queriesRows, newQueriesRows, lostQueriesRows, bandFilter, selectedEngines]);
 
   const pagesRowsForTable = useMemo(() => {
-    if (pagesTrendFilter === "new") return newPagesRows;
-    if (pagesTrendFilter === "lost") return lostPagesRows;
-    return pagesRows;
-  }, [pagesTrendFilter, pagesRows, newPagesRows, lostPagesRows]);
+    if (pagesTrendFilter === "new") return newPagesRows.map(applyEngineSelectionToRow);
+    if (pagesTrendFilter === "lost") return lostPagesRows.map(applyEngineSelectionToRow);
+    return pagesRows.map(applyEngineSelectionToRow);
+  }, [pagesTrendFilter, pagesRows, newPagesRows, lostPagesRows, selectedEngines]);
 
   const contentGroupsFilteredPages = useMemo(() => {
     const raw = contentFilterPattern.trim();

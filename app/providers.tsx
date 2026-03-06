@@ -3,7 +3,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { DateRangeProvider } from "@/contexts/date-range-context";
-import { EngineSelectionProvider } from "@/contexts/engine-selection-context";
 import { HiddenProjectsProvider } from "@/contexts/hidden-projects-context";
 import { PinnedProjectsProvider } from "@/contexts/pinned-projects-context";
 import { SparkSeriesProvider } from "@/contexts/spark-series-context";
@@ -27,11 +26,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider>
         <DateRangeProvider>
           <HiddenProjectsProvider>
-<PinnedProjectsProvider>
-            <EngineSelectionProvider>
+            <PinnedProjectsProvider>
               <SparkSeriesProvider>{children}</SparkSeriesProvider>
-            </EngineSelectionProvider>
-          </PinnedProjectsProvider>
+            </PinnedProjectsProvider>
           </HiddenProjectsProvider>
         </DateRangeProvider>
       </ThemeProvider>

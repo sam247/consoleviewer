@@ -11,7 +11,6 @@ import { useDateRange } from "@/contexts/date-range-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
 import { useSparkSeries } from "@/contexts/spark-series-context";
-import { useEngineSelectionOptional } from "@/contexts/engine-selection-context";
 import { cn } from "@/lib/utils";
 
 interface SiteCardProps {
@@ -93,16 +92,15 @@ const PositionIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-function SiteCardEnginesLabel() {
-  const ctx = useEngineSelectionOptional();
-  if (!ctx?.selectedEngines?.length) return <p className="text-[10px] text-muted-foreground mt-1">Search engines: Google</p>;
-  const label =
-    ctx.selectedEngines.length === 2
-      ? "Search engines: Google + Bing"
-      : ctx.selectedEngines[0] === "google"
-        ? "Search engines: Google"
-        : "Search engines: Bing";
-  return <p className="text-[10px] text-muted-foreground mt-1">{label}</p>;
+function SiteCardSourceBadges({ bingConnected }: { bingConnected?: boolean }) {
+  return (
+    <div className="mt-1 flex items-center gap-1.5">
+      <span className="inline-flex items-center rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">G</span>
+      {bingConnected && (
+        <span className="inline-flex items-center rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">B</span>
+      )}
+    </div>
+  );
 }
 
 function CardMetricsRow({ metrics }: { metrics: SiteOverviewMetrics }) {
@@ -365,7 +363,7 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
             ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
           }))}
         />
-        <SiteCardEnginesLabel />
+        <SiteCardSourceBadges bingConnected={metrics.bingConnected} />
       </div>
 
       {/* Footer: 3-line structure (daily summary, GSC avg rank, tracked keyword rank or Add keywords +) */}

@@ -37,6 +37,7 @@ function loadSeries(): SparkSeriesState {
 type SparkSeriesContextValue = {
   series: SparkSeriesState;
   toggle: (key: SparkSeriesKey) => void;
+  setSeries: (next: SparkSeriesState) => void;
 };
 
 const SparkSeriesContext = createContext<SparkSeriesContextValue | null>(null);
@@ -52,9 +53,14 @@ export function SparkSeriesProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setSeriesState = useCallback((next: SparkSeriesState) => {
+    setSeries(next);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+  }, []);
+
   const value = useMemo(
-    () => ({ series, toggle }),
-    [series, toggle]
+    () => ({ series, toggle, setSeries: setSeriesState }),
+    [series, toggle, setSeriesState]
   );
 
   return (

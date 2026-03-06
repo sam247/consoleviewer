@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { TrendChart } from "@/components/trend-chart";
 import { SparkToggles } from "@/components/spark-toggles";
 import { EngineSelector } from "@/components/engine-selector";
@@ -13,9 +12,11 @@ import type { DataTableRow } from "@/components/data-table";
 import type { PropertyData, DailyRow } from "@/hooks/use-property-data";
 import { useDateRange } from "@/contexts/date-range-context";
 import { useEngineSelection } from "@/contexts/engine-selection-context";
+import { useSparkSeries } from "@/contexts/spark-series-context";
 import type { DateRangeKey } from "@/types/gsc";
 import type { SearchEngine } from "@/contexts/engine-selection-context";
 import { CHART_CARD_MIN_H, CHART_PLOT_H } from "@/components/ui/chart-frame";
+import { applySeriesBudget } from "@/lib/analysis-series-budget";
 
 export function TrendSection({
   data,
@@ -74,27 +75,69 @@ export function TrendSection({
   const trendChartContainerRef = useRef<HTMLDivElement>(null);
   const trendExportMenuRef = useRef<HTMLDivElement>(null);
   const [trendExportMenuOpen, setTrendExportMenuOpen] = useState(false);
+  const [budgetMessage, setBudgetMessage] = useState<string | null>(null);
 
-  const { data: authStatus } = useQuery({
-    queryKey: ["authStatus"],
-    queryFn: async () => {
-      const res = await fetch("/api/auth/status", { credentials: "include" });
-      if (!res.ok) return { gscConnected: false, bingConnected: false };
-      return res.json() as Promise<{ gscConnected: boolean; bingConnected: boolean }>;
-    },
-  });
   const availableEngines = useMemo((): SearchEngine[] => {
-    const bingConnected = authStatus?.bingConnected ?? false;
-    return bingConnected ? ["google", "bing"] : ["google"];
-  }, [authStatus?.bingConnected]);
+    if (!data.engineAvailability?.bingConnected) return ["google"];
+    return ["google", "bing"];
+  }, [data.engineAvailability?.bingConnected]);
+  const disabledEngines = useMemo((): SearchEngine[] => {
+    if (!data.engineAvailability?.bingConnected) return [];
+    return data.engineAvailability?.bingAnalyticsReady ? [] : ["bing"];
+  }, [data.engineAvailability?.bingAnalyticsReady, data.engineAvailability?.bingConnected]);
+  const disabledReasonByEngine = useMemo(
+    () => ({
+      bing: "Bing connected. Analytics data not available yet.",
+    }),
+    []
+  );
 
   const { selectedEngines, setSelectedEngines } = useEngineSelection();
+  const { series, setSeries } = useSparkSeries();
+  const selectedMetrics = useMemo(
+    () =>
+      (Object.entries(series)
+        .filter(([, enabled]) => enabled)
+        .map(([k]) => k) as ("clicks" | "impressions" | "ctr" | "position")[]),
+    [series]
+  );
+  const effectiveSelectedEngines = useMemo((): SearchEngine[] => {
+    const allowed = selectedEngines.filter((e) => availableEngines.includes(e) && !disabledEngines.includes(e));
+    return allowed.length > 0 ? allowed : (["google"] as SearchEngine[]);
+  }, [availableEngines, selectedEngines, disabledEngines]);
+
+  const budget = useMemo(
+    () =>
+      applySeriesBudget({
+        selectedSources: effectiveSelectedEngines,
+        selectedMetrics,
+        currentSeriesState: series,
+      }),
+    [effectiveSelectedEngines, selectedMetrics, series]
+  );
+
+  useEffect(() => {
+    if (effectiveSelectedEngines.join("|") !== selectedEngines.join("|")) {
+      setSelectedEngines(effectiveSelectedEngines);
+    }
+  }, [effectiveSelectedEngines, selectedEngines, setSelectedEngines]);
+
+  useEffect(() => {
+    const current = JSON.stringify(series);
+    const next = JSON.stringify(budget.nextSeriesState);
+    if (budget.wasAutoTrimmed && current !== next) {
+      setSeries(budget.nextSeriesState);
+      setBudgetMessage(budget.helperMessage);
+      return;
+    }
+    if (!budget.wasAutoTrimmed) setBudgetMessage(null);
+  }, [budget.helperMessage, budget.nextSeriesState, budget.wasAutoTrimmed, series, setSeries]);
 
   const enginesLabel = useMemo(() => {
-    if (selectedEngines.length === 0) return "Search engines: Google";
-    if (selectedEngines.length === 2) return "Search engines: Google + Bing";
-    return selectedEngines[0] === "google" ? "Search engines: Google" : "Search engines: Bing";
-  }, [selectedEngines]);
+    if (effectiveSelectedEngines.length === 0) return "Source: Google";
+    if (effectiveSelectedEngines.length === 2) return "Source: Google + Bing";
+    return effectiveSelectedEngines[0] === "google" ? "Source: Google" : "Source: Bing";
+  }, [effectiveSelectedEngines]);
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -123,7 +166,7 @@ export function TrendSection({
           <div className="px-4 py-2 flex items-center justify-between gap-4 flex-wrap border-b border-border">
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-1">
               Performance over time
-              <InfoTooltip title="Clicks and impressions from Google Search Console for the selected date range" />
+              <InfoTooltip title="Search performance by selected source and metric for the current date range" />
             </h2>
             <div className="flex items-center gap-3 flex-wrap">
               <div className="relative" ref={trendExportMenuRef}>
@@ -186,8 +229,10 @@ export function TrendSection({
               </label>
               <SparkToggles />
               <EngineSelector
-                selectedEngines={selectedEngines}
+                selectedEngines={effectiveSelectedEngines}
                 availableEngines={availableEngines}
+                disabledEngines={disabledEngines}
+                disabledReasonByEngine={disabledReasonByEngine}
                 onChange={setSelectedEngines}
                 label="Search engine:"
               />
@@ -274,7 +319,10 @@ export function TrendSection({
             </div>
           )}
           <div ref={trendChartContainerRef} className="flex-1 min-h-0 px-4 pb-3 pt-2 flex flex-col">
-            {data.daily.length === 0 ? (
+            {budgetMessage && (
+              <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">{budgetMessage}</p>
+            )}
+            {data.daily.length === 0 && (!data.bingDaily || data.bingDaily.length === 0) ? (
               <div className="flex-1 flex items-center justify-center min-h-[200px] text-sm text-muted-foreground">
                 No data for this period yet. Data syncs nightly from Search Console.
               </div>
@@ -282,6 +330,13 @@ export function TrendSection({
               <>
                 <TrendChart
                   data={data.daily}
+                  analyticsSeries={data.series}
+                  dataByEngine={
+                    data.bingDaily && data.bingDaily.length > 0
+                      ? { google: data.daily, bing: data.bingDaily }
+                      : undefined
+                  }
+                  selectedEngines={budget.effectiveSources}
                   priorData={data.priorDaily}
                   height={CHART_PLOT_H.primary}
                   showImpressions

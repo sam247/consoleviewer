@@ -101,8 +101,8 @@ export async function getOverviewMetricsFromDb(
   const { teamId, startDate, endDate, priorStartDate, priorEndDate } = params;
   const pool = getPool();
 
-  const propsRes = await pool.query<{ id: string; site_url: string; gsc_site_url: string | null }>(
-    `SELECT id, site_url, gsc_site_url FROM properties WHERE team_id = $1 AND active = true ORDER BY site_url`,
+  const propsRes = await pool.query<{ id: string; site_url: string; gsc_site_url: string | null; bing_site_url: string | null }>(
+    `SELECT id, site_url, gsc_site_url, bing_site_url FROM properties WHERE team_id = $1 AND active = true ORDER BY site_url`,
     [teamId]
   );
   const properties = propsRes.rows;
@@ -135,6 +135,7 @@ export async function getOverviewMetricsFromDb(
       impressions: 0,
       clicksChangePercent: 0,
       impressionsChangePercent: 0,
+      bingConnected: !!p.bing_site_url,
       daily: [],
     }));
   }
@@ -151,7 +152,7 @@ export async function getOverviewMetricsFromDb(
 }
 
 async function fetchFromGscApi(
-  properties: { id: string; site_url: string; gsc_site_url: string | null }[],
+  properties: { id: string; site_url: string; gsc_site_url: string | null; bing_site_url: string | null }[],
   token: string,
   startDate: string,
   endDate: string,
@@ -199,6 +200,7 @@ async function fetchFromGscApi(
         trackedKeywordCount: trackedKeywordStatsByProperty.get(prop.id)?.trackedKeywordCount ?? 0,
         avgTrackedRank: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRank,
         avgTrackedRankDelta: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRankDelta,
+        bingConnected: !!prop.bing_site_url,
         daily,
       });
     } catch {
@@ -211,6 +213,7 @@ async function fetchFromGscApi(
         trackedKeywordCount: trackedKeywordStatsByProperty.get(prop.id)?.trackedKeywordCount ?? 0,
         avgTrackedRank: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRank,
         avgTrackedRankDelta: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRankDelta,
+        bingConnected: !!prop.bing_site_url,
         daily: [],
       });
     }
@@ -220,7 +223,7 @@ async function fetchFromGscApi(
 
 async function fetchFromDb(
   pool: ReturnType<typeof getPool>,
-  properties: { id: string; site_url: string; gsc_site_url: string | null }[],
+  properties: { id: string; site_url: string; gsc_site_url: string | null; bing_site_url: string | null }[],
   params: OverviewParams,
   trackedKeywordStatsByProperty: Map<string, TrackedKeywordStats>
 ): Promise<SiteOverviewMetrics[]> {
@@ -295,6 +298,7 @@ async function fetchFromDb(
       trackedKeywordCount: trackedKeywordStatsByProperty.get(prop.id)?.trackedKeywordCount ?? 0,
       avgTrackedRank: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRank,
       avgTrackedRankDelta: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRankDelta,
+      bingConnected: !!prop.bing_site_url,
       daily,
     });
   }

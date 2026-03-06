@@ -40,6 +40,7 @@ export interface SiteOverviewMetrics {
   avgTrackedRank?: number;
   avgTrackedRankDelta?: number;
   trackedKeywordCount?: number;
+  bingConnected?: boolean;
   daily: { date: string; clicks: number; impressions: number; position?: number }[];
 }
 

@@ -8,6 +8,7 @@ import { QueryFootprint, type BandFilter } from "@/components/query-footprint";
 import { AiQuerySignalsCard } from "@/components/ai-query-signals-card";
 import { SignalStrip } from "@/components/signal-strip";
 import { usePropertyData } from "@/hooks/use-property-data";
+import { EngineSelectionProvider } from "@/contexts/engine-selection-context";
 import { cn } from "@/lib/utils";
 
 import { OverviewSection } from "@/components/sections/overview-section";
@@ -57,25 +58,28 @@ export default function SiteDetailPage({
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Header shareScope="project" shareScopeId={propertyId} />
-        <main className="flex-1 p-4 md:p-6">
-          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
-            {error instanceof Error ? error.message : "Something went wrong"}
-          </div>
-          <Link href="/" className="text-sm text-foreground underline mt-2 inline-block">
-            Back to overview
-          </Link>
-        </main>
-      </div>
+      <EngineSelectionProvider>
+        <div className="min-h-screen flex flex-col">
+          <Header shareScope="project" shareScopeId={propertyId} />
+          <main className="flex-1 p-4 md:p-6">
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
+              {error instanceof Error ? error.message : "Something went wrong"}
+            </div>
+            <Link href="/" className="text-sm text-foreground underline mt-2 inline-block">
+              Back to overview
+            </Link>
+          </main>
+        </div>
+      </EngineSelectionProvider>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header shareScope="project" shareScopeId={propertyId} />
-      <main className="flex-1 p-4 md:p-6">
-        <div className="mx-auto max-w-[86rem]">
+    <EngineSelectionProvider>
+      <div className="min-h-screen flex flex-col">
+        <Header shareScope="project" shareScopeId={propertyId} />
+        <main className="flex-1 p-4 md:p-6">
+          <div className="mx-auto max-w-[86rem]">
           <div className="mb-4">
             <Link
               href="/"
@@ -116,7 +120,7 @@ export default function SiteDetailPage({
                 dateKey={`${startDate}:${endDate}`}
               />
 
-              {data.daily.length > 0 && (
+              {(data.daily.length > 0 || (data.bingDaily?.length ?? 0) > 0) && (
                 <TrendSection
                   data={data}
                   queriesRows={queriesRows}
@@ -204,8 +208,9 @@ export default function SiteDetailPage({
               />
             </div>
           )}
-        </div>
-      </main>
-    </div>
+          </div>
+        </main>
+      </div>
+    </EngineSelectionProvider>
   );
 }

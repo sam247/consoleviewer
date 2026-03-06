@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { useSparkSeries, type SparkSeriesKey } from "@/contexts/spark-series-context";
+import type { AnalyticsSeries } from "@/lib/analytics-series-normalize";
 import { ChartPlot } from "@/components/ui/chart-plot";
 import {
   CHART_AXIS_TICK,
@@ -50,6 +51,7 @@ export type SearchEngine = "google" | "bing";
 interface TrendChartProps {
   data: DataPoint[];
   priorData?: DataPoint[];
+  analyticsSeries?: AnalyticsSeries[];
   /** When provided with selectedEngines, chart renders per-engine series (metric = line style, engine = colour). */
   dataByEngine?: { google: DataPoint[]; bing?: DataPoint[] };
   selectedEngines?: SearchEngine[];
@@ -201,9 +203,38 @@ function buildMergedDataByEngine(
   });
 }
 
+function buildMergedDataFromSeries(
+  series: AnalyticsSeries[],
+  selectedEngines: SearchEngine[]
+): Record<string, string | number>[] {
+  const dateSet = new Set<string>();
+  const keyed = new Map<string, number | null>();
+  for (const s of series) {
+    if (!selectedEngines.includes(s.source)) continue;
+    for (const p of s.values) {
+      dateSet.add(p.date);
+      keyed.set(`${p.date}:${s.metric}_${s.source}`, p.value);
+    }
+  }
+  return Array.from(dateSet)
+    .sort()
+    .map((date) => {
+      const row: Record<string, string | number> = { date };
+      for (const source of selectedEngines) {
+        for (const metric of ["clicks", "impressions", "ctr", "position"] as const) {
+          const key = `${date}:${metric}_${source}`;
+          const value = keyed.get(key);
+          if (value != null) row[`${metric}_${source}`] = value;
+        }
+      }
+      return row;
+    });
+}
+
 export function TrendChart({
   data,
   priorData,
+  analyticsSeries,
   dataByEngine,
   selectedEngines = ["google"],
   height = CHART_PLOT_H.secondary,
@@ -217,13 +248,15 @@ export function TrendChart({
 }: TrendChartProps) {
   const { series } = useSparkSeries();
   const chartMargin = buildChartMargin(height, marginOverride);
-  const usePerEngine = dataByEngine != null && selectedEngines.length > 0;
+  const usePerEngine = (analyticsSeries != null || dataByEngine != null) && selectedEngines.length > 0;
   const mergedDataByEngine = useMemo(
-    () =>
-      dataByEngine && selectedEngines.length
-        ? buildMergedDataByEngine(dataByEngine, selectedEngines)
-        : [],
-    [dataByEngine, selectedEngines]
+    () => {
+      if (!selectedEngines.length) return [];
+      if (analyticsSeries && analyticsSeries.length) return buildMergedDataFromSeries(analyticsSeries, selectedEngines);
+      if (dataByEngine) return buildMergedDataByEngine(dataByEngine, selectedEngines);
+      return [];
+    },
+    [dataByEngine, selectedEngines, analyticsSeries]
   );
   const dateTickFormatter = useMemo(
     () =>

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { DataTableRow } from "@/components/data-table";
 import { useDateRange } from "@/contexts/date-range-context";
 import { decodePropertyId } from "@/types/gsc";
+import { normalizeDailyToSeries, type AnalyticsSeries } from "@/lib/analytics-series-normalize";
 
 type SiteDetailResponse = {
   siteUrl: string;
@@ -37,6 +38,19 @@ type SiteDetailResponse = {
     nonBrandedChangePercent?: number;
   };
   brandedDaily?: { date: string; brandedClicks: number; nonBrandedClicks: number }[];
+};
+
+type BingDetailResponse = {
+  connected: boolean;
+  analyticsReady: boolean;
+  daily: { date: string; clicks: number; impressions: number; ctr?: number; position?: number }[];
+  queries: { key: string; clicks: number; impressions: number; changePercent?: number; position?: number }[];
+  pages: { key: string; clicks: number; impressions: number; changePercent?: number; position?: number }[];
+};
+
+type EngineAvailabilityResponse = {
+  google: { connected: boolean; analyticsReady: boolean };
+  bing: { connected: boolean; mapped?: boolean; analyticsReady: boolean };
 };
 
 async function fetchDetail(
@@ -76,6 +90,35 @@ async function fetchCannibalisation(propertyId: string) {
   const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/cannibalisation`);
   if (!res.ok) throw new Error("Failed to fetch cannibalisation");
   return res.json();
+}
+
+async function fetchBingDetail(
+  propertyId: string,
+  startDate: string,
+  endDate: string
+): Promise<BingDetailResponse> {
+  const params = new URLSearchParams({ startDate, endDate });
+  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/bing/detail?${params}`);
+  if (!res.ok) {
+    return { connected: false, analyticsReady: false, daily: [], queries: [], pages: [] };
+  }
+  return res.json() as Promise<BingDetailResponse>;
+}
+
+async function fetchEngineAvailability(
+  propertyId: string,
+  startDate: string,
+  endDate: string
+): Promise<EngineAvailabilityResponse> {
+  const params = new URLSearchParams({ startDate, endDate });
+  const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/engine-availability?${params}`);
+  if (!res.ok) {
+    return {
+      google: { connected: true, analyticsReady: true },
+      bing: { connected: false, mapped: false, analyticsReady: false },
+    };
+  }
+  return res.json() as Promise<EngineAvailabilityResponse>;
 }
 
 async function fetchQuerySparklines(
@@ -156,6 +199,13 @@ export type PropertyData = {
   brandedDaily: { date: string; brandedClicks: number; nonBrandedClicks: number }[];
   snapshotTop3?: number;
   snapshotTop10?: number;
+  bingDaily?: DailyRow[];
+  series?: AnalyticsSeries[];
+  engineAvailability?: {
+    bingConnected: boolean;
+    bingMapped: boolean;
+    bingAnalyticsReady: boolean;
+  };
 };
 
 export type QueryCountingDailyRow = {
@@ -181,6 +231,16 @@ export function usePropertyData(propertyId: string) {
   } = useQuery({
     queryKey: ["detail", propertyId, startDate, endDate, priorStartDate, priorEndDate],
     queryFn: () => fetchDetail(propertyId, startDate, endDate, priorStartDate, priorEndDate),
+  });
+
+  const { data: bingDetail } = useQuery({
+    queryKey: ["bing-detail", propertyId, startDate, endDate],
+    queryFn: () => fetchBingDetail(propertyId, startDate, endDate),
+  });
+
+  const { data: engineAvailability } = useQuery({
+    queryKey: ["engine-availability", propertyId, startDate, endDate],
+    queryFn: () => fetchEngineAvailability(propertyId, startDate, endDate),
   });
 
   useQuery({
@@ -316,8 +376,26 @@ export function usePropertyData(propertyId: string) {
       ctr: d.ctr ?? (d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0),
       position: d.position,
     }));
-    const queries: DataTableRow[] = (detailData.queries ?? []).map(toDataTableRow);
-    const pages: DataTableRow[] = (detailData.pages ?? []).map(toDataTableRow);
+    const bingQueryMap = new Map((bingDetail?.queries ?? []).map((r) => [r.key, r]));
+    const bingPageMap = new Map((bingDetail?.pages ?? []).map((r) => [r.key, r]));
+    const queries: DataTableRow[] = (detailData.queries ?? []).map((r) => ({
+      ...toDataTableRow(r),
+      clicksGoogle: r.clicks,
+      impressionsGoogle: r.impressions,
+      positionGoogle: r.position,
+      clicksBing: bingQueryMap.get(r.key)?.clicks,
+      impressionsBing: bingQueryMap.get(r.key)?.impressions,
+      positionBing: bingQueryMap.get(r.key)?.position,
+    }));
+    const pages: DataTableRow[] = (detailData.pages ?? []).map((r) => ({
+      ...toDataTableRow(r),
+      clicksGoogle: r.clicks,
+      impressionsGoogle: r.impressions,
+      positionGoogle: r.position,
+      clicksBing: bingPageMap.get(r.key)?.clicks,
+      impressionsBing: bingPageMap.get(r.key)?.impressions,
+      positionBing: bingPageMap.get(r.key)?.position,
+    }));
     const countries: DataTableRow[] = (detailData.countries ?? []).map((r) => ({
       key: r.key,
       clicks: r.clicks,
@@ -354,6 +432,33 @@ export function usePropertyData(propertyId: string) {
       : { brandedClicks: 0, nonBrandedClicks: 0, brandedChangePercent: 0, nonBrandedChangePercent: 0 };
     const snapshotTop3 = queries.filter((r) => r.position != null && r.position <= 3).length;
     const snapshotTop10 = queries.filter((r) => r.position != null && r.position <= 10).length;
+    const bingDaily: DailyRow[] = (bingDetail?.daily ?? []).map((d) => ({
+      date: d.date,
+      clicks: d.clicks,
+      impressions: d.impressions,
+      ctr: d.ctr ?? (d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0),
+      position: d.position,
+    }));
+
+    const metricKeys: ("clicks" | "impressions" | "ctr" | "position")[] = [
+      "clicks",
+      "impressions",
+      "ctr",
+      "position",
+    ];
+    const googleSeries = normalizeDailyToSeries({
+      source: "google",
+      daily,
+      metrics: metricKeys,
+    });
+    const bingSeries = bingDaily.length
+      ? normalizeDailyToSeries({
+          source: "bing",
+          daily: bingDaily,
+          metrics: metricKeys,
+        })
+      : [];
+
     return {
       siteUrl: detailData.siteUrl,
       summary,
@@ -371,8 +476,16 @@ export function usePropertyData(propertyId: string) {
       brandedDaily: detailData.brandedDaily ?? [],
       snapshotTop3,
       snapshotTop10,
+      bingDaily,
+      series: [...googleSeries, ...bingSeries],
+      engineAvailability: {
+        bingConnected: engineAvailability?.bing.connected ?? false,
+        bingMapped: engineAvailability?.bing.mapped ?? false,
+        bingAnalyticsReady:
+          (engineAvailability?.bing.analyticsReady ?? false) || (bingDetail?.analyticsReady ?? false),
+      },
     };
-  }, [detailData, siteUrl]);
+  }, [detailData, siteUrl, bingDetail, engineAvailability]);
 
   const queriesRows = useMemo<DataTableRow[]>(() => data.queries, [data.queries]);
   const pagesRows = useMemo<DataTableRow[]>(() => data.pages, [data.pages]);

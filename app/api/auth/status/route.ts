@@ -9,11 +9,12 @@ export async function GET() {
     const validSession = userId ? true : await hasValidSession();
 
     if (!userId && !validSession) {
-      return NextResponse.json({ signedIn: false, gscConnected: false, avatarUrl: null });
+      return NextResponse.json({ signedIn: false, gscConnected: false, bingConnected: false, avatarUrl: null });
     }
 
     const pool = getPool();
     let gscConnected = false;
+    let bingConnected = false;
     let avatarUrl: string | null = null;
 
     if (userId) {
@@ -24,6 +25,15 @@ export async function GET() {
           [teamId]
         );
         gscConnected = (gscRes.rowCount ?? 0) > 0;
+        try {
+          const bingRes = await pool.query(
+            `SELECT 1 FROM team_bing_tokens WHERE team_id = $1`,
+            [teamId]
+          );
+          bingConnected = (bingRes.rowCount ?? 0) > 0;
+        } catch {
+          // team_bing_tokens may not exist yet
+        }
       }
 
       try {
@@ -37,8 +47,8 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ signedIn: true, gscConnected, avatarUrl });
+    return NextResponse.json({ signedIn: true, gscConnected, bingConnected, avatarUrl });
   } catch {
-    return NextResponse.json({ signedIn: false, gscConnected: false, avatarUrl: null });
+    return NextResponse.json({ signedIn: false, gscConnected: false, bingConnected: false, avatarUrl: null });
   }
 }

@@ -67,8 +67,8 @@ function useAuthStatus() {
     queryKey: ["authStatus"],
     queryFn: async () => {
       const res = await fetch("/api/auth/status", { credentials: "include" });
-      if (!res.ok) return { signedIn: false, gscConnected: false, avatarUrl: null };
-      return res.json() as Promise<{ signedIn: boolean; gscConnected: boolean; avatarUrl: string | null }>;
+      if (!res.ok) return { signedIn: false, gscConnected: false, bingConnected: false, avatarUrl: null };
+      return res.json() as Promise<{ signedIn: boolean; gscConnected: boolean; bingConnected: boolean; avatarUrl: string | null }>;
     },
   });
 }
@@ -310,6 +310,66 @@ function GscConnectionSection() {
   );
 }
 
+function BingConnectionSection() {
+  const { data: authStatus } = useAuthStatus();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  const bingConnected = authStatus?.bingConnected ?? false;
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    try {
+      const res = await fetch("/api/bing/disconnect", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ["authStatus"] });
+        router.refresh();
+      }
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  return (
+    <section>
+      <h2 className="text-sm font-medium text-foreground mb-2">Bing Webmaster</h2>
+      <p className="text-sm text-muted-foreground mb-4">
+        {bingConnected
+          ? "Your account is connected to Bing Webmaster Tools."
+          : "Connect your Bing Webmaster account to use Bing search data alongside GSC."}
+      </p>
+      {bingConnected ? (
+        <button
+          type="button"
+          onClick={handleDisconnect}
+          disabled={disconnecting}
+          className={cn(
+            "rounded-md border border-input bg-background px-4 py-2 text-sm font-medium",
+            "hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+            "disabled:opacity-50"
+          )}
+        >
+          {disconnecting ? "Disconnecting…" : "Disconnect Bing"}
+        </button>
+      ) : (
+        <a
+          href="/api/bing/connect"
+          className={cn(
+            "inline-flex items-center rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background",
+            "hover:bg-foreground/90 transition-colors"
+          )}
+        >
+          Connect Bing Webmaster
+        </a>
+      )}
+    </section>
+  );
+}
+
 export default function SettingsPage() {
   return (
     <div className="min-h-screen flex flex-col">
@@ -330,8 +390,9 @@ export default function SettingsPage() {
             <div className="rounded-lg border border-border bg-surface p-5">
               <ProfileSection />
             </div>
-            <div className="rounded-lg border border-border bg-surface p-5">
+            <div className="rounded-lg border border-border bg-surface p-5 space-y-8">
               <GscConnectionSection />
+              <BingConnectionSection />
             </div>
           </div>
         </div>

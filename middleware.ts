@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCookieName, verifySessionCookie } from "@/lib/session-edge";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/google", "/api/auth/callback/google", "/api/auth/app-login", "/s", "/api/cron"];
+const PUBLIC_PATHS = ["/login", "/api/auth/google", "/api/auth/callback/google", "/api/auth/bing", "/api/auth/callback/bing", "/api/auth/app-login", "/s", "/api/cron"];
 const API_AUTH_PREFIX = "/api/auth/";
 
 export async function middleware(request: NextRequest) {

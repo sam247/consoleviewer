@@ -48,6 +48,12 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Prevent focus outline when clicking the performance chart (chart is not keyboard-focused) */
+.performance-chart-card:focus,
+.performance-chart-card *:focus {
+  outline: none;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

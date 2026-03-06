@@ -75,7 +75,7 @@ export function TrendSection({
   return (
     <section aria-label="Trend" className="space-y-4">
       <div className="flex flex-col gap-4 min-w-0 lg:flex-row lg:items-stretch">
-        <div className="rounded-lg border border-border bg-surface transition-colors duration-[120ms] min-w-0 flex-1 flex flex-col" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
+        <div className="performance-chart-card rounded-lg border border-border bg-surface transition-colors duration-[120ms] min-w-0 flex-1 flex flex-col" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
           {data.summary && (
             <MomentumScoreCard
               variant="strip"

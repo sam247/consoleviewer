@@ -13,7 +13,7 @@ export function AiHeaderButton() {
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-md border border-border",
+          "flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background",
           "text-muted-foreground hover:bg-accent hover:text-foreground transition-colors",
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
         )}

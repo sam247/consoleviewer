@@ -174,11 +174,10 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
   type KwSortKey = "keyword" | "position" | "delta1d" | "delta7d";
   const { sortKey, sortDir, onSort } = useTableSort<KwSortKey>("keyword", "asc");
 
-  const rawKeywords: KeywordRow[] = serpData?.configured
-    ? (serpData.keywords ?? [])
-    : fallbackKeywords.map((k) => ({ ...k, position: k.position, status: "ready" as const }));
-
   const keywords = useMemo(() => {
+    const rawKeywords: KeywordRow[] = serpData?.configured
+      ? (serpData.keywords ?? [])
+      : fallbackKeywords.map((k) => ({ ...k, position: k.position, status: "ready" as const }));
     const dir = sortDir === "asc" ? 1 : -1;
     return [...rawKeywords].sort((a, b) => {
       if (sortKey === "keyword") return dir * a.keyword.localeCompare(b.keyword);
@@ -186,7 +185,7 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
       const bVal = b[sortKey] ?? 9999;
       return dir * (Number(aVal) - Number(bVal));
     });
-  }, [rawKeywords, sortKey, sortDir]);
+  }, [serpData?.configured, serpData?.keywords, fallbackKeywords, sortKey, sortDir]);
   const showConnectMessage = serpData?.configured === false;
   const canAddDelete =
     serpData?.configured === true && (isPropertyScoped || serpData?.canManageKeywords === true);

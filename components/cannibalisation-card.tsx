@@ -75,17 +75,17 @@ export function CannibalisationCard({
   type CannSortKey = "query" | "impressions" | "clicks" | "numUrls" | "bestPosition" | "score";
   const { sortKey, sortDir, onSort } = useTableSort<CannSortKey>("score");
 
-  const rawConflicts = conflictsProp ?? fetched?.conflicts ?? [];
   const isLoading = isLoadingProp ?? (useLegacy ? queryLoading : false);
   const error = errorProp ?? queryError ?? null;
 
   const conflicts = useMemo(() => {
+    const rawConflicts = conflictsProp ?? fetched?.conflicts ?? [];
     const dir = sortDir === "asc" ? 1 : -1;
     return [...rawConflicts].sort((a, b) => {
       if (sortKey === "query") return dir * a.query.localeCompare(b.query);
       return dir * (a[sortKey] - b[sortKey]);
     });
-  }, [rawConflicts, sortKey, sortDir]);
+  }, [conflictsProp, fetched?.conflicts, sortKey, sortDir]);
 
   const hasMoreRows = conflicts.length > ROWS_INITIAL;
   const visibleConflicts = showAllRows ? conflicts : conflicts.slice(0, ROWS_INITIAL);

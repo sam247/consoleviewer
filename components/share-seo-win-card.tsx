@@ -203,7 +203,7 @@ export function ShareSeoWinCard({
         {bestWin ? (
           <div className="space-y-1.5 text-sm">
             <p className="text-foreground truncate" title={bestWin.query}>
-              "{bestWin.query}"
+              &ldquo;{bestWin.query}&rdquo;
             </p>
             {bestWin.positionFrom != null && bestWin.positionTo != null && (
               <p className="text-muted-foreground">
@@ -222,4 +222,3 @@ export function ShareSeoWinCard({
     </DashboardCard>
   );
 }
-

@@ -100,8 +100,8 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
   const { sortKey, sortDir, onSort } = useTableSort<IdxSortKey>("url", "asc");
 
   const summary = data?.summary ?? { total: 0, warnings: 0, stable: 0 };
-  const rawSignals = data?.signals ?? [];
   const signals = useMemo(() => {
+    const rawSignals = data?.signals ?? [];
     const dir = sortDir === "asc" ? 1 : -1;
     return [...rawSignals].sort((a, b) => {
       if (sortKey === "url") return dir * a.url.localeCompare(b.url);
@@ -109,7 +109,7 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
       if (sortKey === "lastSeen") return dir * (a.lastSeen ?? "").localeCompare(b.lastSeen ?? "");
       return dir * ((a.impressionsDelta ?? 0) - (b.impressionsDelta ?? 0));
     });
-  }, [rawSignals, sortKey, sortDir]);
+  }, [data?.signals, sortKey, sortDir]);
   const visible = signals.slice(0, VISIBLE_ROWS);
   const hasMore = signals.length > VISIBLE_ROWS;
   const siteUrl = data?.siteUrl ?? "";

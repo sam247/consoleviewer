@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TrendChart } from "@/components/trend-chart";
-import { SparkToggles } from "@/components/spark-toggles";
 import { EngineSelector } from "@/components/engine-selector";
 import { QueryFootprint, type BandFilter } from "@/components/query-footprint";
 import { MomentumScoreCard } from "@/components/momentum-score-card";
@@ -227,7 +226,6 @@ export function TrendSection({
                 />
                 View as %
               </label>
-              <SparkToggles />
               <EngineSelector
                 selectedEngines={effectiveSelectedEngines}
                 availableEngines={availableEngines}

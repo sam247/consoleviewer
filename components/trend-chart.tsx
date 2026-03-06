@@ -85,6 +85,13 @@ const METRIC_STYLE: Record<SparkSeriesKey, { strokeDasharray?: string; strokeWid
   position: { strokeWidth: 1.2 },
 };
 
+const METRIC_COLORS: Record<SparkSeriesKey, string> = {
+  clicks: CHART_CLICKS,
+  impressions: CHART_IMPRESSIONS,
+  ctr: CHART_CTR,
+  position: CHART_POSITION,
+};
+
 const SERIES_CONFIG: { key: SparkSeriesKey; dataKey: keyof SparklineDataPoint; stroke: string; label: string }[] = [
   { key: "clicks", dataKey: "clicks", stroke: CHART_CLICKS, label: "Clicks" },
   { key: "impressions", dataKey: "impressions", stroke: CHART_IMPRESSIONS, label: "Impressions" },
@@ -288,17 +295,20 @@ export function TrendChart({
 
   const perEngineSeriesToShow = useMemo(() => {
     if (!usePerEngine || selectedEngines.length === 0) return [];
+    const singleEngine = selectedEngines.length === 1;
     const pairs: { metric: SparkSeriesKey; engine: SearchEngine; dataKey: string; label: string; stroke: string; strokeDasharray?: string; strokeWidth: number }[] = [];
     for (const s of visibleSeries) {
       for (const engine of selectedEngines) {
         const dataKey = `${s.dataKey}_${engine}`;
+        const metricStyle = METRIC_STYLE[s.key];
         pairs.push({
           metric: s.key,
           engine,
           dataKey,
           label: `${s.label} (${engine === "google" ? "Google" : "Bing"})`,
-          stroke: ENGINE_COLORS[engine],
-          ...METRIC_STYLE[s.key],
+          stroke: singleEngine ? METRIC_COLORS[s.key] : ENGINE_COLORS[engine],
+          strokeWidth: metricStyle.strokeWidth,
+          strokeDasharray: singleEngine ? undefined : metricStyle.strokeDasharray,
         });
       }
     }

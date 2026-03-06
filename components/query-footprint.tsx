@@ -4,12 +4,15 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { DataTableRow } from "@/components/data-table";
 import { QueryFootprintContent, type BandFilter } from "@/components/query-footprint-content";
+import type { QueryCountingDailyRow } from "@/hooks/use-property-data";
 
 export type { BandFilter };
 
 interface QueryFootprintProps {
   queries: DataTableRow[];
   daily: { date: string; clicks: number }[];
+  queryCounting?: { total: number; top10: number; top3: number };
+  queryCountingDaily?: QueryCountingDailyRow[];
   className?: string;
   onBandSelect?: (band: BandFilter) => void;
   selectedBand?: BandFilter;
@@ -30,7 +33,16 @@ function countInBand(queries: DataTableRow[], min: number, max: number): number 
   return queries.filter((r) => r.position != null && r.position >= min && r.position <= max).length;
 }
 
-export function QueryFootprint({ queries, daily, className, onBandSelect, selectedBand = null, compareToPrior }: QueryFootprintProps) {
+export function QueryFootprint({
+  queries,
+  daily,
+  queryCounting,
+  queryCountingDaily = [],
+  className,
+  onBandSelect,
+  selectedBand = null,
+  compareToPrior,
+}: QueryFootprintProps) {
   const [view, setView] = useState<FootprintView>("total");
 
   const withPosition = useMemo(() => queries.filter((r) => r.position != null), [queries]);
@@ -72,6 +84,8 @@ export function QueryFootprint({ queries, daily, className, onBandSelect, select
       maxBandCount={maxBandCount}
       sparkData={sparkData}
       pillStats={pillStats}
+      queryCounting={queryCounting}
+      queryCountingDaily={queryCountingDaily}
       rootClassName={rootClassName}
       onBandSelect={onBandSelect}
       selectedBand={selectedBand}

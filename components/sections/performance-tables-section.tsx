@@ -5,15 +5,6 @@ import { DataTable, type DataTableRow, type TrendFilter } from "@/components/dat
 import type { BandFilter } from "@/components/query-footprint";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, Tooltip } from "recharts";
-import { ChartPlot } from "@/components/ui/chart-plot";
-import {
-  CHART_AXIS_TICK,
-  CHART_GRID_PROPS,
-  CHART_MARGIN_SECONDARY,
-  CHART_PLOT_H,
-  CHART_Y_AXIS_WIDTH_SECONDARY,
-} from "@/components/ui/chart-frame";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -22,7 +13,7 @@ import {
 } from "@/components/ui/table-styles";
 import { cn } from "@/lib/utils";
 import { exportToCsv, formatExportFilename } from "@/lib/export-csv";
-import type { PropertyData, QueryCountingDailyRow } from "@/hooks/use-property-data";
+import type { PropertyData } from "@/hooks/use-property-data";
 import { formatNum } from "@/hooks/use-property-data";
 import { PageDetailPanel } from "@/components/page-detail-panel";
 
@@ -33,8 +24,6 @@ export function PerformanceTablesSection({
   data,
   queriesRows,
   pagesRows,
-  queryCountingDaily,
-  queryCounting,
   bandFilter,
   onClearBandFilter,
   siteSlug,
@@ -47,8 +36,6 @@ export function PerformanceTablesSection({
   data: PropertyData;
   queriesRows: DataTableRow[];
   pagesRows: DataTableRow[];
-  queryCountingDaily: QueryCountingDailyRow[];
-  queryCounting: { total: number; top10: number; top3: number };
   bandFilter: BandFilter;
   onClearBandFilter: () => void;
   siteSlug: string;
@@ -233,119 +220,6 @@ export function PerformanceTablesSection({
             onExportCsv={() => exportToCsv(queriesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "queries", startDate, endDate))}
             sparklines={querySparklines}
           />
-          <div className="rounded-lg border border-border bg-surface overflow-hidden transition-colors hover:border-foreground/20 flex flex-col flex-1 min-h-0">
-            <div className="px-4 py-3 shrink-0 flex items-start justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground mb-1.5 flex items-center gap-1">Query counting<InfoTooltip title="Count of queries appearing in top 3 and top 10" /></h3>
-                <p className="text-xs text-muted-foreground mb-2">Queries in top 10</p>
-                <div className="flex flex-wrap gap-3 text-sm mb-3">
-                  <div>
-                    <span className="text-muted-foreground">Total queries</span>
-                    <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.total}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Top 10</span>
-                    <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.top10}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Top 3</span>
-                    <span className="ml-2 font-semibold tabular-nums text-foreground">{queryCounting.top3}</span>
-                  </div>
-                </div>
-                {(() => {
-                  const top3 = queryCounting.top3;
-                  const top4To10 = Math.max(0, queryCounting.top10 - queryCounting.top3);
-                  const rest = Math.max(0, queryCounting.total - queryCounting.top10);
-                  const chartData = [
-                    { name: "Top 3", value: top3, fill: "var(--chart-clicks)" },
-                    { name: "4-10", value: top4To10, fill: "var(--chart-impressions)" },
-                    { name: "11+", value: rest, fill: "var(--muted-foreground)" },
-                  ];
-                  return (
-                    <ChartPlot
-                      height={72}
-                      minHeight={72}
-                      isEmpty={queryCounting.total === 0}
-                      emptyMessage="No ranked queries in this range."
-                    >
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} layout="vertical" margin={CHART_MARGIN_SECONDARY}>
-                          <XAxis type="number" hide />
-                          <YAxis
-                            type="category"
-                            dataKey="name"
-                            width={CHART_Y_AXIS_WIDTH_SECONDARY}
-                            tick={CHART_AXIS_TICK}
-                          />
-                          <Bar dataKey="value" radius={0} barSize={10}>
-                            {chartData.map((entry, i) => (
-                              <Cell key={i} fill={entry.fill} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </ChartPlot>
-                  );
-                })()}
-              </div>
-              <button
-                type="button"
-                onClick={() => exportToCsv(
-                  [
-                    { metric: "Total queries", value: queryCounting.total },
-                    { metric: "Top 10", value: queryCounting.top10 },
-                    { metric: "Top 3", value: queryCounting.top3 },
-                  ],
-                  formatExportFilename(siteSlug, "query-counting", startDate, endDate)
-                )}
-                className="p-1.5 rounded text-muted-foreground/80 hover:text-muted-foreground hover:bg-accent/50 transition-colors duration-[120ms] opacity-80 hover:opacity-100 shrink-0"
-                title="Export CSV"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-              </button>
-            </div>
-            {queryCountingDaily.length > 0 && (
-              <div className="flex-1 min-h-[200px] w-full min-w-0 border-t border-border/50 flex flex-col">
-                <p className="text-[10px] text-muted-foreground mb-1 px-4 pt-2 shrink-0">Query trend</p>
-                <div className="flex-1 min-h-[180px] px-4 pb-3 w-full" style={{ minWidth: 0 }}>
-                  <ChartPlot
-                    height={CHART_PLOT_H.secondary}
-                    minHeight={CHART_PLOT_H.secondary}
-                    isEmpty={queryCountingDaily.length === 0}
-                    emptyMessage="No query-count trend data for this range."
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={queryCountingDaily} margin={CHART_MARGIN_SECONDARY}>
-                        <CartesianGrid {...CHART_GRID_PROPS} />
-                        <XAxis
-                          dataKey="date"
-                          tickFormatter={(d: string) => new Date(d).toLocaleDateString("en-GB", { month: "numeric", day: "numeric" })}
-                          tick={CHART_AXIS_TICK}
-                          minTickGap={32}
-                        />
-                        <YAxis
-                          tick={CHART_AXIS_TICK}
-                          width={CHART_Y_AXIS_WIDTH_SECONDARY}
-                          domain={[0, "dataMax + 2"]}
-                          allowDecimals={false}
-                        />
-                        <Tooltip
-                          contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8 }}
-                          formatter={(value, key) => {
-                            if (key === "totalQueries") return [value ?? 0, "Total queries"];
-                            if (key === "top10") return [value ?? 0, "Top 10"];
-                            return [value ?? 0, key];
-                          }}
-                        />
-                        <Line type="monotone" dataKey="totalQueries" name="totalQueries" stroke="var(--chart-impressions)" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey="top10" name="top10" stroke="var(--chart-clicks)" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </ChartPlot>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
         <div className="flex flex-col gap-6 flex-1 min-w-0">
           <DataTable

@@ -122,6 +122,8 @@ export default function SiteDetailPage({
                   data={data}
                   queriesRows={queriesRows}
                   dailyForCharts={dailyForCharts}
+                  queryCounting={queryCounting}
+                  queryCountingDaily={queryCountingDaily}
                   siteSlug={siteSlug}
                   startDate={startDate}
                   endDate={endDate}
@@ -186,8 +188,6 @@ export default function SiteDetailPage({
                 data={data}
                 queriesRows={queriesRows}
                 pagesRows={pagesRows}
-                queryCountingDaily={queryCountingDaily}
-                queryCounting={queryCounting}
                 bandFilter={bandFilter}
                 onClearBandFilter={() => setBandFilter(null)}
                 siteSlug={siteSlug}

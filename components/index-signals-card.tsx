@@ -6,7 +6,12 @@ import type { DataTableRow } from "@/components/data-table";
 import { cn } from "@/lib/utils";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { SortableHeader } from "@/components/ui/sortable-header";
-import { TABLE_ROW_CLASS } from "@/components/ui/table-styles";
+import {
+  TABLE_BASE_CLASS,
+  TABLE_CELL_Y,
+  TABLE_HEAD_CLASS,
+  TABLE_ROW_CLASS,
+} from "@/components/ui/table-styles";
 
 const STORAGE_KEY = "consoleview-index-signals-open";
 const VISIBLE_ROWS = 20;
@@ -166,7 +171,7 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
           expanded ? "max-h-[800px]" : "max-h-0"
         )}
       >
-        <div className="rounded-lg border border-border bg-surface overflow-hidden">
+        <div className="overflow-hidden">
           {expanded && (
             <>
               {isLoading ? (
@@ -175,7 +180,7 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                 </div>
               ) : signals.length === 0 ? (
                 <div className="px-4 py-6 text-center">
-                  <p className="text-sm text-muted-foreground mb-3">No URLs in watchlist.</p>
+                  <p className="text-sm text-muted-foreground mb-3">No ranking signals detected in this range.</p>
                   <button
                     type="button"
                     onClick={() => setAddModalOpen(true)}
@@ -186,23 +191,24 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                 </div>
               ) : (
                 <>
+                  <div className="flex items-center justify-end border-b border-border/50 px-4 py-2">
+                    <button
+                      type="button"
+                      onClick={() => setAddModalOpen(true)}
+                      className="text-xs font-medium text-foreground hover:underline"
+                    >
+                      Add URL to watchlist
+                    </button>
+                  </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm border-collapse">
-                      <thead>
+                    <table className={TABLE_BASE_CLASS}>
+                      <thead className={TABLE_HEAD_CLASS}>
                         <tr className="border-b border-border">
-                          <SortableHeader label="URL" column="url" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="text-xs" />
-                          <SortableHeader label="Signal" column="signal" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-20 text-xs" />
-                          <SortableHeader label="Last seen" column="lastSeen" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-28 text-xs" />
-                          <SortableHeader label="Impr Δ" column="impressionsDelta" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-20 text-xs" />
-                          <th className="text-right py-2.5 px-4 text-xs text-muted-foreground font-medium w-32">
-                            <button
-                              type="button"
-                              onClick={() => setAddModalOpen(true)}
-                              className="font-medium text-foreground hover:underline"
-                            >
-                              Add URL to watchlist
-                            </button>
-                          </th>
+                          <SortableHeader label="URL" column="url" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="min-w-0 w-[52%]" />
+                          <SortableHeader label="Signal" column="signal" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-24" />
+                          <SortableHeader label="Last seen" column="lastSeen" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-28" />
+                          <SortableHeader label="Impr Δ" column="impressionsDelta" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-20" />
+                          <th className="w-12 px-4 py-2.5" />
                         </tr>
                       </thead>
                       <tbody>
@@ -211,10 +217,21 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                             key={row.id}
                             className={TABLE_ROW_CLASS}
                           >
-                            <td className="py-2.5 px-4 text-foreground truncate max-w-xs" title={row.url}>
-                              {row.url}
+                            <td className={cn("px-4 text-foreground truncate max-w-xs", TABLE_CELL_Y)} title={row.url}>
+                              {siteUrl ? (
+                                <a
+                                  href={`https://search.google.com/search-console?resource_id=${encodeURIComponent(siteUrl)}&page=${encodeURIComponent(row.url)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="hover:underline"
+                                >
+                                  {row.url}
+                                </a>
+                              ) : (
+                                row.url
+                              )}
                             </td>
-                            <td className="py-2.5 px-4">
+                            <td className={cn("px-4", TABLE_CELL_Y)}>
                               <span
                                 className={cn(
                                   "text-xs font-medium",
@@ -229,10 +246,10 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                                 </span>
                               )}
                             </td>
-                            <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap">
+                            <td className={cn("px-4 text-muted-foreground whitespace-nowrap", TABLE_CELL_Y)}>
                               {row.lastSeen ?? "No data in range"}
                             </td>
-                            <td className="py-2.5 px-4 text-right tabular-nums">
+                            <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                               {row.impressionsDelta != null ? (
                                 <span
                                   className={
@@ -246,26 +263,28 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
                                 "—"
                               )}
                             </td>
-                            <td className="py-2.5 px-4 text-right whitespace-nowrap">
-                              <span className="inline-flex items-center gap-2">
-                                {siteUrl && (
-                                  <a
-                                    href={`https://search.google.com/search-console?resource_id=${encodeURIComponent(siteUrl)}&page=${encodeURIComponent(row.url)}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-foreground underline hover:no-underline"
-                                  >
-                                    Open in GSC
-                                  </a>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => deleteMutation.mutate(row.id)}
-                                  className="text-xs text-muted-foreground hover:text-foreground"
+                            <td className={cn("px-4 text-right", TABLE_CELL_Y)}>
+                              <button
+                                type="button"
+                                onClick={() => deleteMutation.mutate(row.id)}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                                aria-label={`Remove ${row.url} from watchlist`}
+                                title="Remove from watchlist"
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  className="h-4 w-4"
+                                  aria-hidden
                                 >
-                                  Remove
-                                </button>
-                              </span>
+                                  <path d="M3 6h18" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M8 6V4h8v2" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M19 6l-1 14H6L5 6" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M10 11v6M14 11v6" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </button>
                             </td>
                           </tr>
                         ))}

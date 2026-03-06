@@ -12,11 +12,14 @@ import type { PropertyData, DailyRow } from "@/hooks/use-property-data";
 import { useDateRange } from "@/contexts/date-range-context";
 import type { DateRangeKey } from "@/types/gsc";
 import { CHART_CARD_MIN_H, CHART_PLOT_H } from "@/components/ui/chart-frame";
+import type { QueryCountingDailyRow } from "@/hooks/use-property-data";
 
 export function TrendSection({
   data,
   queriesRows,
   dailyForCharts,
+  queryCounting,
+  queryCountingDaily,
   siteSlug,
   startDate,
   endDate,
@@ -29,6 +32,8 @@ export function TrendSection({
   data: PropertyData;
   queriesRows: DataTableRow[];
   dailyForCharts: DailyRow[];
+  queryCounting: { total: number; top10: number; top3: number };
+  queryCountingDaily: QueryCountingDailyRow[];
   siteSlug: string;
   startDate: string;
   endDate: string;
@@ -84,7 +89,7 @@ export function TrendSection({
   return (
     <section aria-label="Trend" className="space-y-6">
       <div className="flex flex-col gap-6 min-w-0 lg:flex-row lg:items-stretch">
-        <div className="performance-chart-card rounded-lg border border-border bg-surface transition-colors duration-[120ms] min-w-0 flex-1 flex flex-col" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
+        <div className="performance-chart-card rounded-lg border border-border bg-surface transition-colors duration-[120ms] min-w-0 flex-1 flex flex-col shadow-[0_2px_8px_rgba(0,0,0,0.05)]" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
           {data.summary && (
             <MomentumScoreCard
               variant="strip"
@@ -266,6 +271,8 @@ export function TrendSection({
             <QueryFootprint
               queries={queriesRows}
               daily={dailyForCharts}
+              queryCounting={queryCounting}
+              queryCountingDaily={queryCountingDaily}
               className="flex flex-col min-h-full"
               onBandSelect={onBandSelect}
               selectedBand={bandFilter}

@@ -42,15 +42,26 @@ function getDateString(obj: Record<string, unknown>): string {
   const raw = getField(obj, ["Date", "Day", "date"]);
   const str = asNonEmptyString(raw);
   if (!str) return "";
-  // Support /Date(1709596800000)/ format sometimes returned by MS APIs.
-  const msMatch = str.match(/\/Date\((\d+)\)\//);
+  // Support /Date(1709596800000)/ and /Date(1709596800000+0000)/ WCF formats.
+  const msMatch = str.match(/\/Date\(([-]?\d+)(?:[+-]\d{4})?\)\//);
   if (msMatch) {
     const ms = Number(msMatch[1]);
     if (Number.isFinite(ms)) return new Date(ms).toISOString().slice(0, 10);
   }
+  // Some payloads use UNIX epoch seconds as a string.
+  if (/^\d{10}$/.test(str)) {
+    const sec = Number(str);
+    if (Number.isFinite(sec)) return new Date(sec * 1000).toISOString().slice(0, 10);
+  }
+  // Or UNIX epoch milliseconds as a string.
+  if (/^\d{13}$/.test(str)) {
+    const ms = Number(str);
+    if (Number.isFinite(ms)) return new Date(ms).toISOString().slice(0, 10);
+  }
   const d = new Date(str);
   if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-  return str.slice(0, 10);
+  // Unknown format: return empty so caller can avoid accidental false filtering.
+  return "";
 }
 
 function toDateOnly(value: string) {
@@ -323,7 +334,7 @@ export async function GET(
   };
 
   const queries = aggregateByKey(queryRows, ["Query", "QueryText", "query", "keyword"]);
-  const pages = aggregateByKey(pageRows, ["Page", "Url", "page", "url"]);
+  const pages = aggregateByKey(pageRows, ["Page", "Url", "page", "url", "Query", "query"]);
   const analyticsReady = daily.length > 0 || queries.length > 0 || pages.length > 0;
   const data: Record<string, unknown> = {
     connected: true,

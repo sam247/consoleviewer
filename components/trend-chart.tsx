@@ -45,9 +45,14 @@ interface DataPoint {
 
 export type ChartAnnotation = { id?: string; date: string; label: string; color?: string };
 
+export type SearchEngine = "google" | "bing";
+
 interface TrendChartProps {
   data: DataPoint[];
   priorData?: DataPoint[];
+  /** When provided with selectedEngines, chart renders per-engine series (metric = line style, engine = colour). */
+  dataByEngine?: { google: DataPoint[]; bing?: DataPoint[] };
+  selectedEngines?: SearchEngine[];
   height?: number;
   showImpressions?: boolean;
   useSeriesContext?: boolean;
@@ -62,6 +67,21 @@ const CHART_CLICKS = "var(--chart-clicks)";
 const CHART_IMPRESSIONS = "var(--chart-impressions)";
 const CHART_CTR = "var(--chart-ctr)";
 const CHART_POSITION = "var(--chart-position)";
+const CHART_ENGINE_GOOGLE = "var(--chart-engine-google)";
+const CHART_ENGINE_BING = "var(--chart-engine-bing)";
+
+const ENGINE_COLORS: Record<SearchEngine, string> = {
+  google: CHART_ENGINE_GOOGLE,
+  bing: CHART_ENGINE_BING,
+};
+
+/** Metric → line style (strokeDasharray, strokeWidth). */
+const METRIC_STYLE: Record<SparkSeriesKey, { strokeDasharray?: string; strokeWidth: number }> = {
+  clicks: { strokeWidth: 2.5 },
+  impressions: { strokeDasharray: "6 4", strokeWidth: 2 },
+  ctr: { strokeDasharray: "2 2", strokeWidth: 1.2 },
+  position: { strokeWidth: 1.2 },
+};
 
 const SERIES_CONFIG: { key: SparkSeriesKey; dataKey: keyof SparklineDataPoint; stroke: string; label: string }[] = [
   { key: "clicks", dataKey: "clicks", stroke: CHART_CLICKS, label: "Clicks" },
@@ -137,9 +157,55 @@ function SparklineTooltip({
   );
 }
 
+const MAX_PER_ENGINE_LINES = 4;
+
+function buildMergedDataByEngine(
+  dataByEngine: { google: DataPoint[]; bing?: DataPoint[] },
+  selectedEngines: SearchEngine[]
+): Record<string, string | number>[] {
+  const google = dataByEngine.google ?? [];
+  const bing = dataByEngine.bing ?? [];
+  const dateSet = new Set<string>([
+    ...google.map((d) => d.date),
+    ...bing.map((d) => d.date),
+  ]);
+  const dates = Array.from(dateSet).sort();
+  const byDate = (arr: DataPoint[]) => {
+    const m = new Map(arr.map((d) => [d.date, d]));
+    return m;
+  };
+  const googleByDate = byDate(google);
+  const bingByDate = byDate(bing);
+
+  return dates.map((date) => {
+    const row: Record<string, string | number> = { date };
+    if (selectedEngines.includes("google")) {
+      const g = googleByDate.get(date);
+      if (g) {
+        row.clicks_google = g.clicks;
+        row.impressions_google = g.impressions;
+        if (g.ctr != null) row.ctr_google = g.ctr;
+        if (g.position != null) row.position_google = g.position;
+      }
+    }
+    if (selectedEngines.includes("bing")) {
+      const b = bingByDate.get(date);
+      if (b) {
+        row.clicks_bing = b.clicks;
+        row.impressions_bing = b.impressions;
+        if (b.ctr != null) row.ctr_bing = b.ctr;
+        if (b.position != null) row.position_bing = b.position;
+      }
+    }
+    return row;
+  });
+}
+
 export function TrendChart({
   data,
   priorData,
+  dataByEngine,
+  selectedEngines = ["google"],
   height = CHART_PLOT_H.secondary,
   showImpressions = true,
   useSeriesContext = false,
@@ -151,7 +217,21 @@ export function TrendChart({
 }: TrendChartProps) {
   const { series } = useSparkSeries();
   const chartMargin = buildChartMargin(height, marginOverride);
-  const dateTickFormatter = useMemo(() => createDateTickFormatter(data?.length ?? 0), [data?.length]);
+  const usePerEngine = dataByEngine != null && selectedEngines.length > 0;
+  const mergedDataByEngine = useMemo(
+    () =>
+      dataByEngine && selectedEngines.length
+        ? buildMergedDataByEngine(dataByEngine, selectedEngines)
+        : [],
+    [dataByEngine, selectedEngines]
+  );
+  const dateTickFormatter = useMemo(
+    () =>
+      createDateTickFormatter(
+        usePerEngine ? mergedDataByEngine.length : (data?.length ?? 0)
+      ),
+    [usePerEngine, mergedDataByEngine.length, data?.length]
+  );
   const yAxisWidth = height >= CHART_PLOT_H.primary ? CHART_Y_AXIS_WIDTH_PRIMARY : CHART_Y_AXIS_WIDTH_SECONDARY;
 
   const showClicks = useSeriesContext ? series?.clicks !== false : true;
@@ -173,13 +253,35 @@ export function TrendChart({
     [showClicks, showCtr, showImpr, showPosition, useSeriesContext]
   );
 
+  const perEngineSeriesToShow = useMemo(() => {
+    if (!usePerEngine || selectedEngines.length === 0) return [];
+    const pairs: { metric: SparkSeriesKey; engine: SearchEngine; dataKey: string; label: string; stroke: string; strokeDasharray?: string; strokeWidth: number }[] = [];
+    for (const s of visibleSeries) {
+      for (const engine of selectedEngines) {
+        const dataKey = `${s.dataKey}_${engine}` as keyof SparklineDataPoint;
+        pairs.push({
+          metric: s.key,
+          engine,
+          dataKey: `${s.dataKey}_${engine}`,
+          label: `${s.label} (${engine === "google" ? "Google" : "Bing"})`,
+          stroke: ENGINE_COLORS[engine],
+          ...METRIC_STYLE[s.key],
+        });
+      }
+    }
+    return pairs.slice(0, MAX_PER_ENGINE_LINES);
+  }, [usePerEngine, selectedEngines, visibleSeries]);
+
   const useNormalized =
+    !usePerEngine &&
     normalizeWhenMultiSeries &&
     useSeriesContext &&
     visibleSeries.length > 0 &&
     (data?.length ?? 0) > 0;
 
   const chartData = useMemo(() => {
+    if (usePerEngine && mergedDataByEngine.length > 0) return mergedDataByEngine;
+
     const safeData = data ?? [];
     if (!safeData.length) return [];
 
@@ -210,9 +312,10 @@ export function TrendChart({
       }
       return out;
     });
-  }, [compareToPrior, data, priorData, useNormalized, useSeriesContext, visibleSeries]);
+  }, [compareToPrior, data, priorData, useNormalized, useSeriesContext, visibleSeries, usePerEngine, mergedDataByEngine]);
 
   const useDualAxis =
+    !usePerEngine &&
     !useNormalized &&
     showClicks &&
     showImpr &&
@@ -222,13 +325,15 @@ export function TrendChart({
 
   const yDomain = useMemo((): [number, number] | undefined => {
     if (!chartData.length) return undefined;
-    const keys: (keyof DataPoint)[] = ["clicks", "impressions", "ctr", "position"];
+    const keys = usePerEngine
+      ? (["clicks_google", "clicks_bing", "impressions_google", "impressions_bing", "ctr_google", "ctr_bing", "position_google", "position_bing"] as const)
+      : (["clicks", "impressions", "ctr", "position"] as (keyof DataPoint)[]);
     let min = Infinity;
     let max = -Infinity;
 
     chartData.forEach((d) => {
       keys.forEach((k) => {
-        const v = d[k];
+        const v = (d as Record<string, unknown>)[k];
         if (typeof v === "number" && Number.isFinite(v)) {
           min = Math.min(min, v);
           max = Math.max(max, v);
@@ -239,7 +344,7 @@ export function TrendChart({
     if (min === Infinity || max === -Infinity) return undefined;
     const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
     return [Math.max(0, min - pad), max + pad];
-  }, [chartData]);
+  }, [chartData, usePerEngine]);
 
   const leftDomain = useMemo((): [number, number] | undefined => {
     if (!chartData.length || !useDualAxis) return undefined;
@@ -285,7 +390,8 @@ export function TrendChart({
     return [Math.max(0, min - pad), max + pad];
   }, [chartData, useDualAxis, compareToPrior]);
 
-  if (!data?.length) {
+  const hasData = usePerEngine ? mergedDataByEngine.length > 0 : (data?.length ?? 0) > 0;
+  if (!hasData) {
     return (
       <ChartPlot
         height={height}
@@ -395,7 +501,22 @@ export function TrendChart({
             }}
           />
 
-          {useNormalized
+          {usePerEngine
+            ? perEngineSeriesToShow.map((s) => (
+                <Line
+                  key={s.dataKey}
+                  type="monotone"
+                  dataKey={s.dataKey}
+                  stroke={s.stroke}
+                  strokeWidth={s.strokeWidth}
+                  strokeDasharray={s.strokeDasharray}
+                  dot={false}
+                  name={s.label}
+                />
+              ))
+            : null}
+
+          {!usePerEngine && useNormalized
             ? visibleSeries.map((s) => (
                 <Line
                   key={s.key}
@@ -409,7 +530,7 @@ export function TrendChart({
                 />
               ))
             : null}
-          {useNormalized && compareToPrior && priorData?.length
+          {!usePerEngine && useNormalized && compareToPrior && priorData?.length
             ? visibleSeries.map((s) => (
                 <Line
                   key={`${s.key}-prior`}
@@ -425,7 +546,7 @@ export function TrendChart({
               ))
             : null}
 
-          {showClicks && !useNormalized && (
+          {showClicks && !useNormalized && !usePerEngine && (
             <>
               <Area
                 type="monotone"
@@ -460,7 +581,7 @@ export function TrendChart({
             </>
           )}
 
-          {showImpr && !useNormalized && (
+          {showImpr && !useNormalized && !usePerEngine && (
             <>
               <Line
                 type="monotone"
@@ -489,7 +610,7 @@ export function TrendChart({
             </>
           )}
 
-          {showCtr && !useNormalized && (
+          {showCtr && !useNormalized && !usePerEngine && (
             <Line
               type="monotone"
               dataKey="ctr"
@@ -500,7 +621,7 @@ export function TrendChart({
             />
           )}
 
-          {showPosition && !useNormalized && (
+          {showPosition && !useNormalized && !usePerEngine && (
             <Line
               type="monotone"
               dataKey="position"

@@ -370,6 +370,27 @@ function BingConnectionSection() {
   );
 }
 
+function SourcesConnectedSummary() {
+  const { data: authStatus } = useAuthStatus();
+  const gscConnected = authStatus?.gscConnected ?? false;
+  const bingConnected = authStatus?.bingConnected ?? false;
+  return (
+    <div className="pt-4 border-t border-border">
+      <p className="text-xs font-medium text-muted-foreground mb-2">Sources connected</p>
+      <ul className="text-sm text-foreground space-y-1">
+        <li className="flex items-center gap-2">
+          {gscConnected ? <span className="text-positive" aria-hidden>✓</span> : <span className="text-muted-foreground" aria-hidden>○</span>}
+          Google Search Console
+        </li>
+        <li className="flex items-center gap-2">
+          {bingConnected ? <span className="text-positive" aria-hidden>✓</span> : <span className="text-muted-foreground" aria-hidden>○</span>}
+          Bing Webmaster
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   return (
     <div className="min-h-screen flex flex-col">
@@ -391,8 +412,15 @@ export default function SettingsPage() {
               <ProfileSection />
             </div>
             <div className="rounded-lg border border-border bg-surface p-5 space-y-8">
-              <GscConnectionSection />
-              <BingConnectionSection />
+              <div>
+                <h2 className="text-sm font-medium text-foreground mb-1">Data sources</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Connect Google Search Console and Bing Webmaster to import and compare search performance across engines.
+                </p>
+                <GscConnectionSection />
+                <BingConnectionSection />
+                <SourcesConnectedSummary />
+              </div>
             </div>
           </div>
         </div>

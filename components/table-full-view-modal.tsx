@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { DataTableRow } from "@/components/data-table";
+import { formatClicksOrImpressions, formatPosition } from "@/components/data-table";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { SortableHeader } from "@/components/ui/sortable-header";
 import {
@@ -11,12 +12,6 @@ import {
   TABLE_HEAD_CLASS,
   TABLE_ROW_CLASS,
 } from "@/components/ui/table-styles";
-
-function formatNum(n: number): string {
-  if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + "k";
-  return String(n);
-}
 
 interface TableFullViewModalProps {
   open: boolean;
@@ -119,14 +114,14 @@ export function TableFullViewModal({
                       {row.key}
                     </td>
                     <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
-                      {formatNum(row.clicks)}
+                      {formatClicksOrImpressions(row, "clicks")}
                     </td>
                     <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
-                      {formatNum(row.impressions)}
+                      {formatClicksOrImpressions(row, "impressions")}
                     </td>
                     {hasPosition && (
                       <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
-                        {row.position != null ? row.position.toFixed(1) : "—"}
+                        {formatPosition(row)}
                       </td>
                     )}
                     <td className={cn("px-4 text-right", TABLE_CELL_Y)}>

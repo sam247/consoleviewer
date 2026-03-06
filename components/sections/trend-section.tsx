@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { TrendChart } from "@/components/trend-chart";
 import { SparkToggles } from "@/components/spark-toggles";
+import { EngineSelector } from "@/components/engine-selector";
 import { QueryFootprint, type BandFilter } from "@/components/query-footprint";
 import { MomentumScoreCard } from "@/components/momentum-score-card";
 import { InfoTooltip } from "@/components/info-tooltip";
@@ -10,7 +12,9 @@ import { exportToCsv, exportChartToPng, formatExportFilename } from "@/lib/expor
 import type { DataTableRow } from "@/components/data-table";
 import type { PropertyData, DailyRow } from "@/hooks/use-property-data";
 import { useDateRange } from "@/contexts/date-range-context";
+import { useEngineSelection } from "@/contexts/engine-selection-context";
 import type { DateRangeKey } from "@/types/gsc";
+import type { SearchEngine } from "@/contexts/engine-selection-context";
 import { CHART_CARD_MIN_H, CHART_PLOT_H } from "@/components/ui/chart-frame";
 
 export function TrendSection({
@@ -70,6 +74,27 @@ export function TrendSection({
   const trendChartContainerRef = useRef<HTMLDivElement>(null);
   const trendExportMenuRef = useRef<HTMLDivElement>(null);
   const [trendExportMenuOpen, setTrendExportMenuOpen] = useState(false);
+
+  const { data: authStatus } = useQuery({
+    queryKey: ["authStatus"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/status", { credentials: "include" });
+      if (!res.ok) return { gscConnected: false, bingConnected: false };
+      return res.json() as Promise<{ gscConnected: boolean; bingConnected: boolean }>;
+    },
+  });
+  const availableEngines = useMemo((): SearchEngine[] => {
+    const bingConnected = authStatus?.bingConnected ?? false;
+    return bingConnected ? ["google", "bing"] : ["google"];
+  }, [authStatus?.bingConnected]);
+
+  const { selectedEngines, setSelectedEngines } = useEngineSelection();
+
+  const enginesLabel = useMemo(() => {
+    if (selectedEngines.length === 0) return "Search engines: Google";
+    if (selectedEngines.length === 2) return "Search engines: Google + Bing";
+    return selectedEngines[0] === "google" ? "Search engines: Google" : "Search engines: Bing";
+  }, [selectedEngines]);
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -160,6 +185,12 @@ export function TrendSection({
                 View as %
               </label>
               <SparkToggles />
+              <EngineSelector
+                selectedEngines={selectedEngines}
+                availableEngines={availableEngines}
+                onChange={setSelectedEngines}
+                label="Search engine:"
+              />
               <div className="flex items-center gap-1 rounded-md border border-input bg-background p-0.5">
                 {quickRanges.map((r) => (
                   <button
@@ -248,16 +279,19 @@ export function TrendSection({
                 No data for this period yet. Data syncs nightly from Search Console.
               </div>
             ) : (
-              <TrendChart
-                data={data.daily}
-                priorData={data.priorDaily}
-                height={CHART_PLOT_H.primary}
-                showImpressions
-                useSeriesContext
-                compareToPrior={compareToPrior}
-                normalizeWhenMultiSeries={showPercentView}
-                annotations={chartAnnotations}
-              />
+              <>
+                <TrendChart
+                  data={data.daily}
+                  priorData={data.priorDaily}
+                  height={CHART_PLOT_H.primary}
+                  showImpressions
+                  useSeriesContext
+                  compareToPrior={compareToPrior}
+                  normalizeWhenMultiSeries={showPercentView}
+                  annotations={chartAnnotations}
+                />
+                <p className="text-[10px] text-muted-foreground mt-1.5">{enginesLabel}</p>
+              </>
             )}
           </div>
         </div>

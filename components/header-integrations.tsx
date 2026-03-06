@@ -1,56 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { cn } from "@/lib/utils";
-
-function useAuthStatus() {
-  return useQuery({
-    queryKey: ["authStatus"],
-    queryFn: async () => {
-      const res = await fetch("/api/auth/status", { credentials: "include" });
-      if (!res.ok) return { gscConnected: false, bingConnected: false };
-      return res.json() as Promise<{ gscConnected: boolean; bingConnected: boolean }>;
-    },
-  });
-}
 
 export function HeaderIntegrations() {
-  const { data } = useAuthStatus();
-  const gscConnected = data?.gscConnected ?? false;
-  const bingConnected = data?.bingConnected ?? false;
-
   return (
-    <div className="flex items-center gap-1.5" aria-label="Connection status">
-      <span
-        className={cn(
-          "flex h-9 min-w-[2.25rem] items-center justify-center rounded-md border px-2 text-xs font-medium",
-          gscConnected
-            ? "border-border bg-accent/80 text-foreground"
-            : "border-border bg-muted/30 text-muted-foreground"
-        )}
-        title={gscConnected ? "GSC: Connected" : "GSC: Not connected"}
-      >
-        GSC
-      </span>
-      <span
-        className={cn(
-          "flex h-9 min-w-[2.25rem] items-center justify-center rounded-md border px-2 text-xs font-medium",
-          bingConnected
-            ? "border-border bg-accent/80 text-foreground"
-            : "border-border bg-muted/30 text-muted-foreground"
-        )}
-        title={bingConnected ? "Bing: Connected" : "Bing: Not connected"}
-      >
-        Bing
-      </span>
-      <Link
-        href="/settings"
-        className="text-xs text-muted-foreground hover:text-foreground underline"
-        title="Manage connections"
-      >
-        Manage
-      </Link>
-    </div>
+    <Link
+      href="/settings"
+      className="text-sm text-muted-foreground hover:text-foreground underline"
+      title="Manage data sources and settings"
+    >
+      Manage
+    </Link>
   );
 }

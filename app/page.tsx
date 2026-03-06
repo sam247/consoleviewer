@@ -8,10 +8,13 @@ import { SiteCard } from "@/components/site-card";
 import { SiteCardSkeleton } from "@/components/site-card-skeleton";
 import { SortSelect, type SortKey } from "@/components/sort-select";
 import { FilterSelect, type FilterKey } from "@/components/filter-select";
+import { EngineSelector } from "@/components/engine-selector";
 import { useDateRange } from "@/contexts/date-range-context";
+import { useEngineSelection } from "@/contexts/engine-selection-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
 import type { SiteOverviewMetrics } from "@/types/gsc";
+import type { SearchEngine } from "@/contexts/engine-selection-context";
 
 async function fetchOverview(
   startDate: string,
@@ -87,16 +90,22 @@ export default function OverviewPage() {
   const { hiddenSet } = useHiddenProjects();
   const { pinnedSet } = usePinnedProjects();
 
-  const { data: gscStatus, isLoading: authLoading } = useQuery({
+  const { data: authStatus, isLoading: authLoading } = useQuery({
     queryKey: ["authStatus"],
     queryFn: async () => {
       const res = await fetch("/api/auth/status");
-      if (!res.ok) return { gscConnected: false };
-      return res.json() as Promise<{ gscConnected: boolean }>;
+      if (!res.ok) return { gscConnected: false, bingConnected: false };
+      return res.json() as Promise<{ gscConnected: boolean; bingConnected: boolean }>;
     },
   });
 
-  const gscConnected = gscStatus?.gscConnected ?? false;
+  const gscConnected = authStatus?.gscConnected ?? false;
+  const availableEngines = useMemo((): SearchEngine[] => {
+    const bingConnected = authStatus?.bingConnected ?? false;
+    return bingConnected ? ["google", "bing"] : ["google"];
+  }, [authStatus?.bingConnected]);
+
+  const { selectedEngines, setSelectedEngines } = useEngineSelection();
 
   const { data: rawMetrics = [], isLoading, error, refetch } = useQuery({
     queryKey: ["overview", startDate, endDate, priorStartDate, priorEndDate],
@@ -193,8 +202,16 @@ export default function OverviewPage() {
                 </div>
               )}
               {!isLoading && sorted.length > 0 && (
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-medium text-foreground">{sorted.length} site{sorted.length !== 1 ? "s" : ""}</h2>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <h2 className="text-sm font-medium text-foreground">{sorted.length} site{sorted.length !== 1 ? "s" : ""}</h2>
+                    <EngineSelector
+                      selectedEngines={selectedEngines}
+                      availableEngines={availableEngines}
+                      onChange={setSelectedEngines}
+                      label="Search engines:"
+                    />
+                  </div>
                   <a href="/onboarding/sites" className="text-sm text-muted-foreground hover:text-foreground underline">
                     Manage or add sites
                   </a>

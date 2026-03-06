@@ -140,10 +140,19 @@ export default function OnboardingSitesPage() {
           {source === "bing" ? "Bing Webmaster sites" : "Connect Search Console"}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
+          Import Google Search Console and Bing Webmaster data to compare search performance across search engines.
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
           {source === "bing"
             ? "Import sites from your connected Bing Webmaster account."
             : "Connect your Google account and choose which sites to import."}
         </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span className="font-medium">Sources connected</span>
+          <span className={gscConnected ? "text-foreground" : ""}>{gscConnected ? "✓" : "○"} Google Search Console</span>
+          <span className={bingConnected ? "text-foreground" : ""}>{bingConnected ? "✓" : "○"} Bing Webmaster</span>
+        </div>
 
         <div className="mt-4 flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Source:</span>

@@ -20,6 +20,8 @@
   --chart-impressions: #7c3aed;
   --chart-ctr: #15803d;
   --chart-position: #ea580c;
+  --chart-engine-google: #2563eb;
+  --chart-engine-bing: #15803d;
 }
 
 /* Dark theme */
@@ -40,6 +42,8 @@
   --chart-impressions: #a78bfa;
   --chart-ctr: #22c55e;
   --chart-position: #f97316;
+  --chart-engine-google: #3b82f6;
+  --chart-engine-bing: #22c55e;
 }
 
 body {

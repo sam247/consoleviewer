@@ -41,7 +41,16 @@ function getNumber(obj: Record<string, unknown>, names: string[]): number {
 function getDateString(obj: Record<string, unknown>): string {
   const raw = getField(obj, ["Date", "Day", "date"]);
   const str = asNonEmptyString(raw);
-  return str ? str.slice(0, 10) : "";
+  if (!str) return "";
+  // Support /Date(1709596800000)/ format sometimes returned by MS APIs.
+  const msMatch = str.match(/\/Date\((\d+)\)\//);
+  if (msMatch) {
+    const ms = Number(msMatch[1]);
+    if (Number.isFinite(ms)) return new Date(ms).toISOString().slice(0, 10);
+  }
+  const d = new Date(str);
+  if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return str.slice(0, 10);
 }
 
 function toDateOnly(value: string) {
@@ -63,7 +72,43 @@ async function callBing(path: string, token: string, params: Record<string, stri
   const data = (await res.json()) as unknown;
   const d = (data as { d?: unknown }).d;
   if (Array.isArray(d)) return d;
+  if (d && typeof d === "object") {
+    const obj = d as Record<string, unknown>;
+    const candidates = [
+      obj.Results,
+      obj.results,
+      obj.Data,
+      obj.data,
+      obj.Items,
+      obj.items,
+      obj.Rows,
+      obj.rows,
+      obj.QueryStats,
+      obj.PageStats,
+    ];
+    for (const c of candidates) {
+      if (Array.isArray(c)) return c;
+    }
+  }
   if (Array.isArray(data)) return data;
+  if (data && typeof data === "object") {
+    const obj = data as Record<string, unknown>;
+    const candidates = [
+      obj.Results,
+      obj.results,
+      obj.Data,
+      obj.data,
+      obj.Items,
+      obj.items,
+      obj.Rows,
+      obj.rows,
+      obj.QueryStats,
+      obj.PageStats,
+    ];
+    for (const c of candidates) {
+      if (Array.isArray(c)) return c;
+    }
+  }
   return [];
 }
 

@@ -368,6 +368,15 @@ export function TrendChart({
     !showPosition &&
     (data?.length ?? 0) > 0;
 
+  const useDualAxisPerEngine =
+    usePerEngine &&
+    !useNormalized &&
+    visibleSeries.some((s) => s.key === "clicks") &&
+    visibleSeries.some((s) => s.key === "impressions") &&
+    !visibleSeries.some((s) => s.key === "ctr") &&
+    !visibleSeries.some((s) => s.key === "position") &&
+    mergedDataByEngine.length > 0;
+
   const yDomain = useMemo((): [number, number] | undefined => {
     if (!chartData.length) return undefined;
     const keys = usePerEngine
@@ -392,48 +401,78 @@ export function TrendChart({
   }, [chartData, usePerEngine, perEngineSeriesToShow, useNormalized]);
 
   const leftDomain = useMemo((): [number, number] | undefined => {
-    if (!chartData.length || !useDualAxis) return undefined;
+    if (!chartData.length || (!useDualAxis && !useDualAxisPerEngine)) return undefined;
     let min = Infinity;
     let max = -Infinity;
-    chartData.forEach((d) => {
-      const v = d.clicks;
-      if (typeof v === "number" && Number.isFinite(v)) {
-        min = Math.min(min, v);
-        max = Math.max(max, v);
-      }
-      const vp = (d as Record<string, number>).clicksPrior;
-      if (typeof vp === "number" && Number.isFinite(vp)) {
-        min = Math.min(min, vp);
-        max = Math.max(max, vp);
-      }
-    });
-    if (min === Infinity || max === -Infinity) return undefined;
-    const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
-    return [Math.max(0, min - pad), max + pad];
-  }, [chartData, useDualAxis]);
-
-  const rightDomain = useMemo((): [number, number] | undefined => {
-    if (!chartData.length || !useDualAxis) return undefined;
-    let min = Infinity;
-    let max = -Infinity;
-    chartData.forEach((d) => {
-      const v = d.impressions;
-      if (typeof v === "number" && Number.isFinite(v)) {
-        min = Math.min(min, v);
-        max = Math.max(max, v);
-      }
-      if (compareToPrior && (d as Record<string, number>).impressionsPrior != null) {
-        const vp = (d as Record<string, number>).impressionsPrior;
-        if (Number.isFinite(vp)) {
+    if (useDualAxisPerEngine) {
+      const clickKeys = perEngineSeriesToShow
+        .filter((s) => s.metric === "clicks")
+        .map((s) => (useNormalized ? `_norm_${s.dataKey}` : s.dataKey));
+      chartData.forEach((d) => {
+        clickKeys.forEach((k) => {
+          const v = (d as Record<string, unknown>)[k];
+          if (typeof v === "number" && Number.isFinite(v)) {
+            min = Math.min(min, v);
+            max = Math.max(max, v);
+          }
+        });
+      });
+    } else {
+      chartData.forEach((d) => {
+        const v = d.clicks;
+        if (typeof v === "number" && Number.isFinite(v)) {
+          min = Math.min(min, v);
+          max = Math.max(max, v);
+        }
+        const vp = (d as Record<string, number>).clicksPrior;
+        if (typeof vp === "number" && Number.isFinite(vp)) {
           min = Math.min(min, vp);
           max = Math.max(max, vp);
         }
-      }
-    });
+      });
+    }
     if (min === Infinity || max === -Infinity) return undefined;
     const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
     return [Math.max(0, min - pad), max + pad];
-  }, [chartData, useDualAxis, compareToPrior]);
+  }, [chartData, useDualAxis, useDualAxisPerEngine, perEngineSeriesToShow, useNormalized]);
+
+  const rightDomain = useMemo((): [number, number] | undefined => {
+    if (!chartData.length || (!useDualAxis && !useDualAxisPerEngine)) return undefined;
+    let min = Infinity;
+    let max = -Infinity;
+    if (useDualAxisPerEngine) {
+      const impressionKeys = perEngineSeriesToShow
+        .filter((s) => s.metric === "impressions")
+        .map((s) => (useNormalized ? `_norm_${s.dataKey}` : s.dataKey));
+      chartData.forEach((d) => {
+        impressionKeys.forEach((k) => {
+          const v = (d as Record<string, unknown>)[k];
+          if (typeof v === "number" && Number.isFinite(v)) {
+            min = Math.min(min, v);
+            max = Math.max(max, v);
+          }
+        });
+      });
+    } else {
+      chartData.forEach((d) => {
+        const v = d.impressions;
+        if (typeof v === "number" && Number.isFinite(v)) {
+          min = Math.min(min, v);
+          max = Math.max(max, v);
+        }
+        if (compareToPrior && (d as Record<string, number>).impressionsPrior != null) {
+          const vp = (d as Record<string, number>).impressionsPrior;
+          if (Number.isFinite(vp)) {
+            min = Math.min(min, vp);
+            max = Math.max(max, vp);
+          }
+        }
+      });
+    }
+    if (min === Infinity || max === -Infinity) return undefined;
+    const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
+    return [Math.max(0, min - pad), max + pad];
+  }, [chartData, useDualAxis, compareToPrior, useDualAxisPerEngine, perEngineSeriesToShow, useNormalized]);
 
   const hasData = usePerEngine ? mergedDataByEngine.length > 0 : (data?.length ?? 0) > 0;
   if (!hasData) {
@@ -448,7 +487,7 @@ export function TrendChart({
     );
   }
 
-  const marginWithDualAxis = useDualAxis
+  const marginWithDualAxis = (useDualAxis || useDualAxisPerEngine)
     ? { ...chartMargin, right: (chartMargin.right ?? 6) + yAxisWidth }
     : chartMargin;
 
@@ -485,7 +524,7 @@ export function TrendChart({
             padding={{ left: 2, right: 2 }}
           />
 
-          {useDualAxis ? (
+          {useDualAxis || useDualAxisPerEngine ? (
             <>
               <YAxis
                 yAxisId="left"
@@ -557,6 +596,9 @@ export function TrendChart({
                   strokeDasharray={s.strokeDasharray}
                   dot={false}
                   name={s.label}
+                  {...(useDualAxisPerEngine
+                    ? { yAxisId: s.metric === "impressions" ? "right" : "left" }
+                    : {})}
                 />
               ))
             : null}

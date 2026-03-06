@@ -32,7 +32,6 @@ export default function SiteDetailPage({
     pagesRows,
     queryCounting,
     dailyForCharts,
-    queryCountingDaily,
     siteUrl,
     siteSlug,
     startDate,

@@ -306,7 +306,14 @@ export function TrendChart({
   }, [usePerEngine, selectedEngines, visibleSeries]);
 
   const useNormalized =
-    normalizeWhenMultiSeries &&
+    (
+      normalizeWhenMultiSeries ||
+      (
+        useSeriesContext &&
+        visibleSeries.some((s) => s.key === "ctr" || s.key === "position") &&
+        visibleSeries.some((s) => s.key === "clicks" || s.key === "impressions")
+      )
+    ) &&
     useSeriesContext &&
     visibleSeries.length > 0 &&
     (usePerEngine ? mergedDataByEngine.length > 0 : (data?.length ?? 0) > 0);

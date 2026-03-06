@@ -6,7 +6,6 @@ import { DateRangeSelect } from "./date-range-select";
 import { OverviewSearch } from "./overview-search";
 import { ProfileMenu } from "./profile-menu";
 import { ShareModal } from "./share-modal";
-import { SparkToggles } from "./spark-toggles";
 import { ThemeToggle } from "./theme-toggle";
 import { AiHeaderButton } from "./ai-feature-card";
 
@@ -67,7 +66,6 @@ export function Header({
                   Share
                 </button>
               )}
-              <SparkToggles />
               <AiHeaderButton />
               <ThemeToggle />
               <DateRangeSelect />

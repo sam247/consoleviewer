@@ -122,8 +122,6 @@ export default function SiteDetailPage({
                   data={data}
                   queriesRows={queriesRows}
                   dailyForCharts={dailyForCharts}
-                  queryCounting={queryCounting}
-                  queryCountingDaily={queryCountingDaily}
                   siteSlug={siteSlug}
                   startDate={startDate}
                   endDate={endDate}

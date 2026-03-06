@@ -29,6 +29,18 @@ function toneClass(tone: SignalTone): string {
   return "text-muted-foreground";
 }
 
+function toRelativePath(urlOrPath: string): string {
+  try {
+    if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
+      const path = new URL(urlOrPath).pathname;
+      return path || "/";
+    }
+    return urlOrPath.startsWith("/") ? urlOrPath : `/${urlOrPath}`;
+  } catch {
+    return urlOrPath;
+  }
+}
+
 export function SignalStrip({
   summary,
   queriesRows,
@@ -88,10 +100,11 @@ export function SignalStrip({
       .filter((r) => (r.changePercent ?? 0) > 0)
       .sort((a, b) => b.impressions - a.impressions)[0];
     if (contentWin) {
+      const relativePath = toRelativePath(contentWin.key);
       items.push({
         id: "content-win",
         icon: "✨",
-        text: `Content win: ${contentWin.key} gained ${contentWin.impressions.toLocaleString()} impressions`,
+        text: `Content win: ${relativePath} gained ${contentWin.impressions.toLocaleString()} impressions`,
         tone: "neutral",
       });
     }
@@ -133,4 +146,3 @@ export function SignalStrip({
     </section>
   );
 }
-

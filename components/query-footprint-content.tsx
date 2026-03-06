@@ -1,16 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  ReferenceLine,
-  LineChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { LineChart, Line, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis } from "recharts";
 import { cn } from "@/lib/utils";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { ChartPlot } from "@/components/ui/chart-plot";
@@ -33,8 +24,6 @@ interface QueryFootprintContentProps {
   bands: { label: string; min: number; max: number; count: number; color: string; deltaPercent?: number }[];
   maxBandCount: number;
   sparkData: { date: string; clicks: number }[];
-  queryCounting?: { total: number; top10: number; top3: number };
-  queryCountingDaily?: { date: string; totalQueries: number; top10: number; top3: number }[];
   pillStats: { label: string; value: number; deltaPercent?: number }[];
   rootClassName: string;
   onBandSelect?: (band: BandFilter) => void;
@@ -49,8 +38,6 @@ export function QueryFootprintContent({
   bands,
   maxBandCount,
   sparkData,
-  queryCounting,
-  queryCountingDaily = [],
   pillStats,
   rootClassName,
   onBandSelect,
@@ -249,74 +236,6 @@ export function QueryFootprintContent({
                 </button>
               );
             })}
-          </div>
-        )}
-        {queryCounting && (
-          <div className="mt-3 border-t border-border/60 pt-3">
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span>
-                Total queries <span className="ml-1 font-semibold tabular-nums text-foreground">{queryCounting.total}</span>
-              </span>
-              <span>
-                Top 10 <span className="ml-1 font-semibold tabular-nums text-foreground">{queryCounting.top10}</span>
-              </span>
-              <span>
-                Top 3 <span className="ml-1 font-semibold tabular-nums text-foreground">{queryCounting.top3}</span>
-              </span>
-            </div>
-            <div className="mt-2">
-              <ChartPlot
-                height={CHART_PLOT_H.spark}
-                minHeight={CHART_PLOT_H.spark}
-                isEmpty={queryCountingDaily.length === 0}
-                emptyMessage="No query-count trend data for this range."
-                className="shrink-0"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={queryCountingDaily} margin={CHART_MARGIN_SPARK}>
-                    <CartesianGrid {...CHART_GRID_PROPS} />
-                    <ReferenceLine y={0} stroke="var(--border)" strokeOpacity={0.55} />
-                    <XAxis
-                      dataKey="date"
-                      tick={CHART_AXIS_TICK}
-                      tickFormatter={(d: string) =>
-                        new Date(d).toLocaleDateString("en-GB", { month: "numeric", day: "numeric" })
-                      }
-                      minTickGap={14}
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={6}
-                      padding={{ left: 2, right: 2 }}
-                    />
-                    <YAxis hide tick={CHART_AXIS_TICK} />
-                    <Tooltip
-                      contentStyle={CHART_TOOLTIP_STYLE}
-                      formatter={(v: number | undefined, key?: string) => [
-                        (v ?? 0).toLocaleString(),
-                        key === "totalQueries" ? "Total queries" : key === "top10" ? "Top 10" : (key ?? "Value"),
-                      ]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="totalQueries"
-                      stroke="var(--chart-impressions)"
-                      strokeWidth={1.8}
-                      strokeDasharray="5 4"
-                      dot={false}
-                      name="Total queries"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="top10"
-                      stroke="var(--chart-clicks)"
-                      strokeWidth={2.2}
-                      dot={false}
-                      name="Top 10"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartPlot>
-            </div>
           </div>
         )}
       </div>

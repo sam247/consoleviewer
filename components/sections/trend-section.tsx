@@ -12,14 +12,11 @@ import type { PropertyData, DailyRow } from "@/hooks/use-property-data";
 import { useDateRange } from "@/contexts/date-range-context";
 import type { DateRangeKey } from "@/types/gsc";
 import { CHART_CARD_MIN_H, CHART_PLOT_H } from "@/components/ui/chart-frame";
-import type { QueryCountingDailyRow } from "@/hooks/use-property-data";
 
 export function TrendSection({
   data,
   queriesRows,
   dailyForCharts,
-  queryCounting,
-  queryCountingDaily,
   siteSlug,
   startDate,
   endDate,
@@ -32,8 +29,6 @@ export function TrendSection({
   data: PropertyData;
   queriesRows: DataTableRow[];
   dailyForCharts: DailyRow[];
-  queryCounting: { total: number; top10: number; top3: number };
-  queryCountingDaily: QueryCountingDailyRow[];
   siteSlug: string;
   startDate: string;
   endDate: string;
@@ -271,8 +266,6 @@ export function TrendSection({
             <QueryFootprint
               queries={queriesRows}
               daily={dailyForCharts}
-              queryCounting={queryCounting}
-              queryCountingDaily={queryCountingDaily}
               className="flex flex-col min-h-full"
               onBandSelect={onBandSelect}
               selectedBand={bandFilter}

@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/header";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
+import { cn } from "@/lib/utils";
 
-type GCSSite = { siteUrl: string; permissionLevel: string };
+type SiteEntry = { siteUrl: string; permissionLevel: string };
 
 function displaySiteUrl(siteUrl: string): string {
   if (siteUrl.startsWith("sc-domain:")) {
@@ -23,7 +25,8 @@ function displaySiteUrl(siteUrl: string): string {
 export default function OnboardingSitesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [sites, setSites] = useState<GCSSite[] | null>(null);
+  const [source, setSource] = useState<"gsc" | "bing">("gsc");
+  const [sites, setSites] = useState<SiteEntry[] | null>(null);
   const [sitesError, setSitesError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -33,18 +36,34 @@ export default function OnboardingSitesPage() {
   const { hiddenSet, unhide } = useHiddenProjects();
   const hiddenList = Array.from(hiddenSet);
 
+  const { data: authStatus } = useQuery({
+    queryKey: ["authStatus"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/status", { credentials: "include" });
+      if (!res.ok) return { gscConnected: false, bingConnected: false };
+      return res.json() as Promise<{ gscConnected: boolean; bingConnected: boolean }>;
+    },
+  });
+  const gscConnected = authStatus?.gscConnected ?? false;
+  const bingConnected = authStatus?.bingConnected ?? false;
+
   const fetchSites = useCallback(async () => {
     setLoading(true);
     setSitesError(null);
     try {
-      const res = await fetch("/api/gsc/sites");
+      const api = source === "bing" ? "/api/bing/sites" : "/api/gsc/sites";
+      const res = await fetch(api);
       if (res.status === 401) {
         router.replace("/login");
         return;
       }
       if (res.status === 404) {
         const data = await res.json().catch(() => ({}));
-        setSitesError(data.code === "gsc_not_connected" ? "Connect Google Search Console to see your sites." : "GSC not connected");
+        if (source === "bing") {
+          setSitesError(data.code === "bing_not_connected" ? "Connect Bing Webmaster in Settings to see your sites." : "Bing not connected");
+        } else {
+          setSitesError(data.code === "gsc_not_connected" ? "Connect Google Search Console to see your sites." : "GSC not connected");
+        }
         setSites(null);
         return;
       }
@@ -53,7 +72,7 @@ export default function OnboardingSitesPage() {
         setSites(null);
         return;
       }
-      const data = (await res.json()) as GCSSite[];
+      const data = (await res.json()) as SiteEntry[];
       setSites(data);
     } catch {
       setSitesError("Failed to load sites");
@@ -61,11 +80,15 @@ export default function OnboardingSitesPage() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, source]);
 
   useEffect(() => {
     fetchSites();
   }, [fetchSites]);
+
+  useEffect(() => {
+    setSelected(new Set());
+  }, [source]);
 
   const toggle = (siteUrl: string) => {
     setSelected((prev) => {
@@ -89,7 +112,8 @@ export default function OnboardingSitesPage() {
     setImportError(null);
     setImporting(true);
     try {
-      const res = await fetch("/api/gsc/import", {
+      const importApi = source === "bing" ? "/api/bing/import" : "/api/gsc/import";
+      const res = await fetch(importApi, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sites: Array.from(selected) }),
@@ -112,10 +136,50 @@ export default function OnboardingSitesPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 p-4 md:p-6 max-w-[86rem] mx-auto w-full">
-        <h1 className="text-xl font-semibold text-foreground">Connect Search Console</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          {source === "bing" ? "Bing Webmaster sites" : "Connect Search Console"}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Connect your Google account and choose which sites to import.
+          {source === "bing"
+            ? "Import sites from your connected Bing Webmaster account."
+            : "Connect your Google account and choose which sites to import."}
         </p>
+
+        <div className="mt-4 flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Source:</span>
+          <div className="inline-flex rounded-lg border border-border bg-surface p-0.5">
+            <button
+              type="button"
+              onClick={() => setSource("gsc")}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                source === "gsc"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              GSC
+            </button>
+            <button
+              type="button"
+              onClick={() => setSource("bing")}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                source === "bing"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Bing
+            </button>
+          </div>
+          {source === "gsc" && gscConnected && (
+            <span className="text-xs text-muted-foreground">Connected</span>
+          )}
+          {source === "bing" && bingConnected && (
+            <span className="text-xs text-muted-foreground">Connected</span>
+          )}
+        </div>
 
         {urlError && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
@@ -135,12 +199,21 @@ export default function OnboardingSitesPage() {
         {!loading && sitesError && (
           <div className="mt-6 rounded-lg border border-border bg-surface p-6">
             <p className="text-sm text-muted-foreground">{sitesError}</p>
-            <a
-              href="/api/google/connect"
-              className="mt-4 inline-block rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90"
-            >
-              Connect Google Search Console
-            </a>
+            {source === "bing" ? (
+              <a
+                href="/api/bing/connect"
+                className="mt-4 inline-block rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90"
+              >
+                Connect Bing Webmaster
+              </a>
+            ) : (
+              <a
+                href="/api/google/connect"
+                className="mt-4 inline-block rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90"
+              >
+                Connect Google Search Console
+              </a>
+            )}
           </div>
         )}
 
@@ -209,7 +282,9 @@ export default function OnboardingSitesPage() {
         )}
 
         {!loading && sites && sites.length === 0 && !sitesError && (
-          <p className="mt-6 text-sm text-muted-foreground">No Search Console properties found for this account.</p>
+          <p className="mt-6 text-sm text-muted-foreground">
+            {source === "bing" ? "No Bing Webmaster sites found for this account." : "No Search Console properties found for this account."}
+          </p>
         )}
 
         <section className="mt-8 rounded-lg border border-border bg-surface p-5">

@@ -21,30 +21,35 @@ export function HeaderIntegrations() {
   const bingConnected = data?.bingConnected ?? false;
 
   return (
-    <div className="flex items-center gap-1" aria-label="Data sources">
-      <Link
-        href="/settings"
+    <div className="flex items-center gap-1.5" aria-label="Connection status">
+      <span
         className={cn(
-          "flex h-9 min-w-[2.25rem] items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors",
+          "flex h-9 min-w-[2.25rem] items-center justify-center rounded-md border px-2 text-xs font-medium",
           gscConnected
             ? "border-border bg-accent/80 text-foreground"
             : "border-border bg-muted/30 text-muted-foreground"
         )}
-        title={gscConnected ? "Google Search Console connected" : "Connect GSC in Settings"}
+        title={gscConnected ? "GSC: Connected" : "GSC: Not connected"}
       >
         GSC
-      </Link>
-      <Link
-        href="/settings"
+      </span>
+      <span
         className={cn(
-          "flex h-9 min-w-[2.25rem] items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors",
+          "flex h-9 min-w-[2.25rem] items-center justify-center rounded-md border px-2 text-xs font-medium",
           bingConnected
             ? "border-border bg-accent/80 text-foreground"
             : "border-border bg-muted/30 text-muted-foreground"
         )}
-        title={bingConnected ? "Bing Webmaster connected" : "Connect Bing in Settings"}
+        title={bingConnected ? "Bing: Connected" : "Bing: Not connected"}
       >
         Bing
+      </span>
+      <Link
+        href="/settings"
+        className="text-xs text-muted-foreground hover:text-foreground underline"
+        title="Manage connections"
+      >
+        Manage
       </Link>
     </div>
   );

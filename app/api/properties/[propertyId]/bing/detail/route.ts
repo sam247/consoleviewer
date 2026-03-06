@@ -25,41 +25,27 @@ function asNonEmptyString(v: unknown): string | null {
   return typeof v === "string" && v.trim().length > 0 ? v : null;
 }
 
-function normalizeStatsRows(rows: unknown[]): BingTableRow[] {
-  const out: BingTableRow[] = [];
-  for (const entry of rows) {
-    const obj = entry as Record<string, unknown>;
-    const key = asNonEmptyString(obj.Query) ?? asNonEmptyString(obj.Page) ?? asNonEmptyString(obj.Url);
-    if (!key) continue;
-    const clicks = safeNumber(obj.Clicks);
-    const impressions = safeNumber(obj.Impressions);
-    const position = obj.Position != null ? safeNumber(obj.Position) : undefined;
-    out.push({
-      key,
-      clicks,
-      impressions,
-      changePercent: 0,
-      position: position != null && Number.isFinite(position) ? position : undefined,
-    });
-    if (out.length >= 100) break;
+function getField(obj: Record<string, unknown>, names: string[]): unknown {
+  for (const name of names) {
+    if (obj[name] != null) return obj[name];
+    const lower = name.toLowerCase();
+    if (obj[lower] != null) return obj[lower];
   }
-  return out;
+  return undefined;
 }
 
-function normalizeDailyRows(rows: unknown[]): BingDailyRow[] {
-  const out: BingDailyRow[] = [];
-  for (const entry of rows) {
-    const obj = entry as Record<string, unknown>;
-    const dateRaw = asNonEmptyString(obj.Date) ?? asNonEmptyString(obj.Day) ?? asNonEmptyString(obj.date) ?? "";
-    const date = dateRaw ? dateRaw.slice(0, 10) : "";
-    if (!date) continue;
-    const clicks = safeNumber(obj.Clicks);
-    const impressions = safeNumber(obj.Impressions);
-    const position = obj.Position != null ? safeNumber(obj.Position) : undefined;
-    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-    out.push({ date, clicks, impressions, ctr, position });
-  }
-  return out.sort((a, b) => a.date.localeCompare(b.date));
+function getNumber(obj: Record<string, unknown>, names: string[]): number {
+  return safeNumber(getField(obj, names));
+}
+
+function getDateString(obj: Record<string, unknown>): string {
+  const raw = getField(obj, ["Date", "Day", "date"]);
+  const str = asNonEmptyString(raw);
+  return str ? str.slice(0, 10) : "";
+}
+
+function toDateOnly(value: string) {
+  return value.slice(0, 10);
 }
 
 async function callBing(path: string, token: string, params: Record<string, string>) {
@@ -128,15 +114,84 @@ export async function GET(
 
   // NOTE: Bing endpoint response shapes vary across accounts/features.
   // We try commonly available stat endpoints and normalize defensively.
-  const [queryStatsRaw, pageStatsRaw, dailyRaw] = await Promise.all([
-    callBing("GetQueryStats", token, { siteUrl: bingSiteUrl, startDate, endDate }),
-    callBing("GetPageStats", token, { siteUrl: bingSiteUrl, startDate, endDate }),
-    callBing("GetTrafficData", token, { siteUrl: bingSiteUrl, startDate, endDate }),
+  const [queryStatsRaw, pageStatsRaw] = await Promise.all([
+    callBing("GetQueryStats", token, { siteUrl: bingSiteUrl }),
+    callBing("GetPageStats", token, { siteUrl: bingSiteUrl }),
   ]);
 
-  const queries = normalizeStatsRows(queryStatsRaw ?? []);
-  const pages = normalizeStatsRows(pageStatsRaw ?? []);
-  const daily = normalizeDailyRows(dailyRaw ?? []);
+  const from = toDateOnly(startDate);
+  const to = toDateOnly(endDate);
+  const inRange = (d: string) => d >= from && d <= to;
+
+  const queryRows = (queryStatsRaw ?? []).filter((entry) => {
+    const obj = entry as Record<string, unknown>;
+    const date = getDateString(obj);
+    return date ? inRange(date) : true;
+  });
+  const pageRows = (pageStatsRaw ?? []).filter((entry) => {
+    const obj = entry as Record<string, unknown>;
+    const date = getDateString(obj);
+    return date ? inRange(date) : true;
+  });
+
+  const dailyByDate = new Map<string, { clicks: number; impressions: number; posWeighted: number }>();
+  for (const entry of queryRows) {
+    const obj = entry as Record<string, unknown>;
+    const date = getDateString(obj);
+    if (!date || !inRange(date)) continue;
+    const clicks = getNumber(obj, ["Clicks", "clicks"]);
+    const impressions = getNumber(obj, ["Impressions", "impressions"]);
+    const posRaw = getField(obj, ["AvgClickPosition", "AvgImpressionPosition", "Position", "position"]);
+    const pos = posRaw != null ? safeNumber(posRaw) : 0;
+    const cur = dailyByDate.get(date) ?? { clicks: 0, impressions: 0, posWeighted: 0 };
+    cur.clicks += clicks;
+    cur.impressions += impressions;
+    cur.posWeighted += pos * Math.max(clicks, 1);
+    dailyByDate.set(date, cur);
+  }
+
+  const daily: BingDailyRow[] = Array.from(dailyByDate.entries())
+    .map(([date, agg]) => ({
+      date,
+      clicks: agg.clicks,
+      impressions: agg.impressions,
+      ctr: agg.impressions > 0 ? (agg.clicks / agg.impressions) * 100 : 0,
+      position: agg.clicks > 0 ? agg.posWeighted / agg.clicks : undefined,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const aggregateByKey = (rows: unknown[], keyNames: string[]): BingTableRow[] => {
+    const byKey = new Map<string, { clicks: number; impressions: number; posWeighted: number; weight: number }>();
+    for (const entry of rows) {
+      const obj = entry as Record<string, unknown>;
+      const key = asNonEmptyString(getField(obj, keyNames));
+      if (!key) continue;
+      const clicks = getNumber(obj, ["Clicks", "clicks"]);
+      const impressions = getNumber(obj, ["Impressions", "impressions"]);
+      const posRaw = getField(obj, ["AvgClickPosition", "AvgImpressionPosition", "Position", "position"]);
+      const pos = posRaw != null ? safeNumber(posRaw) : 0;
+      const weight = Math.max(clicks, 1);
+      const cur = byKey.get(key) ?? { clicks: 0, impressions: 0, posWeighted: 0, weight: 0 };
+      cur.clicks += clicks;
+      cur.impressions += impressions;
+      cur.posWeighted += pos * weight;
+      cur.weight += weight;
+      byKey.set(key, cur);
+    }
+    return Array.from(byKey.entries())
+      .map(([key, agg]) => ({
+        key,
+        clicks: agg.clicks,
+        impressions: agg.impressions,
+        changePercent: 0,
+        position: agg.weight > 0 ? agg.posWeighted / agg.weight : undefined,
+      }))
+      .sort((a, b) => b.clicks - a.clicks)
+      .slice(0, 100);
+  };
+
+  const queries = aggregateByKey(queryRows, ["Query", "QueryText", "query", "keyword"]);
+  const pages = aggregateByKey(pageRows, ["Page", "Url", "page", "url"]);
   const analyticsReady = daily.length > 0 || queries.length > 0 || pages.length > 0;
   const data = {
     connected: true,

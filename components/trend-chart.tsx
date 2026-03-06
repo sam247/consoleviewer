@@ -306,14 +306,26 @@ export function TrendChart({
   }, [usePerEngine, selectedEngines, visibleSeries]);
 
   const useNormalized =
-    !usePerEngine &&
     normalizeWhenMultiSeries &&
     useSeriesContext &&
     visibleSeries.length > 0 &&
-    (data?.length ?? 0) > 0;
+    (usePerEngine ? mergedDataByEngine.length > 0 : (data?.length ?? 0) > 0);
 
   const chartData = useMemo(() => {
-    if (usePerEngine && mergedDataByEngine.length > 0) return mergedDataByEngine;
+    if (usePerEngine && mergedDataByEngine.length > 0) {
+      if (!useNormalized) return mergedDataByEngine;
+      return mergedDataByEngine.map((point, i) => {
+        const out: Record<string, string | number> = { ...point };
+        perEngineSeriesToShow.forEach((s) => {
+          const values = mergedDataByEngine.map((d) => {
+            const v = (d as Record<string, unknown>)[s.dataKey];
+            return typeof v === "number" ? v : 0;
+          });
+          out[`_norm_${s.dataKey}`] = normalizeSeries(values)[i];
+        });
+        return out;
+      });
+    }
 
     const safeData = data ?? [];
     if (!safeData.length) return [];
@@ -345,7 +357,7 @@ export function TrendChart({
       }
       return out;
     });
-  }, [compareToPrior, data, priorData, useNormalized, useSeriesContext, visibleSeries, usePerEngine, mergedDataByEngine]);
+  }, [compareToPrior, data, priorData, useNormalized, useSeriesContext, visibleSeries, usePerEngine, mergedDataByEngine, perEngineSeriesToShow]);
 
   const useDualAxis =
     !usePerEngine &&
@@ -359,7 +371,7 @@ export function TrendChart({
   const yDomain = useMemo((): [number, number] | undefined => {
     if (!chartData.length) return undefined;
     const keys = usePerEngine
-      ? (["clicks_google", "clicks_bing", "impressions_google", "impressions_bing", "ctr_google", "ctr_bing", "position_google", "position_bing"] as const)
+      ? perEngineSeriesToShow.map((s) => (useNormalized ? `_norm_${s.dataKey}` : s.dataKey))
       : (["clicks", "impressions", "ctr", "position"] as (keyof DataPoint)[]);
     let min = Infinity;
     let max = -Infinity;
@@ -377,7 +389,7 @@ export function TrendChart({
     if (min === Infinity || max === -Infinity) return undefined;
     const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
     return [Math.max(0, min - pad), max + pad];
-  }, [chartData, usePerEngine]);
+  }, [chartData, usePerEngine, perEngineSeriesToShow, useNormalized]);
 
   const leftDomain = useMemo((): [number, number] | undefined => {
     if (!chartData.length || !useDualAxis) return undefined;
@@ -539,7 +551,7 @@ export function TrendChart({
                 <Line
                   key={s.dataKey}
                   type="monotone"
-                  dataKey={s.dataKey}
+                  dataKey={useNormalized ? `_norm_${s.dataKey}` : s.dataKey}
                   stroke={s.stroke}
                   strokeWidth={s.strokeWidth}
                   strokeDasharray={s.strokeDasharray}

@@ -112,10 +112,60 @@ async function callBing(path: string, token: string, params: Record<string, stri
   return [];
 }
 
+async function callBingVerbose(path: string, token: string, params: Record<string, string>) {
+  const sp = new URLSearchParams(params);
+  const url = `${BING_API_BASE}/${path}?${sp.toString()}`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    return { ok: false, status: res.status, rows: [] as unknown[], sampleKeys: [] as string[], body };
+  }
+  const data = (await res.json()) as unknown;
+  const d = (data as { d?: unknown }).d;
+  const extractRows = (payload: unknown): unknown[] => {
+    if (Array.isArray(payload)) return payload;
+    if (payload && typeof payload === "object") {
+      const obj = payload as Record<string, unknown>;
+      const candidates = [
+        obj.Results,
+        obj.results,
+        obj.Data,
+        obj.data,
+        obj.Items,
+        obj.items,
+        obj.Rows,
+        obj.rows,
+        obj.QueryStats,
+        obj.PageStats,
+      ];
+      for (const c of candidates) {
+        if (Array.isArray(c)) return c;
+      }
+    }
+    return [];
+  };
+  const rows = extractRows(d) || extractRows(data);
+  const first = rows[0] as Record<string, unknown> | undefined;
+  return {
+    ok: true,
+    status: res.status,
+    rows,
+    sampleKeys: first ? Object.keys(first).slice(0, 30) : [],
+    body: "",
+  };
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ propertyId: string }> }
 ) {
+  const debug = request.nextUrl.searchParams.get("debug") === "1";
   const userId = await getSessionUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -159,10 +209,47 @@ export async function GET(
 
   // NOTE: Bing endpoint response shapes vary across accounts/features.
   // We try commonly available stat endpoints and normalize defensively.
-  const [queryStatsRaw, pageStatsRaw] = await Promise.all([
-    callBing("GetQueryStats", token, { siteUrl: bingSiteUrl }),
-    callBing("GetPageStats", token, { siteUrl: bingSiteUrl }),
-  ]);
+  const siteUrlVariants = Array.from(
+    new Set(
+      [
+        bingSiteUrl,
+        bingSiteUrl.endsWith("/") ? bingSiteUrl.slice(0, -1) : `${bingSiteUrl}/`,
+      ].filter(Boolean)
+    )
+  );
+
+  let queryStatsRaw: unknown[] = [];
+  let pageStatsRaw: unknown[] = [];
+  const debugCalls: Array<Record<string, unknown>> = [];
+
+  for (const variant of siteUrlVariants) {
+    const [qRes, pRes] = await Promise.all([
+      debug
+        ? callBingVerbose("GetQueryStats", token, { siteUrl: variant })
+        : Promise.resolve({ ok: true, status: 200, rows: (await callBing("GetQueryStats", token, { siteUrl: variant })) ?? [], sampleKeys: [], body: "" }),
+      debug
+        ? callBingVerbose("GetPageStats", token, { siteUrl: variant })
+        : Promise.resolve({ ok: true, status: 200, rows: (await callBing("GetPageStats", token, { siteUrl: variant })) ?? [], sampleKeys: [], body: "" }),
+    ]);
+    if (debug) {
+      debugCalls.push({
+        variant,
+        queryStatus: qRes.status,
+        queryRows: qRes.rows.length,
+        querySampleKeys: qRes.sampleKeys,
+        queryErrorBody: qRes.ok ? undefined : qRes.body.slice(0, 300),
+        pageStatus: pRes.status,
+        pageRows: pRes.rows.length,
+        pageSampleKeys: pRes.sampleKeys,
+        pageErrorBody: pRes.ok ? undefined : pRes.body.slice(0, 300),
+      });
+    }
+    if (qRes.rows.length > 0 || pRes.rows.length > 0) {
+      queryStatsRaw = qRes.rows;
+      pageStatsRaw = pRes.rows;
+      break;
+    }
+  }
 
   const from = toDateOnly(startDate);
   const to = toDateOnly(endDate);
@@ -238,13 +325,38 @@ export async function GET(
   const queries = aggregateByKey(queryRows, ["Query", "QueryText", "query", "keyword"]);
   const pages = aggregateByKey(pageRows, ["Page", "Url", "page", "url"]);
   const analyticsReady = daily.length > 0 || queries.length > 0 || pages.length > 0;
-  const data = {
+  const data: Record<string, unknown> = {
     connected: true,
     analyticsReady,
     daily,
     queries,
     pages,
   };
+  if (debug) {
+    data.debug = {
+      propertyId: resolved.propertyId,
+      siteUrlVariants,
+      selectedVariant:
+        queryStatsRaw.length > 0 || pageStatsRaw.length > 0
+          ? siteUrlVariants.find((v) => v === bingSiteUrl || v === `${bingSiteUrl}/` || v === bingSiteUrl.replace(/\/$/, "")) ?? null
+          : null,
+      rawCounts: {
+        queryRows: queryStatsRaw.length,
+        pageRows: pageStatsRaw.length,
+      },
+      filteredCounts: {
+        queryRows: queryRows.length,
+        pageRows: pageRows.length,
+      },
+      normalizedCounts: {
+        daily: daily.length,
+        queries: queries.length,
+        pages: pages.length,
+      },
+      dateRange: { startDate: from, endDate: to },
+      calls: debugCalls,
+    };
+  }
   cache.set(key, { data, expires: Date.now() + CACHE_TTL_MS });
   return NextResponse.json(data);
 }

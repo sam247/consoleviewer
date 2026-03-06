@@ -409,6 +409,21 @@ export function TrendChart({
                 />
               ))
             : null}
+          {useNormalized && compareToPrior && priorData?.length
+            ? visibleSeries.map((s) => (
+                <Line
+                  key={`${s.key}-prior`}
+                  type="monotone"
+                  dataKey={`_norm_${s.key}Prior`}
+                  stroke={s.stroke}
+                  strokeWidth={1}
+                  strokeDasharray="5 4"
+                  strokeOpacity={0.45}
+                  dot={false}
+                  name={`${s.label} (prior)`}
+                />
+              ))
+            : null}
 
           {showClicks && !useNormalized && (
             <>

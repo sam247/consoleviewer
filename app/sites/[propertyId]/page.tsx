@@ -31,6 +31,7 @@ export default function SiteDetailPage({
     pagesRows,
     queryCounting,
     dailyForCharts,
+    queryCountingDaily,
     siteUrl,
     siteSlug,
     startDate,
@@ -173,7 +174,7 @@ export default function SiteDetailPage({
                 data={data}
                 queriesRows={queriesRows}
                 pagesRows={pagesRows}
-                dailyForCharts={dailyForCharts}
+                queryCountingDaily={queryCountingDaily}
                 queryCounting={queryCounting}
                 bandFilter={bandFilter}
                 onClearBandFilter={() => setBandFilter(null)}

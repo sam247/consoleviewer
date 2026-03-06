@@ -361,7 +361,7 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
           <p className="text-xs text-muted-foreground min-w-0 break-words">
             {recent ? (
               <>
-                <span className="text-muted-foreground">Overview:</span>{" "}
+                <span className="text-muted-foreground/70">Overview:</span>{" "}
                 <span className="font-medium text-foreground">{recent.dayName}</span>
                 {" • "}
                 <span className="text-foreground">{recent.latest.clicks}</span>
@@ -387,13 +387,15 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
           <div className="mt-1">
             {/* Line 2: GSC average position */}
             <p className="text-xs text-muted-foreground">
-              Avg Rank: {metrics.position != null ? metrics.position.toFixed(1) : "—"}
+              <span className="text-muted-foreground/70">Avg Rank:</span>{" "}
+              <span className="text-foreground">{metrics.position != null ? metrics.position.toFixed(1) : "—"}</span>
             </p>
             {/* Line 3: tracked keyword rank or Add keywords + */}
             <p className="text-xs text-muted-foreground/80 min-w-0 break-words mt-1">
               {hasKeywords && metrics.avgTrackedRank != null ? (
                 <>
-                  Avg Tracked Rank: {metrics.avgTrackedRank.toFixed(1)}
+                  <span className="text-muted-foreground/70">Avg Tracked Rank:</span>{" "}
+                  <span className="text-foreground">{metrics.avgTrackedRank.toFixed(1)}</span>
                   {metrics.avgTrackedRankDelta != null && (
                     <span
                       className={

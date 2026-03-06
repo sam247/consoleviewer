@@ -2,14 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { DataTable, type DataTableRow, type TrendFilter } from "@/components/data-table";
-import { TrendChart } from "@/components/trend-chart";
 import type { BandFilter } from "@/components/query-footprint";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, Tooltip } from "recharts";
 import { ChartPlot } from "@/components/ui/chart-plot";
 import {
   CHART_AXIS_TICK,
+  CHART_GRID_PROPS,
   CHART_MARGIN_SECONDARY,
   CHART_PLOT_H,
   CHART_Y_AXIS_WIDTH_SECONDARY,
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table-styles";
 import { cn } from "@/lib/utils";
 import { exportToCsv, formatExportFilename } from "@/lib/export-csv";
-import type { PropertyData, DailyRow } from "@/hooks/use-property-data";
+import type { PropertyData, QueryCountingDailyRow } from "@/hooks/use-property-data";
 import { formatNum } from "@/hooks/use-property-data";
 import { PageDetailPanel } from "@/components/page-detail-panel";
 
@@ -33,7 +33,7 @@ export function PerformanceTablesSection({
   data,
   queriesRows,
   pagesRows,
-  dailyForCharts,
+  queryCountingDaily,
   queryCounting,
   bandFilter,
   onClearBandFilter,
@@ -47,7 +47,7 @@ export function PerformanceTablesSection({
   data: PropertyData;
   queriesRows: DataTableRow[];
   pagesRows: DataTableRow[];
-  dailyForCharts: DailyRow[];
+  queryCountingDaily: QueryCountingDailyRow[];
   queryCounting: { total: number; top10: number; top3: number };
   bandFilter: BandFilter;
   onClearBandFilter: () => void;
@@ -304,17 +304,44 @@ export function PerformanceTablesSection({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               </button>
             </div>
-            {dailyForCharts.length > 0 && (
+            {queryCountingDaily.length > 0 && (
               <div className="flex-1 min-h-[200px] w-full min-w-0 border-t border-border/50 flex flex-col">
-                <p className="text-[10px] text-muted-foreground mb-1 px-4 pt-2 shrink-0">Performance trend</p>
+                <p className="text-[10px] text-muted-foreground mb-1 px-4 pt-2 shrink-0">Query trend</p>
                 <div className="flex-1 min-h-[180px] px-4 pb-3 w-full" style={{ minWidth: 0 }}>
-                  <TrendChart
-                    data={dailyForCharts}
+                  <ChartPlot
                     height={CHART_PLOT_H.secondary}
-                    showImpressions
-                    className="min-w-0 w-full h-full"
-                    margin={CHART_MARGIN_SECONDARY}
-                  />
+                    minHeight={CHART_PLOT_H.secondary}
+                    isEmpty={queryCountingDaily.length === 0}
+                    emptyMessage="No query-count trend data for this range."
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={queryCountingDaily} margin={CHART_MARGIN_SECONDARY}>
+                        <CartesianGrid {...CHART_GRID_PROPS} />
+                        <XAxis
+                          dataKey="date"
+                          tickFormatter={(d: string) => new Date(d).toLocaleDateString("en-GB", { month: "numeric", day: "numeric" })}
+                          tick={CHART_AXIS_TICK}
+                          minTickGap={32}
+                        />
+                        <YAxis
+                          tick={CHART_AXIS_TICK}
+                          width={CHART_Y_AXIS_WIDTH_SECONDARY}
+                          domain={[0, "dataMax + 2"]}
+                          allowDecimals={false}
+                        />
+                        <Tooltip
+                          contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8 }}
+                          formatter={(value, key) => {
+                            if (key === "totalQueries") return [value ?? 0, "Total queries"];
+                            if (key === "top10") return [value ?? 0, "Top 10"];
+                            return [value ?? 0, key];
+                          }}
+                        />
+                        <Line type="monotone" dataKey="totalQueries" name="totalQueries" stroke="var(--chart-impressions)" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="top10" name="top10" stroke="var(--chart-clicks)" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </ChartPlot>
                 </div>
               </div>
             )}

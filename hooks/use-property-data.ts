@@ -158,6 +158,13 @@ export type PropertyData = {
   snapshotTop10?: number;
 };
 
+export type QueryCountingDailyRow = {
+  date: string;
+  totalQueries: number;
+  top10: number;
+  top3: number;
+};
+
 export function formatNum(n: number): string {
   if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
   if (n >= 1e3) return (n / 1e3).toFixed(1) + "k";
@@ -218,6 +225,17 @@ export function usePropertyData(propertyId: string) {
       const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/annotations?${params}`);
       if (!res.ok) return [];
       return res.json() as Promise<{ id: string; date: string; label: string; color: string }[]>;
+    },
+  });
+
+  const { data: queryCountingDailyData = [] } = useQuery({
+    queryKey: ["query-counting-daily", propertyId, startDate, endDate],
+    queryFn: async () => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/snapshot?${params}`);
+      if (!res.ok) return [] as QueryCountingDailyRow[];
+      const json = (await res.json()) as { query_chart?: QueryCountingDailyRow[] };
+      return Array.isArray(json.query_chart) ? json.query_chart : [];
     },
   });
 
@@ -375,6 +393,7 @@ export function usePropertyData(propertyId: string) {
     pagesRows,
     queryCounting,
     dailyForCharts,
+    queryCountingDaily: queryCountingDailyData as QueryCountingDailyRow[],
     siteUrl,
     siteSlug,
     startDate,

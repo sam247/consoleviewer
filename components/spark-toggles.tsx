@@ -54,7 +54,7 @@ export function SparkToggles() {
   const { series, toggle } = useSparkSeries();
 
   return (
-    <div className="flex h-9 items-center gap-0.5 rounded-md border border-input bg-white px-0.5" role="group" aria-label="Sparkline metrics">
+    <div className="flex h-9 items-center gap-0.5 rounded-md border border-input bg-surface px-0.5" role="group" aria-label="Sparkline metrics">
       {SERIES_CONFIG.map(({ key, label, title, icon }) => (
         <button
           key={key}

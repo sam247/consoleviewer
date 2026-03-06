@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/header";
+import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 
 type GCSSite = { siteUrl: string; permissionLevel: string };
 
@@ -29,6 +30,8 @@ export default function OnboardingSitesPage() {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const urlError = searchParams.get("error");
+  const { hiddenSet, unhide } = useHiddenProjects();
+  const hiddenList = Array.from(hiddenSet);
 
   const fetchSites = useCallback(async () => {
     setLoading(true);
@@ -208,6 +211,33 @@ export default function OnboardingSitesPage() {
         {!loading && sites && sites.length === 0 && !sitesError && (
           <p className="mt-6 text-sm text-muted-foreground">No Search Console properties found for this account.</p>
         )}
+
+        <section className="mt-8 rounded-lg border border-border bg-surface p-5">
+          <h2 className="text-sm font-medium text-foreground mb-2">Hidden projects</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Hidden sites are managed here. Unhide a project to show it again on your dashboard.
+          </p>
+          {hiddenList.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hidden projects.</p>
+          ) : (
+            <ul className="rounded-lg border border-border bg-background divide-y divide-border">
+              {hiddenList.map((siteUrl) => (
+                <li key={siteUrl} className="flex items-center justify-between gap-4 px-4 py-3">
+                  <span className="min-w-0 truncate text-sm text-foreground" title={siteUrl}>
+                    {displaySiteUrl(siteUrl)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => unhide(siteUrl)}
+                    className="shrink-0 rounded-md border border-input bg-surface px-3 py-1.5 text-sm hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+                  >
+                    Unhide
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         <p className="mt-6 text-sm text-muted-foreground">
           <Link href="/" className="underline hover:no-underline">Back to dashboard</Link>

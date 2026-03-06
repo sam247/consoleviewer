@@ -61,11 +61,29 @@ export async function GET(
     [resolved.propertyId, start, end]
   );
   const chart = chartRes.rows;
+  const queryChartRes = await pool.query<{
+    date: string;
+    query_count: number;
+    top10_count: number;
+    top3_count: number;
+  }>(
+    `SELECT date::text AS date, query_count, top10_count, top3_count
+     FROM property_snapshots
+     WHERE property_id = $1 AND date BETWEEN $2::date AND $3::date
+     ORDER BY date`,
+    [resolved.propertyId, start, end]
+  );
+  const query_chart = queryChartRes.rows.map((r) => ({
+    date: r.date,
+    totalQueries: Number(r.query_count) || 0,
+    top10: Number(r.top10_count) || 0,
+    top3: Number(r.top3_count) || 0,
+  }));
 
   // If DB has chart data, return it
   if (chart.length > 0) {
     if (!snap) {
-      return NextResponse.json({ snapshot: null, chart, site_url });
+      return NextResponse.json({ snapshot: null, chart, query_chart, site_url });
     }
     const impressions = Number(snap.impressions) || 0;
     const clicks = Number(snap.clicks) || 0;
@@ -82,6 +100,7 @@ export async function GET(
         top10_count: snap.top10_count,
       },
       chart,
+      query_chart,
       site_url,
     });
   }
@@ -89,7 +108,7 @@ export async function GET(
   // No DB data — fall back to live GSC API
   const token = await getAccessTokenForTeam(resolved.teamId);
   if (!token) {
-    return NextResponse.json({ snapshot: null, chart: [], site_url });
+    return NextResponse.json({ snapshot: null, chart: [], query_chart: [], site_url });
   }
 
   const gscUrl = gsc_site_url || `https://${(site_url ?? "").replace(/^https?:\/\//, "")}`;
@@ -126,9 +145,10 @@ export async function GET(
         top10_count: 0,
       },
       chart: liveChart,
+      query_chart: [],
       site_url,
     });
   } catch {
-    return NextResponse.json({ snapshot: null, chart: [], site_url });
+    return NextResponse.json({ snapshot: null, chart: [], query_chart: [], site_url });
   }
 }

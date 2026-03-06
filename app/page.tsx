@@ -98,17 +98,6 @@ export default function OverviewPage() {
 
   const gscConnected = gscStatus?.gscConnected ?? false;
 
-  const { data: serpKeywords } = useQuery({
-    queryKey: ["serprobotKeywords"],
-    queryFn: async () => {
-      const res = await fetch("/api/serprobot/keywords");
-      if (!res.ok) return { configured: false, keywords: [] };
-      return res.json() as Promise<{ configured: boolean; keywords: unknown[] }>;
-    },
-  });
-  const hasTrackedKeywords =
-    serpKeywords?.configured === true && (serpKeywords?.keywords?.length ?? 0) > 0;
-
   const { data: rawMetrics = [], isLoading, error, refetch } = useQuery({
     queryKey: ["overview", startDate, endDate, priorStartDate, priorEndDate],
     queryFn: () =>
@@ -147,6 +136,11 @@ export default function OverviewPage() {
       return 0;
     });
   }, [filtered, sortBy, pinnedSet]);
+
+  const useCompactProjectGrid = sorted.length > 0 && sorted.length <= 2;
+  const projectGridClass = useCompactProjectGrid
+    ? "grid grid-cols-1 sm:grid-cols-2 gap-4"
+    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -206,7 +200,7 @@ export default function OverviewPage() {
                   </a>
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className={projectGridClass}>
                 {isLoading
                   ? Array.from({ length: 6 }).map((_, i) => (
                       <SiteCardSkeleton key={`skeleton-${i}`} />
@@ -218,11 +212,15 @@ export default function OverviewPage() {
                         ))}
                       >
                         {sorted.map((m) => (
-                          <SiteCard
+                          <div
                             key={m.siteUrl}
-                            metrics={m}
-                            hasKeywords={hasTrackedKeywords}
-                          />
+                            className={sorted.length === 1 ? "sm:col-span-2" : undefined}
+                          >
+                            <SiteCard
+                              metrics={m}
+                              hasKeywords={(m.trackedKeywordCount ?? 0) > 0}
+                            />
+                          </div>
                         ))}
                       </Suspense>
                     )}

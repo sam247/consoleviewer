@@ -39,6 +39,7 @@ export interface SiteOverviewMetrics {
   /** Mock only: avg tracked rank for dashboard rank strip variants */
   avgTrackedRank?: number;
   avgTrackedRankDelta?: number;
+  trackedKeywordCount?: number;
   daily: { date: string; clicks: number; impressions: number; position?: number }[];
 }
 

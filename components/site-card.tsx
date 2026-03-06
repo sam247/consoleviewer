@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useEffect, useMemo, type ReactNode } from "react";
+import { useRef, useState, useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SiteOverviewMetrics } from "@/types/gsc";
 import { encodePropertyId } from "@/types/gsc";
@@ -11,12 +11,11 @@ import { useDateRange } from "@/contexts/date-range-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
 import { useSparkSeries } from "@/contexts/spark-series-context";
-import { getAiFooterLine } from "@/lib/ai-footer-insight";
 import { cn } from "@/lib/utils";
 
 interface SiteCardProps {
   metrics: SiteOverviewMetrics;
-  /** When false, show muted "Add Keywords +" instead of rank. Default true. */
+  /** When false, show muted "Add Keywords +" in footer. Default true. */
   hasKeywords?: boolean;
 }
 
@@ -251,19 +250,6 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const aiFooterLine = useMemo(
-    () =>
-      hasKeywords
-        ? getAiFooterLine({
-            clicksChangePercent: metrics.clicksChangePercent,
-            impressionsChangePercent: metrics.impressionsChangePercent,
-            avgTrackedRankDelta: metrics.avgTrackedRankDelta ?? null,
-            keywords: [],
-          })
-        : null,
-    [hasKeywords, metrics.clicksChangePercent, metrics.impressionsChangePercent, metrics.avgTrackedRankDelta]
-  );
-
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
@@ -368,13 +354,14 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
         />
       </div>
 
-      {/* Footer: 3-line structure (daily summary, avg rank, intelligence or Add keywords +) */}
+      {/* Footer: 3-line structure (daily summary, GSC avg rank, tracked keyword rank or Add keywords +) */}
       <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
         <div className="min-w-0 flex-1">
           {/* Line 1: Daily performance summary */}
           <p className="text-xs text-muted-foreground min-w-0 break-words">
             {recent ? (
               <>
+                <span className="text-muted-foreground">Overview:</span>{" "}
                 <span className="font-medium text-foreground">{recent.dayName}</span>
                 {" • "}
                 <span className="text-foreground">{recent.latest.clicks}</span>
@@ -393,28 +380,37 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
                 {" impressions"}
               </>
             ) : (
-              "—"
+              "Overview: —"
             )}
           </p>
           {/* Line 2 + Line 3 grouped */}
           <div className="mt-1">
-            {/* Line 2: Avg rank */}
-            {hasKeywords && metrics.avgTrackedRank != null ? (
-              <p className="text-left text-xs text-muted-foreground block">
-                Avg rank: {metrics.avgTrackedRank.toFixed(1)}
-                {metrics.avgTrackedRankDelta != null && (
-                  <span className={metrics.avgTrackedRankDelta < 0 ? " text-positive" : metrics.avgTrackedRankDelta > 0 ? " text-negative" : ""}>
-                    {" "}({metrics.avgTrackedRankDelta >= 0 ? "▲" : "▼"}
-                    {Math.abs(metrics.avgTrackedRankDelta).toFixed(1)})
-                  </span>
-                )}
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">Avg rank: —</p>
-            )}
-            {/* Line 3: intelligence, "Rank stable; traffic flat.", or Add keywords + */}
+            {/* Line 2: GSC average position */}
+            <p className="text-xs text-muted-foreground">
+              Avg Rank: {metrics.position != null ? metrics.position.toFixed(1) : "—"}
+            </p>
+            {/* Line 3: tracked keyword rank or Add keywords + */}
             <p className="text-xs text-muted-foreground/80 min-w-0 break-words mt-1">
-              {!hasKeywords ? (
+              {hasKeywords && metrics.avgTrackedRank != null ? (
+                <>
+                  Avg Tracked Rank: {metrics.avgTrackedRank.toFixed(1)}
+                  {metrics.avgTrackedRankDelta != null && (
+                    <span
+                      className={
+                        metrics.avgTrackedRankDelta < 0
+                          ? " text-positive"
+                          : metrics.avgTrackedRankDelta > 0
+                            ? " text-negative"
+                            : ""
+                      }
+                    >
+                      {" "}
+                      ({metrics.avgTrackedRankDelta >= 0 ? "▲" : "▼"}
+                      {Math.abs(metrics.avgTrackedRankDelta).toFixed(1)})
+                    </span>
+                  )}
+                </>
+              ) : (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -426,10 +422,6 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
                 >
                   Add Keywords+
                 </button>
-              ) : aiFooterLine ? (
-                aiFooterLine
-              ) : (
-                "No keyword data yet."
               )}
             </p>
           </div>

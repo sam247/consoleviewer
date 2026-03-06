@@ -64,7 +64,7 @@ export function SparkToggles() {
           className={cn(
             "flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             series[key]
-              ? "border border-border bg-muted text-foreground shadow-sm"
+              ? "border border-input bg-background text-foreground"
               : "text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/50"
           )}
           aria-pressed={series[key]}

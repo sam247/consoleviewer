@@ -11,6 +11,85 @@ export type OverviewParams = {
   priorEndDate: string;
 };
 
+type TrackedKeywordStats = {
+  trackedKeywordCount: number;
+  avgTrackedRank?: number;
+  avgTrackedRankDelta?: number;
+};
+
+async function getTrackedKeywordStatsByProperty(
+  pool: ReturnType<typeof getPool>,
+  teamId: string,
+  propertyIds: string[]
+): Promise<Map<string, TrackedKeywordStats>> {
+  if (propertyIds.length === 0) return new Map();
+
+  const res = await pool.query<{
+    property_id: string;
+    tracked_keyword_count: number;
+    avg_tracked_rank: string | null;
+    avg_tracked_rank_delta: string | null;
+  }>(
+    `WITH active_keywords AS (
+       SELECT rk.id, rk.property_id
+       FROM rank_keywords rk
+       WHERE rk.team_id = $1
+         AND rk.active = true
+         AND rk.property_id = ANY($2::uuid[])
+     ),
+     latest_positions AS (
+       SELECT
+         ak.property_id,
+         ak.id AS keyword_id,
+         latest.position AS latest_position,
+         prev.position AS prev_position
+       FROM active_keywords ak
+       LEFT JOIN LATERAL (
+         SELECT rp.position
+         FROM rank_positions rp
+         WHERE rp.keyword_id = ak.id
+         ORDER BY rp.date DESC, rp.created_at DESC
+         LIMIT 1
+       ) latest ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT rp.position
+         FROM rank_positions rp
+         WHERE rp.keyword_id = ak.id
+         ORDER BY rp.date DESC, rp.created_at DESC
+         OFFSET 1
+         LIMIT 1
+       ) prev ON TRUE
+     )
+     SELECT
+       lp.property_id::text AS property_id,
+       COUNT(*)::int AS tracked_keyword_count,
+       AVG(lp.latest_position)::text AS avg_tracked_rank,
+       AVG(
+         CASE
+           WHEN lp.latest_position IS NOT NULL AND lp.prev_position IS NOT NULL
+             THEN lp.latest_position - lp.prev_position
+           ELSE NULL
+         END
+       )::text AS avg_tracked_rank_delta
+     FROM latest_positions lp
+     GROUP BY lp.property_id`,
+    [teamId, propertyIds]
+  );
+
+  const out = new Map<string, TrackedKeywordStats>();
+  for (const row of res.rows) {
+    const avgTrackedRank = row.avg_tracked_rank != null ? Number(row.avg_tracked_rank) : undefined;
+    const avgTrackedRankDelta =
+      row.avg_tracked_rank_delta != null ? Number(row.avg_tracked_rank_delta) : undefined;
+    out.set(row.property_id, {
+      trackedKeywordCount: Number(row.tracked_keyword_count) || 0,
+      avgTrackedRank: Number.isFinite(avgTrackedRank ?? NaN) ? avgTrackedRank : undefined,
+      avgTrackedRankDelta: Number.isFinite(avgTrackedRankDelta ?? NaN) ? avgTrackedRankDelta : undefined,
+    });
+  }
+  return out;
+}
+
 /**
  * Fetch overview metrics for all team properties.
  * Tries Neon DB first; when no daily data exists, falls back to live GSC API
@@ -28,6 +107,11 @@ export async function getOverviewMetricsFromDb(
   );
   const properties = propsRes.rows;
   if (properties.length === 0) return [];
+  const trackedKeywordStatsByProperty = await getTrackedKeywordStatsByProperty(
+    pool,
+    teamId,
+    properties.map((p) => p.id)
+  );
 
   // Check if there's any daily data at all for this team
   const dataCheck = await pool.query<{ cnt: string }>(
@@ -38,7 +122,7 @@ export async function getOverviewMetricsFromDb(
 
   // If DB has data, use DB path
   if (hasDbData) {
-    return fetchFromDb(pool, properties, params);
+    return fetchFromDb(pool, properties, params, trackedKeywordStatsByProperty);
   }
 
   // No DB data yet — fall back to live GSC API
@@ -55,7 +139,15 @@ export async function getOverviewMetricsFromDb(
     }));
   }
 
-  return fetchFromGscApi(properties, token, startDate, endDate, priorStartDate, priorEndDate);
+  return fetchFromGscApi(
+    properties,
+    token,
+    startDate,
+    endDate,
+    priorStartDate,
+    priorEndDate,
+    trackedKeywordStatsByProperty
+  );
 }
 
 async function fetchFromGscApi(
@@ -65,6 +157,7 @@ async function fetchFromGscApi(
   endDate: string,
   priorStartDate: string,
   priorEndDate: string,
+  trackedKeywordStatsByProperty: Map<string, TrackedKeywordStats>
 ): Promise<SiteOverviewMetrics[]> {
   const result: SiteOverviewMetrics[] = [];
 
@@ -103,6 +196,9 @@ async function fetchFromGscApi(
           position != null && priorPosition != null && priorPosition > 0
             ? Math.round(((position - priorPosition) / priorPosition) * 100)
             : undefined,
+        trackedKeywordCount: trackedKeywordStatsByProperty.get(prop.id)?.trackedKeywordCount ?? 0,
+        avgTrackedRank: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRank,
+        avgTrackedRankDelta: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRankDelta,
         daily,
       });
     } catch {
@@ -112,6 +208,9 @@ async function fetchFromGscApi(
         impressions: 0,
         clicksChangePercent: 0,
         impressionsChangePercent: 0,
+        trackedKeywordCount: trackedKeywordStatsByProperty.get(prop.id)?.trackedKeywordCount ?? 0,
+        avgTrackedRank: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRank,
+        avgTrackedRankDelta: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRankDelta,
         daily: [],
       });
     }
@@ -123,6 +222,7 @@ async function fetchFromDb(
   pool: ReturnType<typeof getPool>,
   properties: { id: string; site_url: string; gsc_site_url: string | null }[],
   params: OverviewParams,
+  trackedKeywordStatsByProperty: Map<string, TrackedKeywordStats>
 ): Promise<SiteOverviewMetrics[]> {
   const { teamId, startDate, endDate, priorStartDate, priorEndDate } = params;
   const result: SiteOverviewMetrics[] = [];
@@ -192,6 +292,9 @@ async function fetchFromDb(
         position != null && priorPosition != null && priorPosition > 0
           ? Math.round(((position - priorPosition) / priorPosition) * 100)
           : undefined,
+      trackedKeywordCount: trackedKeywordStatsByProperty.get(prop.id)?.trackedKeywordCount ?? 0,
+      avgTrackedRank: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRank,
+      avgTrackedRankDelta: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRankDelta,
       daily,
     });
   }

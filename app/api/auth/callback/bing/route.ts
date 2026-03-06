@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeBingCodeForTokens } from "@/lib/bing-auth";
 import { getSessionUserId } from "@/lib/session";
+import { getTeamIdForUser } from "@/lib/team";
 import { getPool } from "@/lib/db";
 
 function getRedirectBase(request: NextRequest): string {
@@ -8,12 +9,20 @@ function getRedirectBase(request: NextRequest): string {
 }
 
 function decodeState(state: string): { team_id: string } | null {
-  try {
-    const json = Buffer.from(state, "base64url").toString("utf8");
-    const parsed = JSON.parse(json) as { team_id?: string };
-    if (typeof parsed?.team_id === "string") return { team_id: parsed.team_id };
-  } catch {
-    // ignore
+  const raw = state?.trim();
+  if (!raw) return null;
+  for (const encoding of ["base64url", "base64"] as const) {
+    try {
+      let b64 = raw;
+      if (encoding === "base64") {
+        b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
+      }
+      const json = Buffer.from(b64, encoding).toString("utf8");
+      const parsed = JSON.parse(json) as { team_id?: string };
+      if (typeof parsed?.team_id === "string") return { team_id: parsed.team_id };
+    } catch {
+      continue;
+    }
   }
   return null;
 }
@@ -49,8 +58,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", base));
   }
 
+  let teamId: string | null = null;
   const decoded = decodeState(state);
-  if (!decoded || !(await isUserInTeam(userId, decoded.team_id))) {
+  if (decoded && (await isUserInTeam(userId, decoded.team_id))) {
+    teamId = decoded.team_id;
+  }
+  if (!teamId) {
+    const currentTeamId = await getTeamIdForUser(userId);
+    if (currentTeamId) teamId = currentTeamId;
+  }
+  if (!teamId) {
     return NextResponse.redirect(new URL("/onboarding/sites?error=invalid_state", base));
   }
 
@@ -67,7 +84,7 @@ export async function GET(request: NextRequest) {
        ON CONFLICT (team_id) DO UPDATE SET
          refresh_token = EXCLUDED.refresh_token,
          created_at = now()`,
-      [decoded.team_id, refreshToken]
+      [teamId, refreshToken]
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Bing token exchange failed";

@@ -9,6 +9,8 @@ import { InfoTooltip } from "@/components/info-tooltip";
 import { exportToCsv, exportChartToPng, formatExportFilename } from "@/lib/export-csv";
 import type { DataTableRow } from "@/components/data-table";
 import type { PropertyData, DailyRow } from "@/hooks/use-property-data";
+import { useDateRange } from "@/contexts/date-range-context";
+import type { DateRangeKey } from "@/types/gsc";
 import { CHART_CARD_MIN_H, CHART_PLOT_H } from "@/components/ui/chart-frame";
 
 export function TrendSection({
@@ -36,6 +38,13 @@ export function TrendSection({
   onAddAnnotation?: () => void;
   propertyId?: string;
 }) {
+  const { rangeKey, setRangeKey } = useDateRange();
+  const quickRanges: { key: DateRangeKey; label: string }[] = [
+    { key: "30d", label: "30d" },
+    { key: "l90d", label: "90d" },
+    { key: "6m", label: "6m" },
+    { key: "12m", label: "12m" },
+  ];
   const [addAnnotationOpen, setAddAnnotationOpen] = useState(false);
   const [newAnnotationDate, setNewAnnotationDate] = useState("");
   const [newAnnotationLabel, setNewAnnotationLabel] = useState("");
@@ -73,8 +82,8 @@ export function TrendSection({
   }, [trendExportMenuOpen]);
 
   return (
-    <section aria-label="Trend" className="space-y-4">
-      <div className="flex flex-col gap-4 min-w-0 lg:flex-row lg:items-stretch">
+    <section aria-label="Trend" className="space-y-6">
+      <div className="flex flex-col gap-6 min-w-0 lg:flex-row lg:items-stretch">
         <div className="performance-chart-card rounded-lg border border-border bg-surface transition-colors duration-[120ms] min-w-0 flex-1 flex flex-col" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
           {data.summary && (
             <MomentumScoreCard
@@ -151,6 +160,22 @@ export function TrendSection({
                 View as %
               </label>
               <SparkToggles />
+              <div className="flex items-center gap-1 rounded-md border border-input bg-background p-0.5">
+                {quickRanges.map((r) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => setRangeKey(r.key)}
+                    className={
+                      rangeKey === r.key
+                        ? "rounded px-2 py-1 text-xs font-medium bg-background text-foreground border border-input"
+                        : "rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                    }
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
               {propertyId && onAddAnnotation && (
                 <button
                   type="button"

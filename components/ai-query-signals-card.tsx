@@ -121,7 +121,7 @@ export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
             ) : (
               <tr>
                 <td colSpan={4} className="px-4 py-3 text-sm text-muted-foreground">
-                  No LLM-style queries in top set
+                  No ranking signals detected in this range.
                 </td>
               </tr>
             )}

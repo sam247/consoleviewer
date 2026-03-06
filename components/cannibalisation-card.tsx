@@ -137,7 +137,7 @@ export function CannibalisationCard({
             {!isLoading && !error && visibleConflicts.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-xs text-muted-foreground">
-                  No cannibalisation conflicts detected in this range.
+                  No cannibalisation detected for this site.
                 </td>
               </tr>
             )}

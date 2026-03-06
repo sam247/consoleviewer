@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { classifyQuery } from "@/lib/ai-query-detection";
 import type { DataTableRow } from "@/components/data-table";
+import { InfoTooltip } from "@/components/info-tooltip";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
 import { exportToCsv } from "@/lib/export-csv";
 import { RowTableCard } from "@/components/ui/row-table-card";
@@ -68,6 +69,7 @@ type OppSortKey = "key" | "position" | "impressions" | "ctr" | "score";
 
 export function OpportunityIndex({ queries, className, exportFilename }: OpportunityIndexProps) {
   const [fullViewOpen, setFullViewOpen] = useState(false);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const { sortKey, sortDir, onSort } = useTableSort<OppSortKey>("score");
 
   const allRows = useMemo(() => {
@@ -105,6 +107,8 @@ export function OpportunityIndex({ queries, className, exportFilename }: Opportu
 
   if (allRows.length === 0) return null;
 
+  const selected = selectedKey ? allRows.find((r) => r.key === selectedKey) ?? null : null;
+
   function formatNum(n: number): string {
     if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
     if (n >= 1e3) return (n / 1e3).toFixed(1) + "k";
@@ -128,7 +132,7 @@ export function OpportunityIndex({ queries, className, exportFilename }: Opportu
   return (
     <>
       <RowTableCard
-        title="Opportunity index"
+        title={<span className="flex items-center gap-1">Opportunity index<InfoTooltip title="Opportunity score = impressions × ranking potential." /></span>}
         subtitle={`Top ${ROWS_INITIAL} by Impressions × position gap × CTR deficit`}
         className={className}
         headerRight={
@@ -168,7 +172,17 @@ export function OpportunityIndex({ queries, className, exportFilename }: Opportu
             </thead>
             <tbody>
               {visibleRows.map((row) => (
-                <tr key={row.key} className={TABLE_ROW_CLASS}>
+                <tr
+                  key={row.key}
+                  className={cn(
+                    TABLE_ROW_CLASS,
+                    "cursor-pointer border-l-2 border-l-transparent hover:bg-accent/70",
+                    selectedKey === row.key && "border-l-chart-clicks bg-accent/40"
+                  )}
+                  onClick={() => setSelectedKey(row.key)}
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && setSelectedKey(row.key)}
+                >
                   <td className={cn("px-4 truncate min-w-0", TABLE_CELL_Y)} title={row.key}>{row.key}</td>
                   <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>{row.position.toFixed(1)}</td>
                   <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>{formatNum(row.impressions)}</td>
@@ -179,6 +193,11 @@ export function OpportunityIndex({ queries, className, exportFilename }: Opportu
             </tbody>
           </table>
         </div>
+        {selected && (
+          <div className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
+            Opportunity analysis: <span className="text-foreground font-medium">{selected.key}</span> · pos {selected.position.toFixed(1)} · {formatNum(selected.impressions)} impr. · {selected.ctr.toFixed(2)}% CTR
+          </div>
+        )}
       </RowTableCard>
       <TableFullViewModal
         open={fullViewOpen}

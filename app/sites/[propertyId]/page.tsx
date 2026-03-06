@@ -6,6 +6,7 @@ import { Header } from "@/components/header";
 import { SkeletonBox } from "@/components/skeleton-box";
 import { QueryFootprint, type BandFilter } from "@/components/query-footprint";
 import { AiQuerySignalsCard } from "@/components/ai-query-signals-card";
+import { SignalStrip } from "@/components/signal-strip";
 import { usePropertyData } from "@/hooks/use-property-data";
 import { cn } from "@/lib/utils";
 
@@ -105,8 +106,16 @@ export default function SiteDetailPage({
               </div>
             </div>
           ) : (
-            <div className={cn("space-y-4 transition-opacity duration-200", contentMounted ? "opacity-100" : "opacity-0")}>
+            <div className={cn("space-y-8 transition-opacity duration-200", contentMounted ? "opacity-100" : "opacity-0")}>
               <OverviewSection summary={data.summary} queryCounting={queryCounting} endDate={endDate} />
+
+              <SignalStrip
+                summary={data.summary}
+                queriesRows={queriesRows}
+                pagesRows={pagesRows}
+                newQueries={data.newQueries}
+                dateKey={`${startDate}:${endDate}`}
+              />
 
               {data.daily.length > 0 && (
                 <TrendSection
@@ -157,9 +166,12 @@ export default function SiteDetailPage({
                 queriesRows={queriesRows}
                 pagesRows={pagesRows}
                 siteSlug={siteSlug}
+                siteName={siteUrl}
                 startDate={startDate}
                 endDate={endDate}
                 propertyId={propertyId}
+                querySparklines={sparklines}
+                newQueriesRows={data.newQueries}
               />
 
               <IndexCannibalisationSection

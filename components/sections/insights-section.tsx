@@ -20,7 +20,7 @@ export function InsightsSection({
   endDate: string;
 }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-w-0">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch min-w-0">
       {queriesRows.length > 0 && (
         <AiQuerySignalsCard queries={queriesRows} daily={daily} />
       )}

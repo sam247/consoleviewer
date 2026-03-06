@@ -70,11 +70,15 @@ export function MovementIntelligence({
   }, [pagesRows]);
 
   const signals = [
-    topGrowingQuery && { direction: "growing" as const, sentence: buildInsightSentence("query", "growing", topGrowingQuery) },
-    topDecayingQuery && { direction: "decaying" as const, sentence: buildInsightSentence("query", "decaying", topDecayingQuery) },
-    topGrowingPage && { direction: "growing" as const, sentence: buildInsightSentence("page", "growing", topGrowingPage) },
-    topDecayingPage && { direction: "decaying" as const, sentence: buildInsightSentence("page", "decaying", topDecayingPage) },
-  ].filter(Boolean) as { direction: "growing" | "decaying"; sentence: string }[];
+    topGrowingQuery && {
+      direction: "growing" as const,
+      icon: topGrowingQuery.position != null && topGrowingQuery.position <= 10 ? "✨" : "↑",
+      sentence: buildInsightSentence("query", "growing", topGrowingQuery),
+    },
+    topDecayingQuery && { direction: "decaying" as const, icon: "⚠", sentence: buildInsightSentence("query", "decaying", topDecayingQuery) },
+    topGrowingPage && { direction: "growing" as const, icon: "↑", sentence: buildInsightSentence("page", "growing", topGrowingPage) },
+    topDecayingPage && { direction: "decaying" as const, icon: "↓", sentence: buildInsightSentence("page", "decaying", topDecayingPage) },
+  ].filter(Boolean) as { direction: "growing" | "decaying"; icon: string; sentence: string }[];
 
   const signalsKey = useMemo(() => signals.map((s) => s.sentence).join("|"), [signals]);
 
@@ -128,7 +132,7 @@ export function MovementIntelligence({
           {signals.map((s, i) => (
             <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
               <span className={cn("mt-px shrink-0 text-xs", s.direction === "growing" ? "text-positive" : "text-negative")}>
-                {s.direction === "growing" ? "↑" : "↓"}
+                {s.icon}
               </span>
               <span>{boldMetrics(s.sentence)}</span>
             </div>

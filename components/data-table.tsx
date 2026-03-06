@@ -28,7 +28,7 @@ export interface DataTableRow {
 
 type SortKey = "key" | "clicks" | "impressions" | "changePercent" | "position";
 
-interface DataTableProps {
+export interface DataTableProps {
   title: string;
   /** Optional tooltip text for the section title (shows muted "i" icon) */
   titleTooltip?: string;
@@ -122,6 +122,8 @@ function DataTableView({
   const hasSparklines = Boolean(sparklines && Object.keys(sparklines).length > 0);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
+  const [activeRowIndex, setActiveRowIndex] = useState(0);
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) setExportMenuOpen(false);
@@ -131,6 +133,10 @@ function DataTableView({
       return () => document.removeEventListener("click", close);
     }
   }, [exportMenuOpen]);
+
+  useEffect(() => {
+    setActiveRowIndex(0);
+  }, [visibleRows.length]);
   const filterOptions: TrendFilter[] = hasPosition
     ? ["all", "growing", "decaying", "new", "lost", "highImprLowCtr", "longForm", "conversational"]
     : ["all", "growing", "decaying", "new", "lost", "longForm", "conversational"];
@@ -208,7 +214,7 @@ function DataTableView({
             onClick={onOpenFullView ?? onToggleExpand}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded"
           >
-            {onOpenFullView ? `View ${moreCount} more` : expanded ? "View less" : `View ${moreCount} more`}
+            {onOpenFullView ? "View full report →" : expanded ? "View less" : `View ${moreCount} more`}
           </button>
         ) : undefined
       }
@@ -218,23 +224,23 @@ function DataTableView({
           <table className={TABLE_BASE_CLASS}>
             <thead className={TABLE_HEAD_CLASS}>
               <tr>
-                <th className={cn("px-4 font-semibold text-left min-w-0", TABLE_CELL_Y, hasPosition ? "w-[35%]" : "w-[40%]")}>
+                <th className={cn("px-4 font-semibold text-left min-w-0", TABLE_CELL_Y)}>
                   <button type="button" onClick={() => onSort("key")} className="hover:text-foreground transition-colors flex items-center gap-1">
                     Name {sortKey === "key" && (sortDir === "asc" ? "↑" : "↓")}
                   </button>
                 </th>
-                <th className={cn("px-4 font-semibold text-right", TABLE_CELL_Y, hasPosition ? "w-[16%]" : "w-[20%]")}>
+                <th className={cn("px-4 font-semibold text-right w-[80px]", TABLE_CELL_Y)}>
                   <button type="button" onClick={() => onSort("clicks")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
                     Clicks {sortKey === "clicks" && (sortDir === "asc" ? "↑" : "↓")}
                   </button>
                 </th>
-                <th className={cn("px-4 font-semibold text-right", TABLE_CELL_Y, hasPosition ? "w-[20%]" : "w-[20%]")}>
+                <th className={cn("px-4 font-semibold text-right w-[110px]", TABLE_CELL_Y)}>
                   <button type="button" onClick={() => onSort("impressions")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
                     Impr. {sortKey === "impressions" && (sortDir === "asc" ? "↑" : "↓")}
                   </button>
                 </th>
                 {hasPosition && (
-                  <th className={cn("px-4 font-semibold text-right w-14", TABLE_CELL_Y)}>
+                  <th className={cn("px-4 font-semibold text-right w-[70px]", TABLE_CELL_Y)}>
                     <button type="button" onClick={() => onSort("position")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
                       Pos {sortKey === "position" && (sortDir === "asc" ? "↑" : "↓")}
                     </button>
@@ -245,7 +251,7 @@ function DataTableView({
                     <span className="text-muted-foreground">Trend</span>
                   </th>
                 )}
-                <th className={cn("px-4 font-semibold text-right w-16", TABLE_CELL_Y)}>
+                <th className={cn("px-4 font-semibold text-right w-[70px]", TABLE_CELL_Y)}>
                   <button type="button" onClick={() => onSort("changePercent")} className="ml-auto block w-full text-right hover:text-foreground transition-colors">
                     Change {sortKey === "changePercent" && (sortDir === "asc" ? "↑" : "↓")}
                   </button>
@@ -256,13 +262,16 @@ function DataTableView({
               {visibleRows.length === 0 && (
                 <tr>
                   <td colSpan={hasPosition ? (hasSparklines ? 6 : 5) : hasSparklines ? 5 : 4} className="px-4 py-6 text-center text-xs text-muted-foreground">
-                    No rows match the current filter.
+                    No ranking signals detected in this range.
                   </td>
                 </tr>
               )}
-              {visibleRows.map((row) => (
+              {visibleRows.map((row, rowIndex) => (
                 <tr
                   key={row.key}
+                  ref={(el) => {
+                    rowRefs.current[rowIndex] = el;
+                  }}
                   className={cn(
                     TABLE_ROW_CLASS,
                     onRowClick && "cursor-pointer border-l-2 border-l-transparent focus-visible:bg-accent/60 focus-visible:border-l-chart-clicks"
@@ -270,7 +279,27 @@ function DataTableView({
                   onClick={() => onRowClick?.(row)}
                   role={onRowClick ? "button" : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
-                  onKeyDown={onRowClick ? (e) => e.key === "Enter" && onRowClick(row) : undefined}
+                  onFocus={() => setActiveRowIndex(rowIndex)}
+                  onKeyDown={onRowClick ? (e) => {
+                    if (e.key === "Enter") {
+                      onRowClick(row);
+                      return;
+                    }
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      const next = Math.min(visibleRows.length - 1, rowIndex + 1);
+                      rowRefs.current[next]?.focus();
+                      setActiveRowIndex(next);
+                      return;
+                    }
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      const prev = Math.max(0, rowIndex - 1);
+                      rowRefs.current[prev]?.focus();
+                      setActiveRowIndex(prev);
+                    }
+                  } : undefined}
+                  aria-selected={onRowClick ? activeRowIndex === rowIndex : undefined}
                 >
                   <td className={cn("px-4 min-w-0", TABLE_CELL_Y)} title={row.key}>
                     <div className="flex items-center gap-1.5 min-w-0">

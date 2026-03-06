@@ -191,7 +191,7 @@ export function PerformanceTablesSection({
   })) ?? [];
 
   return (
-    <section aria-label="Performance tables" className="space-y-4">
+    <section aria-label="Performance tables" className="space-y-6">
       {propertyId && (
         <PageDetailPanel
           open={!!pageDetailUrl}
@@ -221,8 +221,8 @@ export function PerformanceTablesSection({
         Performance tables
         <InfoTooltip title="Top queries and pages by clicks and impressions" />
       </h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="flex flex-col gap-4 flex-1 min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="flex flex-col gap-6 flex-1 min-w-0">
           <DataTable
             title="Queries"
             titleTooltip="Top queries by clicks and impressions; filter by trend"
@@ -347,7 +347,7 @@ export function PerformanceTablesSection({
             )}
           </div>
         </div>
-        <div className="flex flex-col gap-4 flex-1 min-w-0">
+        <div className="flex flex-col gap-6 flex-1 min-w-0">
           <DataTable
             title="Pages"
             titleTooltip="Top pages by clicks and impressions; filter by trend"

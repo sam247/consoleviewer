@@ -25,7 +25,7 @@ export function AddMetricSection({
 
   return (
     <>
-      <section aria-label="Add a metric" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <section aria-label="Add a metric" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {([0, 1] as const).map((slotIndex) => {
           const metric = addedMetrics[slotIndex];
           return (

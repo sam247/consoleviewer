@@ -374,7 +374,7 @@ export function TrendChart({
           )}
 
           <Tooltip
-            cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+            cursor={{ stroke: "var(--border)", strokeWidth: 1, strokeDasharray: "3 3" }}
             contentStyle={CHART_TOOLTIP_STYLE}
             labelFormatter={(v) =>
               new Date(v).toLocaleDateString(undefined, {
@@ -438,7 +438,7 @@ export function TrendChart({
                 type="monotone"
                 dataKey="clicks"
                 stroke={CHART_CLICKS}
-                strokeWidth={2}
+                strokeWidth={2.5}
                 dot={false}
                 activeDot={{ r: 3, strokeWidth: 1.5, fill: CHART_CLICKS, stroke: "var(--surface)" }}
                 name="Clicks"
@@ -466,7 +466,8 @@ export function TrendChart({
                 type="monotone"
                 dataKey="impressions"
                 stroke={CHART_IMPRESSIONS}
-                strokeWidth={1.2}
+                strokeWidth={2}
+                strokeDasharray={showClicks ? "6 4" : undefined}
                 dot={false}
                 strokeOpacity={0.85}
                 name="Impressions"

@@ -106,6 +106,21 @@ function normalizeSeries(values: number[]): number[] {
   return values.map((v) => (v - min) / range);
 }
 
+/** Light 3-point moving average to soften spikey sparse series (e.g. Bing zero-filled days) without changing shape much for dense data. */
+function smoothSeries(values: number[], window = 3): number[] {
+  if (values.length < window) return values;
+  const half = Math.floor(window / 2);
+  return values.map((v, i) => {
+    let sum = 0;
+    let count = 0;
+    for (let j = Math.max(0, i - half); j <= Math.min(values.length - 1, i + half); j++) {
+      sum += values[j];
+      count += 1;
+    }
+    return count ? sum / count : v;
+  });
+}
+
 function compactNumber(value: number): string {
   if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
   if (value >= 1e3) return `${(value / 1e3).toFixed(1)}k`;
@@ -752,7 +767,8 @@ export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
     const out: Record<string, string | number> = { date: point.date };
     visible.forEach((s) => {
       const values = data.map((d) => (d[s.dataKey] as number) ?? 0);
-      out[`_norm_${s.key}`] = normalizeSeries(values)[i];
+      const smoothed = smoothSeries(values);
+      out[`_norm_${s.key}`] = normalizeSeries(smoothed)[i];
     });
     return out;
   });

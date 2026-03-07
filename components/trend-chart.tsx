@@ -329,10 +329,19 @@ export function TrendChart({
     [showClicks, showCtr, showImpr, showPosition, useSeriesContext]
   );
 
+  // When per-engine data exists but no metric toggles are on, show clicks+impressions so chart isn't blank
+  const effectiveVisibleSeries = useMemo(
+    () =>
+      usePerEngine && mergedDataByEngine.length > 0 && visibleSeries.length === 0
+        ? SERIES_CONFIG.filter((s) => s.key === "clicks" || s.key === "impressions")
+        : visibleSeries,
+    [usePerEngine, mergedDataByEngine.length, visibleSeries]
+  );
+
   const perEngineSeriesToShow = useMemo(() => {
     if (!usePerEngine || effectiveEngines.length === 0) return [];
     const pairs: { metric: SparkSeriesKey; engine: SearchEngine; dataKey: string; label: string; stroke: string; strokeDasharray?: string; strokeWidth: number }[] = [];
-    for (const s of visibleSeries) {
+    for (const s of effectiveVisibleSeries) {
       for (const engine of effectiveEngines) {
         if (engine === "bing" && (s.key === "ctr" || s.key === "position")) continue;
         const dataKey = `${engine}_${s.dataKey}`;
@@ -350,7 +359,7 @@ export function TrendChart({
       }
     }
     return pairs.slice(0, MAX_PER_ENGINE_LINES);
-  }, [usePerEngine, effectiveEngines, visibleSeries]);
+  }, [usePerEngine, effectiveEngines, effectiveVisibleSeries]);
 
   // #region agent log
   useEffect(() => {

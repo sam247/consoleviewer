@@ -67,7 +67,7 @@ export function Header({
                   Share
                 </button>
               )}
-              {shareScope === "project" && <SparkToggles />}
+              <SparkToggles />
               <AiHeaderButton />
               <ThemeToggle />
               <DateRangeSelect />

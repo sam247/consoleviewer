@@ -71,7 +71,7 @@ export function TrendSection({
   const [trendExportMenuOpen, setTrendExportMenuOpen] = useState(false);
   const [budgetMessage, setBudgetMessage] = useState<string | null>(null);
 
-  const { series, setSeries, overlays } = useSparkSeries();
+  const { series, setSeries, engines } = useSparkSeries();
   const selectedMetrics = useMemo(
     () =>
       (Object.entries(series)
@@ -80,23 +80,29 @@ export function TrendSection({
     [series]
   );
 
-  const showBingOverlay = Boolean(overlays.bing && data.bingDaily?.length);
   const chartSources = useMemo((): ("google" | "bing")[] => {
-    if (showBingOverlay) return ["google", "bing"];
-    return ["google"];
-  }, [showBingOverlay]);
+    const out: ("google" | "bing")[] = [];
+    if (engines.google) out.push("google");
+    if (engines.bing) out.push("bing");
+    return out.length ? out : ["google"];
+  }, [engines.google, engines.bing]);
 
   const chartDaily = useMemo(
     () => smoothDailyIfSparse(data.daily ?? []),
     [data.daily]
   );
+  const hasBingData = Boolean(data.bingDaily?.length);
   const chartDataByEngine = useMemo(() => {
-    if (!showBingOverlay || !data.bingDaily?.length) return undefined;
-    return {
-      google: chartDaily,
-      bing: smoothDailyIfSparse(data.bingDaily),
-    };
-  }, [showBingOverlay, chartDaily, data.bingDaily]);
+    const google = chartDaily;
+    const bing = hasBingData ? smoothDailyIfSparse(data.bingDaily!) : [];
+    if (chartSources.includes("google") && chartSources.includes("bing")) {
+      return { google, bing };
+    }
+    if (chartSources.includes("bing")) {
+      return { google: [], bing };
+    }
+    return { google, bing: [] };
+  }, [chartSources, chartDaily, hasBingData, data.bingDaily]);
 
   const budget = useMemo(
     () =>
@@ -119,9 +125,12 @@ export function TrendSection({
   }, [budget.helperMessage, budget.nextSeriesState, budget.wasAutoTrimmed, series, setSeries]);
 
   const enginesLabel = useMemo(() => {
-    if (showBingOverlay) return "Source: Google + Bing";
+    if (chartSources.length === 2) return "Source: Google + Bing";
+    if (chartSources[0] === "bing") return "Source: Bing";
     return "Source: Google";
-  }, [showBingOverlay]);
+  }, [chartSources]);
+
+  const bingOnlyNoData = chartSources.length === 1 && chartSources[0] === "bing" && !hasBingData;
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -297,7 +306,11 @@ export function TrendSection({
             {budgetMessage && (
               <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">{budgetMessage}</p>
             )}
-            {data.daily.length === 0 && (!data.bingDaily || data.bingDaily.length === 0) ? (
+            {bingOnlyNoData ? (
+              <div className="flex-1 flex items-center justify-center min-h-[200px] text-sm text-muted-foreground">
+                No Bing data for this period. Connect Bing in Settings or switch to Google.
+              </div>
+            ) : data.daily.length === 0 && (!data.bingDaily || data.bingDaily.length === 0) ? (
               <div className="flex-1 flex items-center justify-center min-h-[200px] text-sm text-muted-foreground">
                 No data for this period yet. Data syncs nightly from Search Console.
               </div>

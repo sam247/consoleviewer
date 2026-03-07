@@ -279,16 +279,16 @@ export function TrendChart({
   className,
   annotations = [],
 }: TrendChartProps) {
-  const { series, overlays } = useSparkSeries();
+  const { series, engines } = useSparkSeries();
   const chartMargin = buildChartMargin(height, marginOverride);
-  // Use context overlay so Bing shows even when parent passes stale selectedEngines (render timing)
+  // Use context engines; add Bing when parent omitted it but Bing is on and data exists (stale props fix). When parent sends ["bing"] only, keep it.
   const effectiveEngines = useMemo((): SearchEngine[] => {
     const hasBingData = dataByEngine?.bing && dataByEngine.bing.length > 0;
-    if (overlays.bing && hasBingData) {
-      return selectedEngines.includes("bing") ? selectedEngines : ([...selectedEngines, "bing"] as SearchEngine[]);
+    if (engines.bing && hasBingData && !selectedEngines.includes("bing")) {
+      return ([...selectedEngines, "bing"] as SearchEngine[]);
     }
     return selectedEngines;
-  }, [overlays.bing, dataByEngine?.bing, selectedEngines]);
+  }, [engines.bing, dataByEngine?.bing, selectedEngines]);
   const usePerEngine = (analyticsSeries != null || dataByEngine != null) && effectiveEngines.length > 0;
   const mergedDataByEngine = useMemo(
     () => {

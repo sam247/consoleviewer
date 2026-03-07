@@ -775,6 +775,9 @@ export function TrendChart({
   );
 }
 
+const SPARK_CLICKS_AXIS = "clicks";
+const SPARK_IMPR_AXIS = "impressions";
+
 export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
   const { series } = useSparkSeries();
   if (!data?.length) return null;
@@ -782,21 +785,46 @@ export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
   const visible = SERIES_CONFIG.filter((s) => series[s.key] && data.some((d) => d[s.dataKey] != null));
   if (!visible.length) return null;
 
-  const normalizedData = data.map((point, i) => {
-    const out: Record<string, string | number> = { date: point.date };
-    visible.forEach((s) => {
-      const values = data.map((d) => (d[s.dataKey] as number) ?? 0);
-      const smoothed = smoothSeries(values);
-      out[`_norm_${s.key}`] = normalizeSeries(smoothed)[i];
+  const hasClicks = visible.some((s) => s.key === "clicks");
+  const hasImpressions = visible.some((s) => s.key === "impressions");
+  const useDualAxis = hasClicks && hasImpressions;
+
+  const chartData = useMemo(() => {
+    if (useDualAxis) {
+      const clicksValues = data.map((d) => (d.clicks as number) ?? 0);
+      const impressionsValues = data.map((d) => (d.impressions as number) ?? 0);
+      const clicksSmoothed = smoothSeries(clicksValues);
+      const impressionsSmoothed = smoothSeries(impressionsValues);
+      return data.map((point, i) => ({
+        date: point.date,
+        clicks: clicksSmoothed[i],
+        impressions: impressionsSmoothed[i],
+      }));
+    }
+    const out = data.map((point, i) => {
+      const row: Record<string, string | number> = { date: point.date };
+      visible.forEach((s) => {
+        const values = data.map((d) => (d[s.dataKey] as number) ?? 0);
+        const smoothed = smoothSeries(values);
+        row[`_norm_${s.key}`] = normalizeSeries(smoothed)[i];
+      });
+      return row;
     });
     return out;
-  });
+  }, [data, visible, useDualAxis]);
 
   return (
     <ChartPlot height={CHART_PLOT_H.spark} minHeight={CHART_PLOT_H.spark}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={normalizedData} margin={CHART_MARGIN_SPARK}>
-          <YAxis hide domain={[0, 1]} allowDataOverflow />
+        <LineChart data={chartData} margin={CHART_MARGIN_SPARK}>
+          {useDualAxis ? (
+            <>
+              <YAxis yAxisId={SPARK_CLICKS_AXIS} orientation="left" hide allowDataOverflow />
+              <YAxis yAxisId={SPARK_IMPR_AXIS} orientation="right" hide allowDataOverflow />
+            </>
+          ) : (
+            <YAxis hide domain={[0, 1]} allowDataOverflow />
+          )}
           <Tooltip
             content={({ active, label }) => (
               <SparklineTooltip
@@ -807,17 +835,44 @@ export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
               />
             )}
           />
-          {visible.map((s) => (
-            <Line
-              key={s.key}
-              type="monotone"
-              dataKey={`_norm_${s.key}`}
-              stroke={s.stroke}
-              strokeWidth={1.4}
-              dot={false}
-              strokeOpacity={0.9}
-            />
-          ))}
+          {useDualAxis ? (
+            <>
+              {hasClicks && (
+                <Line
+                  type="monotone"
+                  dataKey="clicks"
+                  yAxisId={SPARK_CLICKS_AXIS}
+                  stroke={CHART_CLICKS}
+                  strokeWidth={1.4}
+                  dot={false}
+                  strokeOpacity={0.9}
+                />
+              )}
+              {hasImpressions && (
+                <Line
+                  type="monotone"
+                  dataKey="impressions"
+                  yAxisId={SPARK_IMPR_AXIS}
+                  stroke={CHART_IMPRESSIONS}
+                  strokeWidth={1.4}
+                  dot={false}
+                  strokeOpacity={0.9}
+                />
+              )}
+            </>
+          ) : (
+            visible.map((s) => (
+              <Line
+                key={s.key}
+                type="monotone"
+                dataKey={`_norm_${s.key}`}
+                stroke={s.stroke}
+                strokeWidth={1.4}
+                dot={false}
+                strokeOpacity={0.9}
+              />
+            ))
+          )}
         </LineChart>
       </ResponsiveContainer>
     </ChartPlot>

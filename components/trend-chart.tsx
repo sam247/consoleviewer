@@ -311,7 +311,7 @@ export function TrendChart({
   const yAxisWidth = height >= CHART_PLOT_H.primary ? CHART_Y_AXIS_WIDTH_PRIMARY : CHART_Y_AXIS_WIDTH_SECONDARY;
 
   const showClicks = useSeriesContext ? series?.clicks !== false : true;
-  const showImpr = useSeriesContext ? series?.impressions === true : showImpressions;
+  const showImpr = useSeriesContext ? series?.impressions !== false : showImpressions;
   const showCtr = useSeriesContext ? series?.ctr === true : false;
   const showPosition = useSeriesContext ? series?.position === true : false;
 
@@ -434,10 +434,19 @@ export function TrendChart({
   const useDualAxisPerEngine =
     usePerEngine &&
     !useNormalized &&
-    visibleSeries.some((s) => s.key === "clicks") &&
-    visibleSeries.some((s) => s.key === "impressions") &&
-    !visibleSeries.some((s) => s.key === "ctr") &&
-    !visibleSeries.some((s) => s.key === "position") &&
+    effectiveVisibleSeries.some((s) => s.key === "clicks") &&
+    effectiveVisibleSeries.some((s) => s.key === "impressions") &&
+    !effectiveVisibleSeries.some((s) => s.key === "ctr") &&
+    !effectiveVisibleSeries.some((s) => s.key === "position") &&
+    mergedDataByEngine.length > 0;
+
+  // When only one metric (e.g. Clicks) but two engines, use left=Google right=Bing so Bing isn't flattened
+  const useDualAxisBySource =
+    usePerEngine &&
+    !useNormalized &&
+    !useDualAxisPerEngine &&
+    effectiveEngines.length === 2 &&
+    effectiveVisibleSeries.length === 1 &&
     mergedDataByEngine.length > 0;
 
   const yDomain = useMemo((): [number, number] | undefined => {
@@ -464,10 +473,24 @@ export function TrendChart({
   }, [chartData, usePerEngine, perEngineSeriesToShow, useNormalized]);
 
   const leftDomain = useMemo((): [number, number] | undefined => {
-    if (!chartData.length || (!useDualAxis && !useDualAxisPerEngine)) return undefined;
+    if (!chartData.length || (!useDualAxis && !useDualAxisPerEngine && !useDualAxisBySource)) return undefined;
     let min = Infinity;
     let max = -Infinity;
-    if (useDualAxisPerEngine) {
+    if (useDualAxisBySource) {
+      const firstEngine = effectiveEngines[0];
+      const leftKeys = perEngineSeriesToShow
+        .filter((s) => s.engine === firstEngine)
+        .map((s) => (useNormalized ? `_norm_${s.dataKey}` : s.dataKey));
+      chartData.forEach((d) => {
+        leftKeys.forEach((k) => {
+          const v = (d as Record<string, unknown>)[k];
+          if (typeof v === "number" && Number.isFinite(v)) {
+            min = Math.min(min, v);
+            max = Math.max(max, v);
+          }
+        });
+      });
+    } else if (useDualAxisPerEngine) {
       const clickKeys = perEngineSeriesToShow
         .filter((s) => s.metric === "clicks")
         .map((s) => (useNormalized ? `_norm_${s.dataKey}` : s.dataKey));
@@ -497,13 +520,27 @@ export function TrendChart({
     if (min === Infinity || max === -Infinity) return undefined;
     const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
     return [Math.max(0, min - pad), max + pad];
-  }, [chartData, useDualAxis, useDualAxisPerEngine, perEngineSeriesToShow, useNormalized]);
+  }, [chartData, useDualAxis, useDualAxisPerEngine, useDualAxisBySource, effectiveEngines, perEngineSeriesToShow, useNormalized]);
 
   const rightDomain = useMemo((): [number, number] | undefined => {
-    if (!chartData.length || (!useDualAxis && !useDualAxisPerEngine)) return undefined;
+    if (!chartData.length || (!useDualAxis && !useDualAxisPerEngine && !useDualAxisBySource)) return undefined;
     let min = Infinity;
     let max = -Infinity;
-    if (useDualAxisPerEngine) {
+    if (useDualAxisBySource) {
+      const secondEngine = effectiveEngines[1];
+      const rightKeys = perEngineSeriesToShow
+        .filter((s) => s.engine === secondEngine)
+        .map((s) => (useNormalized ? `_norm_${s.dataKey}` : s.dataKey));
+      chartData.forEach((d) => {
+        rightKeys.forEach((k) => {
+          const v = (d as Record<string, unknown>)[k];
+          if (typeof v === "number" && Number.isFinite(v)) {
+            min = Math.min(min, v);
+            max = Math.max(max, v);
+          }
+        });
+      });
+    } else if (useDualAxisPerEngine) {
       const impressionKeys = perEngineSeriesToShow
         .filter((s) => s.metric === "impressions")
         .map((s) => (useNormalized ? `_norm_${s.dataKey}` : s.dataKey));
@@ -535,7 +572,7 @@ export function TrendChart({
     if (min === Infinity || max === -Infinity) return undefined;
     const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
     return [Math.max(0, min - pad), max + pad];
-  }, [chartData, useDualAxis, compareToPrior, useDualAxisPerEngine, perEngineSeriesToShow, useNormalized]);
+  }, [chartData, useDualAxis, compareToPrior, useDualAxisPerEngine, useDualAxisBySource, effectiveEngines, perEngineSeriesToShow, useNormalized]);
 
   const hasData = usePerEngine ? mergedDataByEngine.length > 0 : (data?.length ?? 0) > 0;
   if (!hasData) {
@@ -550,7 +587,7 @@ export function TrendChart({
     );
   }
 
-  const marginWithDualAxis = (useDualAxis || useDualAxisPerEngine)
+  const marginWithDualAxis = (useDualAxis || useDualAxisPerEngine || useDualAxisBySource)
     ? { ...chartMargin, right: (chartMargin.right ?? 6) + yAxisWidth }
     : chartMargin;
 
@@ -587,7 +624,7 @@ export function TrendChart({
             padding={{ left: 2, right: 2 }}
           />
 
-          {useDualAxis || useDualAxisPerEngine ? (
+          {useDualAxis || useDualAxisPerEngine || useDualAxisBySource ? (
             <>
               <YAxis
                 yAxisId="left"
@@ -661,7 +698,9 @@ export function TrendChart({
                   name={s.label}
                   {...(useDualAxisPerEngine
                     ? { yAxisId: s.metric === "impressions" ? "right" : "left" }
-                    : {})}
+                    : useDualAxisBySource
+                      ? { yAxisId: s.engine === effectiveEngines[0] ? "left" : "right" }
+                      : {})}
                 />
               ))
             : null}

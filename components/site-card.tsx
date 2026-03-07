@@ -17,6 +17,8 @@ interface SiteCardProps {
   metrics: SiteOverviewMetrics;
   /** When false, show muted "Add Keywords +" in footer. Default true. */
   hasKeywords?: boolean;
+  /** Which engine this card's metrics are from (for screenshot clarity). */
+  sourceEngine?: "google" | "bing";
 }
 
 function formatNum(n: number): string {
@@ -249,7 +251,7 @@ const KebabIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
+export function SiteCard({ metrics, hasKeywords = true, sourceEngine = "google" }: SiteCardProps) {
   const router = useRouter();
   const propertyId = encodePropertyId(metrics.siteUrl);
   const href = `/sites/${propertyId}`;
@@ -363,7 +365,19 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
             ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
           }))}
         />
-        <SiteCardSourceBadges bingConnected={metrics.bingConnected} />
+        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+          <SiteCardSourceBadges bingConnected={metrics.bingConnected} />
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
+              sourceEngine === "google"
+                ? "bg-[#4285f4]/12 text-[#4285f4]"
+                : "bg-[#008373]/12 text-[#008373]"
+            )}
+          >
+            {sourceEngine === "google" ? "Google" : "Bing"}
+          </span>
+        </div>
       </div>
 
       {/* Footer: 3-line structure (daily summary, GSC avg rank, tracked keyword rank or Add keywords +) */}

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { DataTableRow } from "@/components/data-table";
 import { useDateRange } from "@/contexts/date-range-context";
+import { useEngineSelectionOptional } from "@/contexts/engine-selection-context";
 import { decodePropertyId } from "@/types/gsc";
 import { normalizeDailyToSeries, type AnalyticsSeries } from "@/lib/analytics-series-normalize";
 
@@ -199,7 +200,10 @@ export type PropertyData = {
   brandedDaily: { date: string; brandedClicks: number; nonBrandedClicks: number }[];
   snapshotTop3?: number;
   snapshotTop10?: number;
+  /** Bing daily series (for chart when Bing available). */
   bingDaily?: DailyRow[];
+  /** Google daily series (for chart when mode is "both" or for reference). */
+  googleDaily?: DailyRow[];
   series?: AnalyticsSeries[];
   engineAvailability?: {
     bingConnected: boolean;
@@ -223,6 +227,8 @@ export function formatNum(n: number): string {
 
 export function usePropertyData(propertyId: string) {
   const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
+  const engineSelection = useEngineSelectionOptional();
+  const effectiveEngine = engineSelection?.effectiveEngine ?? "google";
 
   const {
     data: detailData,
@@ -319,14 +325,85 @@ export function usePropertyData(propertyId: string) {
   }, [siteUrl, propertyId]);
 
   const data: PropertyData = useMemo(() => {
-    if (!detailData) {
+    const emptyData = (url: string): PropertyData => ({
+      siteUrl: url,
+      summary: null,
+      daily: [],
+      priorDaily: [],
+      queries: [],
+      pages: [],
+      countries: [],
+      devices: [],
+      newQueries: [],
+      lostQueries: [],
+      newPages: [],
+      lostPages: [],
+      branded: { brandedClicks: 0, nonBrandedClicks: 0, brandedChangePercent: 0, nonBrandedChangePercent: 0 },
+      brandedDaily: [],
+    });
+
+    if (effectiveEngine === "bing") {
+      const bing = bingDetail;
+      if (!bing?.analyticsReady || (!bing.daily?.length && !bing.queries?.length)) {
+        return { ...emptyData(siteUrl), engineAvailability: { bingConnected: !!bing?.connected, bingMapped: false, bingAnalyticsReady: false } };
+      }
+      const daily: DailyRow[] = (bing.daily ?? []).map((d) => ({
+        date: d.date,
+        clicks: d.clicks,
+        impressions: d.impressions,
+        ctr: d.ctr ?? (d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0),
+        position: d.position,
+      }));
+      const totalClicks = daily.reduce((a, d) => a + d.clicks, 0);
+      const totalImpressions = daily.reduce((a, d) => a + d.impressions, 0);
+      const queriesBing = bing.queries ?? [];
+      const pagesBing = bing.pages ?? [];
+      const summary: Summary = {
+        clicks: totalClicks,
+        impressions: totalImpressions,
+        queryCount: queriesBing.length,
+        position: (() => {
+          const withPos = queriesBing.filter((r) => r.position != null);
+          return withPos.length
+            ? withPos.reduce((sum, r) => sum + (r.position ?? 0), 0) / withPos.length
+            : undefined;
+        })(),
+        ctr: totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : undefined,
+      };
+      const queries: DataTableRow[] = queriesBing.map((r) => ({
+        key: r.key,
+        clicks: r.clicks,
+        impressions: r.impressions,
+        changePercent: r.changePercent,
+        position: r.position,
+      }));
+      const pages: DataTableRow[] = pagesBing.map((r) => ({
+        key: r.key,
+        clicks: r.clicks,
+        impressions: r.impressions,
+        changePercent: r.changePercent,
+        position: r.position,
+      }));
+      const snapshotTop3 = queries.filter((r) => r.position != null && r.position <= 3).length;
+      const snapshotTop10 = queries.filter((r) => r.position != null && r.position <= 10).length;
+      const bingDailyForSeries = daily;
+      const googleDailyRows: DailyRow[] = detailData ? (detailData.daily ?? []).map((d) => ({
+        date: d.date,
+        clicks: d.clicks,
+        impressions: d.impressions,
+        ctr: d.ctr ?? (d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0),
+        position: d.position,
+      })) : [];
+      const metricKeys: ("clicks" | "impressions" | "ctr" | "position")[] = ["clicks", "impressions", "ctr", "position"];
+      const googleSeries = detailData ? normalizeDailyToSeries({ source: "google", daily: googleDailyRows, metrics: metricKeys }) : [];
+      const bingSeries = normalizeDailyToSeries({ source: "bing", daily: bingDailyForSeries, metrics: metricKeys });
       return {
-        siteUrl,
-        summary: null,
-        daily: [],
+        siteUrl: detailData?.siteUrl ?? siteUrl,
+        summary,
+        daily,
         priorDaily: [],
-        queries: [],
-        pages: [],
+        queries,
+        pages,
         countries: [],
         devices: [],
         newQueries: [],
@@ -335,7 +412,21 @@ export function usePropertyData(propertyId: string) {
         lostPages: [],
         branded: { brandedClicks: 0, nonBrandedClicks: 0, brandedChangePercent: 0, nonBrandedChangePercent: 0 },
         brandedDaily: [],
+        snapshotTop3,
+        snapshotTop10,
+        bingDaily: bingDailyForSeries,
+        googleDaily: googleDailyRows,
+        series: [...googleSeries, ...bingSeries],
+        engineAvailability: {
+          bingConnected: engineAvailability?.bing.connected ?? false,
+          bingMapped: engineAvailability?.bing.mapped ?? false,
+          bingAnalyticsReady: true,
+        },
       };
+    }
+
+    if (!detailData) {
+      return emptyData(siteUrl);
     }
     const s = detailData.summary;
     const queriesForVis = detailData.queries ?? [];
@@ -440,6 +531,8 @@ export function usePropertyData(propertyId: string) {
       position: d.position,
     }));
 
+    const googleDaily: DailyRow[] = daily;
+
     const metricKeys: ("clicks" | "impressions" | "ctr" | "position")[] = [
       "clicks",
       "impressions",
@@ -477,6 +570,7 @@ export function usePropertyData(propertyId: string) {
       snapshotTop3,
       snapshotTop10,
       bingDaily,
+      googleDaily,
       series: [...googleSeries, ...bingSeries],
       engineAvailability: {
         bingConnected: engineAvailability?.bing.connected ?? false,
@@ -485,7 +579,7 @@ export function usePropertyData(propertyId: string) {
           (engineAvailability?.bing.analyticsReady ?? false) || (bingDetail?.analyticsReady ?? false),
       },
     };
-  }, [detailData, siteUrl, bingDetail, engineAvailability]);
+  }, [detailData, siteUrl, bingDetail, engineAvailability, effectiveEngine]);
 
   const queriesRows = useMemo<DataTableRow[]>(() => data.queries, [data.queries]);
   const pagesRows = useMemo<DataTableRow[]>(() => data.pages, [data.pages]);
@@ -502,6 +596,7 @@ export function usePropertyData(propertyId: string) {
 
   return {
     data,
+    effectiveEngine,
     queriesRows,
     pagesRows,
     queryCounting,

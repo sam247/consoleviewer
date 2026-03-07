@@ -8,9 +8,9 @@ import { QueryFootprint, type BandFilter } from "@/components/query-footprint";
 import { AiQuerySignalsCard } from "@/components/ai-query-signals-card";
 import { SignalStrip } from "@/components/signal-strip";
 import { usePropertyData } from "@/hooks/use-property-data";
-import { EngineSelectionProvider } from "@/contexts/engine-selection-context";
 import { cn } from "@/lib/utils";
 
+import { SearchEngineShareCard } from "@/components/search-engine-share-card";
 import { OverviewSection } from "@/components/sections/overview-section";
 import { TrendSection } from "@/components/sections/trend-section";
 import { InsightsSection } from "@/components/sections/insights-section";
@@ -29,6 +29,7 @@ export default function SiteDetailPage({
 
   const {
     data,
+    effectiveEngine,
     queriesRows,
     pagesRows,
     queryCounting,
@@ -47,6 +48,7 @@ export default function SiteDetailPage({
     cannibalisationLoading,
     cannibalisationError,
   } = usePropertyData(propertyId);
+  const engineForDisplay = effectiveEngine ?? "google";
 
   const [bandFilter, setBandFilter] = useState<BandFilter>(null);
   const [contentMounted, setContentMounted] = useState(false);
@@ -58,25 +60,22 @@ export default function SiteDetailPage({
 
   if (error) {
     return (
-      <EngineSelectionProvider>
-        <div className="min-h-screen flex flex-col">
-          <Header shareScope="project" shareScopeId={propertyId} />
-          <main className="flex-1 p-4 md:p-6">
-            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
-              {error instanceof Error ? error.message : "Something went wrong"}
-            </div>
-            <Link href="/" className="text-sm text-foreground underline mt-2 inline-block">
-              Back to overview
-            </Link>
-          </main>
-        </div>
-      </EngineSelectionProvider>
+      <div className="min-h-screen flex flex-col">
+        <Header shareScope="project" shareScopeId={propertyId} />
+        <main className="flex-1 p-4 md:p-6">
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
+            {error instanceof Error ? error.message : "Something went wrong"}
+          </div>
+          <Link href="/" className="text-sm text-foreground underline mt-2 inline-block">
+            Back to overview
+          </Link>
+        </main>
+      </div>
     );
   }
 
   return (
-    <EngineSelectionProvider>
-      <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col">
         <Header shareScope="project" shareScopeId={propertyId} />
         <main className="flex-1 p-4 md:p-6">
           <div className="mx-auto max-w-[86rem]">
@@ -90,6 +89,27 @@ export default function SiteDetailPage({
             <h1 className="mt-1 text-lg font-medium text-foreground truncate">
               {siteUrl}
             </h1>
+            <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 font-medium",
+                  engineForDisplay === "google"
+                    ? "bg-[#4285f4]/15 text-[#4285f4]"
+                    : "bg-[#008373]/15 text-[#008373]"
+                )}
+                aria-label={`Source: ${engineForDisplay === "google" ? "Google" : "Bing"}`}
+              >
+                <span
+                  className={cn(
+                    "inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white",
+                    engineForDisplay === "google" ? "bg-[#4285f4]" : "bg-[#008373]"
+                  )}
+                >
+                  {engineForDisplay === "google" ? "G" : "B"}
+                </span>
+                {engineForDisplay === "google" ? "Google" : "Bing"}
+              </span>
+            </div>
           </div>
 
           {isLoading ? (
@@ -112,12 +132,32 @@ export default function SiteDetailPage({
             <div className={cn("space-y-8 transition-opacity duration-200", contentMounted ? "opacity-100" : "opacity-0")}>
               <OverviewSection summary={data.summary} queryCounting={queryCounting} endDate={endDate} />
 
+              {((data.googleDaily?.length ?? 0) > 0 || (data.bingDaily?.length ?? 0) > 0) && (
+                <SearchEngineShareCard
+                  googleClicks={(data.googleDaily ?? []).reduce((s, d) => s + d.clicks, 0)}
+                  bingClicks={(data.bingDaily ?? []).reduce((s, d) => s + d.clicks, 0)}
+                  googleImpressions={(data.googleDaily ?? []).reduce((s, d) => s + d.impressions, 0)}
+                  bingImpressions={(data.bingDaily ?? []).reduce((s, d) => s + d.impressions, 0)}
+                />
+              )}
+
+              <InsightsSection
+                queriesRows={queriesRows}
+                daily={data.daily}
+                propertyId={propertyId}
+                siteSlug={siteSlug}
+                startDate={startDate}
+                endDate={endDate}
+                effectiveEngine={engineForDisplay}
+              />
+
               <SignalStrip
                 summary={data.summary}
                 queriesRows={queriesRows}
                 pagesRows={pagesRows}
                 newQueries={data.newQueries}
                 dateKey={`${startDate}:${endDate}`}
+                sourceEngine={engineForDisplay}
               />
 
               {(data.daily.length > 0 || (data.bingDaily?.length ?? 0) > 0) && (
@@ -136,20 +176,12 @@ export default function SiteDetailPage({
                 />
               )}
 
-              <InsightsSection
-                queriesRows={queriesRows}
-                daily={data.daily}
-                propertyId={propertyId}
-                siteSlug={siteSlug}
-                startDate={startDate}
-                endDate={endDate}
-              />
-
               {data.daily.length > 0 && (
                 <VolatilityBrandedSection
                   data={data}
                   daily={data.daily}
                   propertyId={propertyId}
+                  effectiveEngine={engineForDisplay}
                 />
               )}
 
@@ -175,6 +207,7 @@ export default function SiteDetailPage({
                 propertyId={propertyId}
                 querySparklines={sparklines}
                 newQueriesRows={data.newQueries}
+                sourceEngine={engineForDisplay}
               />
 
               <IndexCannibalisationSection
@@ -205,12 +238,12 @@ export default function SiteDetailPage({
                 siteSlug={siteSlug}
                 startDate={startDate}
                 endDate={endDate}
+                effectiveEngine={engineForDisplay}
               />
             </div>
           )}
           </div>
         </main>
       </div>
-    </EngineSelectionProvider>
   );
 }

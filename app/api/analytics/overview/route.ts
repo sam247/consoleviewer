@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   const endDate = searchParams.get("endDate");
   const priorStartDate = searchParams.get("priorStartDate");
   const priorEndDate = searchParams.get("priorEndDate");
+  const engine = searchParams.get("engine") === "bing" ? "bing" : "google";
 
   if (!startDate || !endDate || !priorStartDate || !priorEndDate) {
     return NextResponse.json(
@@ -29,18 +30,22 @@ export async function GET(request: NextRequest) {
         endDate,
         priorStartDate,
         priorEndDate,
+        engine,
       });
       return NextResponse.json(data, {
         headers: { "Cache-Control": "no-store" },
       });
     }
 
-    const data = await getOverviewMetrics(
-      startDate,
-      endDate,
-      priorStartDate,
-      priorEndDate
-    );
+    const data =
+      engine === "bing"
+        ? []
+        : await getOverviewMetrics(
+            startDate,
+            endDate,
+            priorStartDate,
+            priorEndDate
+          );
     return NextResponse.json(data, {
       headers: { "Cache-Control": "no-store" },
     });

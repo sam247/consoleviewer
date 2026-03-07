@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TrendChart } from "@/components/trend-chart";
-import { EngineSelector } from "@/components/engine-selector";
 import { QueryFootprint, type BandFilter } from "@/components/query-footprint";
 import { MomentumScoreCard } from "@/components/momentum-score-card";
 import { InfoTooltip } from "@/components/info-tooltip";
@@ -76,22 +75,7 @@ export function TrendSection({
   const [trendExportMenuOpen, setTrendExportMenuOpen] = useState(false);
   const [budgetMessage, setBudgetMessage] = useState<string | null>(null);
 
-  const availableEngines = useMemo((): SearchEngine[] => {
-    if (!data.engineAvailability?.bingConnected) return ["google"];
-    return ["google", "bing"];
-  }, [data.engineAvailability?.bingConnected]);
-  const disabledEngines = useMemo((): SearchEngine[] => {
-    if (!data.engineAvailability?.bingConnected) return [];
-    return data.engineAvailability?.bingAnalyticsReady ? [] : ["bing"];
-  }, [data.engineAvailability?.bingAnalyticsReady, data.engineAvailability?.bingConnected]);
-  const disabledReasonByEngine = useMemo(
-    () => ({
-      bing: "Bing connected. Analytics data not available yet.",
-    }),
-    []
-  );
-
-  const { selectedEngines, setSelectedEngines } = useEngineSelection();
+  const { effectiveEngine, showBothOnGraph } = useEngineSelection();
   const { series, setSeries } = useSparkSeries();
   const selectedMetrics = useMemo(
     () =>
@@ -100,26 +84,21 @@ export function TrendSection({
         .map(([k]) => k) as ("clicks" | "impressions" | "ctr" | "position")[]),
     [series]
   );
-  const effectiveSelectedEngines = useMemo((): SearchEngine[] => {
-    const allowed = selectedEngines.filter((e) => availableEngines.includes(e) && !disabledEngines.includes(e));
-    return allowed.length > 0 ? allowed : (["google"] as SearchEngine[]);
-  }, [availableEngines, selectedEngines, disabledEngines]);
+
+  const chartSources = useMemo((): SearchEngine[] => {
+    if (showBothOnGraph && data.googleDaily?.length && data.bingDaily?.length) return ["google", "bing"];
+    return [effectiveEngine];
+  }, [showBothOnGraph, effectiveEngine, data.googleDaily?.length, data.bingDaily?.length]);
 
   const budget = useMemo(
     () =>
       applySeriesBudget({
-        selectedSources: effectiveSelectedEngines,
+        selectedSources: chartSources,
         selectedMetrics,
         currentSeriesState: series,
       }),
-    [effectiveSelectedEngines, selectedMetrics, series]
+    [chartSources, selectedMetrics, series]
   );
-
-  useEffect(() => {
-    if (effectiveSelectedEngines.join("|") !== selectedEngines.join("|")) {
-      setSelectedEngines(effectiveSelectedEngines);
-    }
-  }, [effectiveSelectedEngines, selectedEngines, setSelectedEngines]);
 
   useEffect(() => {
     const current = JSON.stringify(series);
@@ -133,10 +112,9 @@ export function TrendSection({
   }, [budget.helperMessage, budget.nextSeriesState, budget.wasAutoTrimmed, series, setSeries]);
 
   const enginesLabel = useMemo(() => {
-    if (effectiveSelectedEngines.length === 0) return "Source: Google";
-    if (effectiveSelectedEngines.length === 2) return "Source: Google + Bing";
-    return effectiveSelectedEngines[0] === "google" ? "Source: Google" : "Source: Bing";
-  }, [effectiveSelectedEngines]);
+    if (showBothOnGraph && chartSources.length === 2) return "Source: Google + Bing";
+    return effectiveEngine === "google" ? "Source: Google" : "Source: Bing";
+  }, [showBothOnGraph, chartSources.length, effectiveEngine]);
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -226,14 +204,6 @@ export function TrendSection({
                 />
                 View as %
               </label>
-              <EngineSelector
-                selectedEngines={effectiveSelectedEngines}
-                availableEngines={availableEngines}
-                disabledEngines={disabledEngines}
-                disabledReasonByEngine={disabledReasonByEngine}
-                onChange={setSelectedEngines}
-                label="Search engine:"
-              />
               <div className="flex items-center gap-1 rounded-md border border-input bg-background p-0.5">
                 {quickRanges.map((r) => (
                   <button
@@ -330,11 +300,11 @@ export function TrendSection({
                   data={data.daily}
                   analyticsSeries={data.series}
                   dataByEngine={
-                    data.bingDaily && data.bingDaily.length > 0
-                      ? { google: data.daily, bing: data.bingDaily }
+                    showBothOnGraph && data.googleDaily?.length && data.bingDaily?.length
+                      ? { google: data.googleDaily, bing: data.bingDaily }
                       : undefined
                   }
-                  selectedEngines={budget.effectiveSources}
+                  selectedEngines={chartSources}
                   priorData={data.priorDaily}
                   height={CHART_PLOT_H.primary}
                   showImpressions

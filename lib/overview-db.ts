@@ -9,6 +9,8 @@ export type OverviewParams = {
   endDate: string;
   priorStartDate: string;
   priorEndDate: string;
+  /** When "bing", return Bing-sourced overview; when not yet available, return zeroed metrics. */
+  engine?: "google" | "bing";
 };
 
 type TrackedKeywordStats = {
@@ -107,6 +109,21 @@ export async function getOverviewMetricsFromDb(
   );
   const properties = propsRes.rows;
   if (properties.length === 0) return [];
+
+  const engine = params.engine ?? "google";
+  if (engine === "bing") {
+    return properties.map((p) => ({
+      siteUrl: p.site_url,
+      clicks: 0,
+      impressions: 0,
+      clicksChangePercent: 0,
+      impressionsChangePercent: 0,
+      trackedKeywordCount: 0,
+      bingConnected: !!p.bing_site_url,
+      daily: [] as { date: string; clicks: number; impressions: number; position?: number }[],
+    }));
+  }
+
   const trackedKeywordStatsByProperty = await getTrackedKeywordStatsByProperty(
     pool,
     teamId,

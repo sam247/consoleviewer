@@ -189,9 +189,23 @@ function SectionHeader({
 interface OpportunityIntelligenceProps {
   queries: DataTableRow[];
   className?: string;
+  sourceEngine?: "google" | "bing";
 }
 
-export function OpportunityIntelligence({ queries, className }: OpportunityIntelligenceProps) {
+function EngineChip({ engine }: { engine: "google" | "bing" }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
+        engine === "google" ? "bg-[#4285f4]/12 text-[#4285f4]" : "bg-[#008373]/12 text-[#008373]"
+      )}
+    >
+      {engine === "google" ? "Google" : "Bing"}
+    </span>
+  );
+}
+
+export function OpportunityIntelligence({ queries, className, sourceEngine = "google" }: OpportunityIntelligenceProps) {
   const [open, setOpen] = useState<SectionState>({ page1Push: true, page2Opp: false, ctrLeak: false });
 
   const allImpressions = useMemo(() => queries.map((r) => r.impressions), [queries]);
@@ -265,7 +279,7 @@ export function OpportunityIntelligence({ queries, className }: OpportunityIntel
 
   return (
     <RowTableCard
-      title="Opportunity intelligence"
+      title={<span className="flex items-center gap-2 flex-wrap">Opportunity intelligence <EngineChip engine={sourceEngine} /></span>}
       subtitle={totalOpps > 0 ? `${totalOpps} opportunities identified` : "No opportunities identified"}
       className={className}
     >

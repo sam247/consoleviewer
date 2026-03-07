@@ -10,10 +10,12 @@ export function VolatilityBrandedSection({
   data,
   daily,
   propertyId,
+  effectiveEngine = "google",
 }: {
   data: PropertyData;
   daily: DailyRow[];
   propertyId: string;
+  effectiveEngine?: "google" | "bing";
 }) {
   const BRANDED_TERMS_KEY = `consoleview_branded_terms_${propertyId}`;
   const [brandedTerms, setBrandedTerms] = useState<string[]>([]);
@@ -59,6 +61,22 @@ export function VolatilityBrandedSection({
     }
     return { brandedClicks: bc, nonBrandedClicks: Math.max(0, totalClicks - bc) };
   }, [brandedTerms, data.queries, data.summary?.clicks]);
+
+  if (effectiveEngine === "bing") {
+    return (
+      <div className="rounded-lg border border-border bg-muted/20 px-4 py-6">
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          Volatility & branded
+          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+            Google only
+          </span>
+        </h2>
+        <p className="text-xs text-muted-foreground mt-1.5">
+          Position volatility and branded vs non-branded breakdown are not available for Bing.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch min-w-0">

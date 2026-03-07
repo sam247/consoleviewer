@@ -30,6 +30,10 @@ function countInBand(queries: DataTableRow[], min: number, max: number): number 
   return queries.filter((r) => r.position != null && r.position >= min && r.position <= max).length;
 }
 
+function countAbove(queries: DataTableRow[], minPosition: number): number {
+  return queries.filter((r) => r.position != null && r.position > minPosition).length;
+}
+
 export function QueryFootprint({
   queries,
   daily,
@@ -45,6 +49,9 @@ export function QueryFootprint({
   const top3 = useMemo(() => countInBand(withPosition, 1, 3), [withPosition]);
   const top10 = useMemo(() => countInBand(withPosition, 1, 10), [withPosition]);
   const top20 = useMemo(() => countInBand(withPosition, 1, 20), [withPosition]);
+  const top50 = useMemo(() => countInBand(withPosition, 1, 50), [withPosition]);
+  const top100 = useMemo(() => countInBand(withPosition, 1, 100), [withPosition]);
+  const above100 = useMemo(() => countAbove(withPosition, 100), [withPosition]);
 
   const bands = useMemo(
     () => BANDS.map((b) => ({ ...b, count: countInBand(withPosition, b.min, b.max) })),
@@ -62,6 +69,9 @@ export function QueryFootprint({
     { label: "Top 3", value: top3 },
     { label: "Top 10", value: top10 },
     { label: "Top 20", value: top20 },
+    { label: "Top 50", value: top50 },
+    { label: "Top 100", value: top100 },
+    { label: "100+", value: above100 },
     { label: "Total", value: total },
   ];
 

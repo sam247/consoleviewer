@@ -54,28 +54,25 @@ export function PerformanceTablesSection({
   const [savedSegments, setSavedSegments] = useState<SavedSegment[]>([]);
   const [contentGroupsFullViewOpen, setContentGroupsFullViewOpen] = useState(false);
   const engineSelection = useEngineSelectionOptional();
-  const selectedEngines = engineSelection?.selectedEngines ?? ["google"];
+  const effectiveEngine = engineSelection?.effectiveEngine ?? "google";
 
   const applyEngineSelectionToRow = (r: DataTableRow): DataTableRow => {
-    const hasGoogle = selectedEngines.includes("google");
-    const hasBing = selectedEngines.includes("bing");
-    if (hasGoogle && hasBing) return r;
-    if (hasGoogle && !hasBing) {
+    if (effectiveEngine === "bing") {
       return {
         ...r,
-        clicksBing: undefined,
-        impressionsBing: undefined,
-        positionBing: undefined,
+        clicks: r.clicksBing ?? r.clicks ?? 0,
+        impressions: r.impressionsBing ?? r.impressions ?? 0,
+        position: r.positionBing ?? r.position,
+        clicksGoogle: undefined,
+        impressionsGoogle: undefined,
+        positionGoogle: undefined,
       };
     }
     return {
       ...r,
-      clicks: r.clicksBing ?? 0,
-      impressions: r.impressionsBing ?? 0,
-      position: r.positionBing,
-      clicksGoogle: undefined,
-      impressionsGoogle: undefined,
-      positionGoogle: undefined,
+      clicksBing: undefined,
+      impressionsBing: undefined,
+      positionBing: undefined,
     };
   };
 
@@ -119,13 +116,13 @@ export function PerformanceTablesSection({
       rows = rows.filter((r) => r.position != null && r.position >= bandFilter.min && r.position <= bandFilter.max);
     }
     return rows;
-  }, [queriesTrendFilter, queriesRows, newQueriesRows, lostQueriesRows, bandFilter, selectedEngines]);
+  }, [queriesTrendFilter, queriesRows, newQueriesRows, lostQueriesRows, bandFilter, effectiveEngine]);
 
   const pagesRowsForTable = useMemo(() => {
     if (pagesTrendFilter === "new") return newPagesRows.map(applyEngineSelectionToRow);
     if (pagesTrendFilter === "lost") return lostPagesRows.map(applyEngineSelectionToRow);
     return pagesRows.map(applyEngineSelectionToRow);
-  }, [pagesTrendFilter, pagesRows, newPagesRows, lostPagesRows, selectedEngines]);
+  }, [pagesTrendFilter, pagesRows, newPagesRows, lostPagesRows, effectiveEngine]);
 
   const contentGroupsFilteredPages = useMemo(() => {
     const raw = contentFilterPattern.trim();
@@ -238,7 +235,7 @@ export function PerformanceTablesSection({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="flex flex-col gap-6 flex-1 min-w-0">
           <DataTable
-            title="Queries"
+            title={`Queries · Source: ${effectiveEngine === "google" ? "Google" : "Bing"}`}
             titleTooltip="Top queries by clicks and impressions; filter by trend"
             rows={queryAppearances ? queriesRowsForTable.map((r) => ({ ...r, appearances: queryAppearances[r.key] })) : queriesRowsForTable}
             trendFilter={queriesTrendFilter}
@@ -250,7 +247,7 @@ export function PerformanceTablesSection({
         </div>
         <div className="flex flex-col gap-6 flex-1 min-w-0">
           <DataTable
-            title="Pages"
+            title={`Pages · Source: ${effectiveEngine === "google" ? "Google" : "Bing"}`}
             titleTooltip="Top pages by clicks and impressions; filter by trend"
             rows={pagesRowsForTable}
             trendFilter={pagesTrendFilter}

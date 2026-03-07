@@ -72,6 +72,8 @@ function loadEngines(): EngineSelection {
       const parsed = JSON.parse(raw);
       const next = { ...DEFAULT_ENGINES, ...parsed };
       if (!next.google && !next.bing) return DEFAULT_ENGINES;
+      // Google is always on (no Google toggle in UI); only Bing is user-togglable.
+      if (!next.google) next.google = true;
       return next;
     }
     const overlays = loadOverlays();

@@ -80,12 +80,10 @@ export function TrendSection({
     [series]
   );
 
+  // Google is always the primary source; Bing is an optional overlay (no Google toggle in UI).
   const chartSources = useMemo((): ("google" | "bing")[] => {
-    const out: ("google" | "bing")[] = [];
-    if (engines.google) out.push("google");
-    if (engines.bing) out.push("bing");
-    return out.length ? out : ["google"];
-  }, [engines.google, engines.bing]);
+    return engines.bing ? ["google", "bing"] : ["google"];
+  }, [engines.bing]);
 
   const chartDaily = useMemo(
     () => smoothDailyIfSparse(data.daily ?? []),

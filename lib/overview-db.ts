@@ -1,5 +1,6 @@
 import { getPool } from "@/lib/db";
 import { getAccessTokenForTeam } from "@/lib/gsc-tokens";
+import { getBingOverviewForTeam } from "@/lib/bing-overview";
 import { querySearchAnalytics } from "@/lib/gsc";
 import type { SiteOverviewMetrics } from "@/types/gsc";
 
@@ -112,16 +113,25 @@ export async function getOverviewMetricsFromDb(
 
   const engine = params.engine ?? "google";
   if (engine === "bing") {
-    return properties.map((p) => ({
-      siteUrl: p.site_url,
-      clicks: 0,
-      impressions: 0,
-      clicksChangePercent: 0,
-      impressionsChangePercent: 0,
-      trackedKeywordCount: 0,
-      bingConnected: !!p.bing_site_url,
-      daily: [] as { date: string; clicks: number; impressions: number; position?: number }[],
-    }));
+    const bingBySite = await getBingOverviewForTeam(
+      teamId,
+      properties,
+      startDate,
+      endDate
+    );
+    return properties.map((p) => {
+      const bing = bingBySite.get(p.site_url);
+      return {
+        siteUrl: p.site_url,
+        clicks: bing?.clicks ?? 0,
+        impressions: bing?.impressions ?? 0,
+        clicksChangePercent: 0,
+        impressionsChangePercent: 0,
+        trackedKeywordCount: 0,
+        bingConnected: !!p.bing_site_url,
+        daily: (bing?.daily ?? []) as { date: string; clicks: number; impressions: number; position?: number }[],
+      };
+    });
   }
 
   const trackedKeywordStatsByProperty = await getTrackedKeywordStatsByProperty(

@@ -123,6 +123,31 @@ export function TrendSection({
     return "Source: Google";
   }, [showBingOverlay]);
 
+  // #region agent log
+  useEffect(() => {
+    fetch("http://127.0.0.1:7537/ingest/59d0df41-0732-4759-8555-7b4a3a9b262e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "76f5b1" },
+      body: JSON.stringify({
+        sessionId: "76f5b1",
+        location: "trend-section.tsx:TrendSection",
+        message: "Bing overlay data",
+        data: {
+          overlaysBing: overlays.bing,
+          bingDailyLength: data.bingDaily?.length ?? 0,
+          showBingOverlay,
+          chartSources,
+          hasChartDataByEngine: !!chartDataByEngine,
+          chartDataByEngineGoogleLen: chartDataByEngine?.google?.length ?? 0,
+          chartDataByEngineBingLen: chartDataByEngine?.bing?.length ?? 0,
+        },
+        timestamp: Date.now(),
+        hypothesisId: "H1-H2",
+      }),
+    }).catch(() => {});
+  }, [overlays.bing, data.bingDaily?.length, showBingOverlay, chartSources, chartDataByEngine]);
+  // #endregion
+
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (trendExportMenuRef.current && !trendExportMenuRef.current.contains(e.target as Node)) setTrendExportMenuOpen(false);

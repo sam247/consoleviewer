@@ -285,6 +285,8 @@ export function TrendChart({
   const mergedDataByEngine = useMemo(
     () => {
       if (!selectedEngines.length) return [];
+      // When Bing overlay is on, use dataByEngine so bing_clicks/bing_impressions are present
+      if (dataByEngine?.bing && selectedEngines.includes("bing")) return buildMergedDataByEngine(dataByEngine, selectedEngines);
       if (analyticsSeries && analyticsSeries.length) return buildMergedDataFromSeries(analyticsSeries, selectedEngines);
       if (dataByEngine) return buildMergedDataByEngine(dataByEngine, selectedEngines);
       return [];

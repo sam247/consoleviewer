@@ -245,7 +245,10 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
   const queryClient = useQueryClient();
   const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
   const { hide } = useHiddenProjects();
+  const { engines } = useSparkSeries();
   const domain = faviconDomain(metrics.siteUrl);
+  const showBingSparkline = Boolean(engines.bing && metrics.bingDaily?.length);
+  const sparklineDaily = showBingSparkline ? metrics.bingDaily! : metrics.daily;
   const recent = getRecentDaySummary(metrics.daily);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -344,14 +347,21 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
       {/* Metrics row: Clicks, Impressions, CTR, Position */}
       <CardMetricsRow metrics={metrics} />
 
-      {/* Trend sparkline (clicks, impressions, optional CTR from toolbar toggles) */}
+      {/* Trend sparkline (Google daily, or Bing daily when overlay is on) */}
       <div className="pt-1 mb-4">
-        <Sparkline
-          data={metrics.daily.map((d) => ({
-            ...d,
-            ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
-          }))}
-        />
+        <div className="flex items-center gap-1.5">
+          <Sparkline
+            data={sparklineDaily.map((d) => ({
+              ...d,
+              ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
+            }))}
+          />
+          {showBingSparkline && (
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wide shrink-0" aria-hidden>
+              Bing
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Footer: 3-line structure (daily summary, GSC avg rank, tracked keyword rank or Add keywords +) */}

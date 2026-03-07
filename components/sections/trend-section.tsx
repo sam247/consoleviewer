@@ -80,16 +80,17 @@ export function TrendSection({
     [series]
   );
 
-  // Google is always the primary source; Bing is an optional overlay (no Google toggle in UI).
-  const chartSources = useMemo((): ("google" | "bing")[] => {
-    return engines.bing ? ["google", "bing"] : ["google"];
-  }, [engines.bing]);
-
   const chartDaily = useMemo(
     () => smoothDailyIfSparse(data.daily ?? []),
     [data.daily]
   );
   const hasBingData = Boolean(data.bingDaily?.length);
+  const noMetricsOn = !series.clicks && !series.impressions && !series.ctr && !series.position;
+  // When all metric toggles are off and Bing overlay is on, show Bing only (so scale fits Bing). Otherwise Google + optional Bing.
+  const chartSources = useMemo((): ("google" | "bing")[] => {
+    if (noMetricsOn && engines.bing && hasBingData) return ["bing"];
+    return engines.bing ? ["google", "bing"] : ["google"];
+  }, [noMetricsOn, engines.bing, hasBingData]);
   const chartDataByEngine = useMemo(() => {
     const google = chartDaily;
     const bing = hasBingData ? smoothDailyIfSparse(data.bingDaily!) : [];

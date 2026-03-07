@@ -1,6 +1,7 @@
 import { getPool } from "@/lib/db";
 import { getAccessTokenForTeam } from "@/lib/gsc-tokens";
 import { querySearchAnalytics } from "@/lib/gsc";
+import { getBingOverviewForTeam } from "@/lib/bing-overview";
 import type { SiteOverviewMetrics } from "@/types/gsc";
 
 export type OverviewParams = {
@@ -121,35 +122,44 @@ export async function getOverviewMetricsFromDb(
   );
   const hasDbData = Number(dataCheck.rows[0]?.cnt ?? 0) > 0;
 
-  // If DB has data, use DB path
+  let result: SiteOverviewMetrics[];
   if (hasDbData) {
-    return fetchFromDb(pool, properties, params, trackedKeywordStatsByProperty);
+    result = await fetchFromDb(pool, properties, params, trackedKeywordStatsByProperty);
+  } else {
+    const token = await getAccessTokenForTeam(teamId);
+    if (!token) {
+      return properties.map((p) => ({
+        siteUrl: p.site_url,
+        clicks: 0,
+        impressions: 0,
+        clicksChangePercent: 0,
+        impressionsChangePercent: 0,
+        bingConnected: !!p.bing_site_url,
+        daily: [],
+      }));
+    }
+    result = await fetchFromGscApi(
+      properties,
+      token,
+      startDate,
+      endDate,
+      priorStartDate,
+      priorEndDate,
+      trackedKeywordStatsByProperty
+    );
   }
 
-  // No DB data yet — fall back to live GSC API
-  const token = await getAccessTokenForTeam(teamId);
-  if (!token) {
-    // No token either — return properties with empty data
-    return properties.map((p) => ({
-      siteUrl: p.site_url,
-      clicks: 0,
-      impressions: 0,
-      clicksChangePercent: 0,
-      impressionsChangePercent: 0,
-      bingConnected: !!p.bing_site_url,
-      daily: [],
-    }));
+  const hasBing = properties.some((p) => p.bing_site_url);
+  if (hasBing) {
+    const bingMap = await getBingOverviewForTeam(teamId, properties, startDate, endDate);
+    for (const row of result) {
+      const bing = bingMap.get(row.siteUrl);
+      if (bing?.daily?.length) {
+        row.bingDaily = bing.daily.map((d) => ({ date: d.date, clicks: d.clicks, impressions: d.impressions }));
+      }
+    }
   }
-
-  return fetchFromGscApi(
-    properties,
-    token,
-    startDate,
-    endDate,
-    priorStartDate,
-    priorEndDate,
-    trackedKeywordStatsByProperty
-  );
+  return result;
 }
 
 async function fetchFromGscApi(

@@ -42,6 +42,8 @@ export interface SiteOverviewMetrics {
   trackedKeywordCount?: number;
   bingConnected?: boolean;
   daily: { date: string; clicks: number; impressions: number; position?: number }[];
+  /** Bing daily for dashboard sparkline when Bing overlay is on (same date range as daily, zero-filled). */
+  bingDaily?: { date: string; clicks: number; impressions: number }[];
 }
 
 /** Single query–page pair from GSC searchAnalytics (dimensions query + page). */

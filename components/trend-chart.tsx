@@ -780,16 +780,19 @@ const SPARK_IMPR_AXIS = "impressions";
 
 export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
   const { series } = useSparkSeries();
-  if (!data?.length) return null;
-
-  const visible = SERIES_CONFIG.filter((s) => series[s.key] && data.some((d) => d[s.dataKey] != null));
-  if (!visible.length) return null;
-
+  const visible = useMemo(
+    () =>
+      data?.length
+        ? SERIES_CONFIG.filter((s) => series[s.key] && data.some((d) => d[s.dataKey] != null))
+        : [],
+    [data, series]
+  );
   const hasClicks = visible.some((s) => s.key === "clicks");
   const hasImpressions = visible.some((s) => s.key === "impressions");
   const useDualAxis = hasClicks && hasImpressions;
 
   const chartData = useMemo(() => {
+    if (!data?.length) return [];
     if (useDualAxis) {
       const clicksValues = data.map((d) => (d.clicks as number) ?? 0);
       const impressionsValues = data.map((d) => (d.impressions as number) ?? 0);
@@ -812,6 +815,9 @@ export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
     });
     return out;
   }, [data, visible, useDualAxis]);
+
+  if (!data?.length) return null;
+  if (!visible.length) return null;
 
   return (
     <ChartPlot height={CHART_PLOT_H.spark} minHeight={CHART_PLOT_H.spark}>

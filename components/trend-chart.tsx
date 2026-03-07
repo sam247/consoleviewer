@@ -85,13 +85,6 @@ const METRIC_STYLE: Record<SparkSeriesKey, { strokeDasharray?: string; strokeWid
   position: { strokeWidth: 1.2 },
 };
 
-const METRIC_COLORS: Record<SparkSeriesKey, string> = {
-  clicks: CHART_CLICKS,
-  impressions: CHART_IMPRESSIONS,
-  ctr: CHART_CTR,
-  position: CHART_POSITION,
-};
-
 const SERIES_CONFIG: { key: SparkSeriesKey; dataKey: keyof SparklineDataPoint; stroke: string; label: string }[] = [
   { key: "clicks", dataKey: "clicks", stroke: CHART_CLICKS, label: "Clicks" },
   { key: "impressions", dataKey: "impressions", stroke: CHART_IMPRESSIONS, label: "Impressions" },

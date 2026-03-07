@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable, type DataTableRow, type TrendFilter } from "@/components/data-table";
 import type { BandFilter } from "@/components/query-footprint";
 import { InfoTooltip } from "@/components/info-tooltip";

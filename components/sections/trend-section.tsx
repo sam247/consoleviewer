@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { TrendChart } from "@/components/trend-chart";
+import { TrendChart, smoothDailyIfSparse } from "@/components/trend-chart";
 import { QueryFootprint, type BandFilter } from "@/components/query-footprint";
 import { MomentumScoreCard } from "@/components/momentum-score-card";
 import { InfoTooltip } from "@/components/info-tooltip";
@@ -87,6 +87,18 @@ export function TrendSection({
     if (showBothOnGraph && data.googleDaily?.length && data.bingDaily?.length) return ["google", "bing"];
     return [effectiveEngine];
   }, [showBothOnGraph, effectiveEngine, data.googleDaily?.length, data.bingDaily?.length]);
+
+  const chartDaily = useMemo(
+    () => smoothDailyIfSparse(data.daily ?? []),
+    [data.daily]
+  );
+  const chartDataByEngine = useMemo(() => {
+    if (!showBothOnGraph || !data.googleDaily?.length || !data.bingDaily?.length) return undefined;
+    return {
+      google: data.googleDaily,
+      bing: smoothDailyIfSparse(data.bingDaily),
+    };
+  }, [showBothOnGraph, data.googleDaily, data.bingDaily]);
 
   const budget = useMemo(
     () =>
@@ -295,13 +307,9 @@ export function TrendSection({
             ) : (
               <>
                 <TrendChart
-                  data={data.daily}
+                  data={chartDaily}
                   analyticsSeries={data.series}
-                  dataByEngine={
-                    showBothOnGraph && data.googleDaily?.length && data.bingDaily?.length
-                      ? { google: data.googleDaily, bing: data.bingDaily }
-                      : undefined
-                  }
+                  dataByEngine={chartDataByEngine}
                   selectedEngines={chartSources}
                   priorData={data.priorDaily}
                   height={CHART_PLOT_H.primary}

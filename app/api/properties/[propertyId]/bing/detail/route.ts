@@ -293,7 +293,8 @@ export async function GET(
     dailyByDate.set(date, cur);
   }
 
-  const daily: BingDailyRow[] = Array.from(dailyByDate.entries())
+  // One row per calendar day in range (zero-fill missing days) so charts match dashboard and Bing WMT calendar view.
+  const dailyFromApi = Array.from(dailyByDate.entries())
     .map(([date, agg]) => ({
       date,
       clicks: agg.clicks,
@@ -302,6 +303,23 @@ export async function GET(
       position: agg.clicks > 0 ? agg.posWeighted / agg.clicks : undefined,
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
+  const byDate = new Map(dailyFromApi.map((d) => [d.date, d]));
+  const daily: BingDailyRow[] = [];
+  let current = from;
+  while (current <= to) {
+    const existing = byDate.get(current);
+    daily.push(
+      existing ?? {
+        date: current,
+        clicks: 0,
+        impressions: 0,
+        ctr: 0,
+      }
+    );
+    const d = new Date(current + "T00:00:00.000Z");
+    d.setUTCDate(d.getUTCDate() + 1);
+    current = d.toISOString().slice(0, 10);
+  }
 
   const aggregateByKey = (rows: unknown[], keyNames: string[]): BingTableRow[] => {
     const byKey = new Map<string, { clicks: number; impressions: number; posWeighted: number; weight: number }>();

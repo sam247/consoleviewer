@@ -107,7 +107,7 @@ function normalizeSeries(values: number[]): number[] {
 }
 
 /** Light 3-point moving average to soften spikey sparse series (e.g. Bing zero-filled days) without changing shape much for dense data. */
-function smoothSeries(values: number[], window = 3): number[] {
+export function smoothSeries(values: number[], window = 3): number[] {
   if (values.length < window) return values;
   const half = Math.floor(window / 2);
   return values.map((v, i) => {
@@ -119,6 +119,25 @@ function smoothSeries(values: number[], window = 3): number[] {
     }
     return count ? sum / count : v;
   });
+}
+
+/** Smooth clicks/impressions in a daily array when series is sparse (>40% zero days). Used so Bing chart matches dashboard and WMT. */
+export function smoothDailyIfSparse<T extends { date: string; clicks?: number; impressions?: number; ctr?: number; position?: number }>(
+  daily: T[],
+  zeroRatioThreshold = 0.4
+): T[] {
+  if (!daily.length) return daily;
+  const zeroDays = daily.filter((d) => (d.clicks ?? 0) === 0).length;
+  if (zeroDays / daily.length < zeroRatioThreshold) return daily;
+  const smooth = (arr: number[]) => smoothSeries(arr);
+  const clicks = smooth(daily.map((d) => d.clicks ?? 0));
+  const impressions = smooth(daily.map((d) => d.impressions ?? 0));
+  return daily.map((d, i) => ({
+    ...d,
+    clicks: clicks[i],
+    impressions: impressions[i],
+    ctr: impressions[i] > 0 ? (clicks[i] / impressions[i]) * 100 : (d.ctr ?? 0),
+  })) as T[];
 }
 
 function compactNumber(value: number): string {

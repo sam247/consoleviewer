@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import {
   Area,
   CartesianGrid,
@@ -361,34 +361,6 @@ export function TrendChart({
     return pairs.slice(0, MAX_PER_ENGINE_LINES);
   }, [usePerEngine, effectiveEngines, effectiveVisibleSeries]);
 
-  // #region agent log
-  useEffect(() => {
-    const firstRow = mergedDataByEngine[0] as Record<string, unknown> | undefined;
-    fetch("http://127.0.0.1:7537/ingest/59d0df41-0732-4759-8555-7b4a3a9b262e", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "76f5b1" },
-      body: JSON.stringify({
-        sessionId: "76f5b1",
-        location: "trend-chart.tsx:TrendChart",
-        message: "Chart engine merge state",
-        data: {
-          usePerEngine,
-          dataByEngineHasBing: !!dataByEngine?.bing,
-          dataByEngineBingLen: dataByEngine?.bing?.length ?? 0,
-          selectedEngines,
-          effectiveEngines,
-          mergedDataByEngineLen: mergedDataByEngine.length,
-          firstRowKeys: firstRow ? Object.keys(firstRow) : [],
-          visibleSeriesLen: visibleSeries.length,
-          perEngineSeriesToShowLen: perEngineSeriesToShow.length,
-        },
-        timestamp: Date.now(),
-        hypothesisId: "H2-H5",
-      }),
-    }).catch(() => {});
-  }, [usePerEngine, dataByEngine, selectedEngines, effectiveEngines, mergedDataByEngine, visibleSeries.length, perEngineSeriesToShow.length]);
-  // #endregion
-
   const useNormalized =
     (
       normalizeWhenMultiSeries ||
@@ -449,27 +421,6 @@ export function TrendChart({
       return out;
     });
   }, [compareToPrior, data, priorData, useNormalized, useSeriesContext, visibleSeries, usePerEngine, mergedDataByEngine, perEngineSeriesToShow]);
-
-  useEffect(() => {
-    const first = chartData[0] as Record<string, unknown> | undefined;
-    fetch("http://127.0.0.1:7537/ingest/59d0df41-0732-4759-8555-7b4a3a9b262e", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "76f5b1" },
-      body: JSON.stringify({
-        sessionId: "76f5b1",
-        location: "trend-chart.tsx:chartData",
-        message: "Final chartData",
-        data: {
-          chartDataLen: chartData.length,
-          usePerEngine,
-          firstRowKeys: first ? Object.keys(first) : [],
-          hasBingKey: first ? "bing_clicks" in first || "bing_impressions" in first : false,
-        },
-        timestamp: Date.now(),
-        hypothesisId: "H5",
-      }),
-    }).catch(() => {});
-  }, [chartData, usePerEngine]);
 
   const useDualAxis =
     !usePerEngine &&

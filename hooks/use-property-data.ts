@@ -421,27 +421,6 @@ export function usePropertyData(propertyId: string) {
       impressions: d.impressions,
       ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
     }));
-    // #region agent log
-    if (typeof fetch !== "undefined") {
-      fetch("http://127.0.0.1:7537/ingest/59d0df41-0732-4759-8555-7b4a3a9b262e", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "76f5b1" },
-        body: JSON.stringify({
-          sessionId: "76f5b1",
-          location: "use-property-data.ts:data useMemo",
-          message: "Bing detail raw",
-          data: {
-            bingDetailPresent: !!bingDetail,
-            bingDetailDailyLen: bingDetail?.daily?.length ?? 0,
-            bingDailyLen: bingDaily.length,
-            finalBingDailyExported: bingDaily.length ? bingDaily.length : 0,
-          },
-          timestamp: Date.now(),
-          hypothesisId: "H1",
-        }),
-      }).catch(() => {});
-    }
-    // #endregion
 
     const metricKeys: ("clicks" | "impressions" | "ctr" | "position")[] = [
       "clicks",

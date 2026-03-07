@@ -11,7 +11,6 @@ export function InsightsSection({
   siteSlug,
   startDate,
   endDate,
-  effectiveEngine,
 }: {
   queriesRows: DataTableRow[];
   daily: DailyRow[];
@@ -19,14 +18,13 @@ export function InsightsSection({
   siteSlug: string;
   startDate: string;
   endDate: string;
-  effectiveEngine?: "google" | "bing";
 }) {
   return (
     <section aria-label="Insights" className="rounded-lg border border-border bg-surface p-4 md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
       <h2 className="text-sm font-semibold text-foreground mb-4">Insights</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch min-w-0">
       {queriesRows.length > 0 && (
-        <AiQuerySignalsCard queries={queriesRows} daily={daily} sourceEngine={effectiveEngine} />
+        <AiQuerySignalsCard queries={queriesRows} daily={daily} />
       )}
       <div className="min-w-0">
         <TrackedKeywordsSection

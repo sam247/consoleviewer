@@ -225,19 +225,17 @@ function buildMergedDataByEngine(
     if (selectedEngines.includes("google")) {
       const g = googleByDate.get(date);
       if (g) {
-        row.clicks_google = g.clicks;
-        row.impressions_google = g.impressions;
-        if (g.ctr != null) row.ctr_google = g.ctr;
-        if (g.position != null) row.position_google = g.position;
+        row.google_clicks = g.clicks;
+        row.google_impressions = g.impressions;
+        if (g.ctr != null) row.google_ctr = g.ctr;
+        if (g.position != null) row.google_position = g.position;
       }
     }
     if (selectedEngines.includes("bing")) {
       const b = bingByDate.get(date);
       if (b) {
-        row.clicks_bing = b.clicks;
-        row.impressions_bing = b.impressions;
-        if (b.ctr != null) row.ctr_bing = b.ctr;
-        if (b.position != null) row.position_bing = b.position;
+        row.bing_clicks = b.clicks;
+        row.bing_impressions = b.impressions;
       }
     }
     return row;
@@ -262,10 +260,11 @@ function buildMergedDataFromSeries(
     .map((date) => {
       const row: Record<string, string | number> = { date };
       for (const source of selectedEngines) {
-        for (const metric of ["clicks", "impressions", "ctr", "position"] as const) {
+        const metrics = source === "bing" ? (["clicks", "impressions"] as const) : (["clicks", "impressions", "ctr", "position"] as const);
+        for (const metric of metrics) {
           const key = `${date}:${metric}_${source}`;
           const value = keyed.get(key);
-          if (value != null) row[`${metric}_${source}`] = value;
+          if (value != null) row[`${source}_${metric}`] = value;
         }
       }
       return row;
@@ -329,20 +328,21 @@ export function TrendChart({
 
   const perEngineSeriesToShow = useMemo(() => {
     if (!usePerEngine || selectedEngines.length === 0) return [];
-    const singleEngine = selectedEngines.length === 1;
     const pairs: { metric: SparkSeriesKey; engine: SearchEngine; dataKey: string; label: string; stroke: string; strokeDasharray?: string; strokeWidth: number }[] = [];
     for (const s of visibleSeries) {
       for (const engine of selectedEngines) {
-        const dataKey = `${s.dataKey}_${engine}`;
+        if (engine === "bing" && (s.key === "ctr" || s.key === "position")) continue;
+        const dataKey = `${engine}_${s.dataKey}`;
         const metricStyle = METRIC_STYLE[s.key];
+        const isBingOverlay = engine === "bing";
         pairs.push({
           metric: s.key,
           engine,
           dataKey,
           label: `${s.label} (${engine === "google" ? "Google" : "Bing"})`,
-          stroke: singleEngine ? METRIC_COLORS[s.key] : ENGINE_COLORS[engine],
+          stroke: ENGINE_COLORS[engine],
           strokeWidth: metricStyle.strokeWidth,
-          strokeDasharray: singleEngine ? undefined : metricStyle.strokeDasharray,
+          strokeDasharray: isBingOverlay ? "6 4" : metricStyle.strokeDasharray,
         });
       }
     }

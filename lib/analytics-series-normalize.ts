@@ -1,17 +1,19 @@
-import type { SearchEngine } from "@/contexts/engine-selection-context";
 import type { SparkSeriesKey } from "@/contexts/spark-series-context";
 import type { DailyRow } from "@/hooks/use-property-data";
 
 export type SeriesPoint = { date: string; value: number | null };
 
+/** Source for a series (google = primary metrics; bing = overlay only). */
+export type SeriesSource = "google" | "bing";
+
 export type AnalyticsSeries = {
-  source: SearchEngine;
+  source: SeriesSource;
   metric: SparkSeriesKey;
   values: SeriesPoint[];
 };
 
 export function normalizeDailyToSeries(params: {
-  source: SearchEngine;
+  source: SeriesSource;
   daily: DailyRow[];
   metrics: SparkSeriesKey[];
 }): AnalyticsSeries[] {

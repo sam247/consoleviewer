@@ -61,27 +61,13 @@ interface OpportunityIndexProps {
   className?: string;
   /** Optional base filename for CSV export (without .csv) */
   exportFilename?: string;
-  sourceEngine?: "google" | "bing";
 }
 
 const ROWS_INITIAL = 10;
 
 type OppSortKey = "key" | "position" | "impressions" | "ctr" | "score";
 
-function EngineChip({ engine }: { engine: "google" | "bing" }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
-        engine === "google" ? "bg-[#4285f4]/12 text-[#4285f4]" : "bg-[#008373]/12 text-[#008373]"
-      )}
-    >
-      {engine === "google" ? "Google" : "Bing"}
-    </span>
-  );
-}
-
-export function OpportunityIndex({ queries, className, exportFilename, sourceEngine = "google" }: OpportunityIndexProps) {
+export function OpportunityIndex({ queries, className, exportFilename }: OpportunityIndexProps) {
   const [fullViewOpen, setFullViewOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const { sortKey, sortDir, onSort } = useTableSort<OppSortKey>("score");
@@ -146,7 +132,7 @@ export function OpportunityIndex({ queries, className, exportFilename, sourceEng
   return (
     <>
       <RowTableCard
-        title={<span className="flex items-center gap-2 flex-wrap">Opportunity index<InfoTooltip title="Opportunity score = impressions × ranking potential." /><EngineChip engine={sourceEngine} /></span>}
+        title={<span className="flex items-center gap-2 flex-wrap">Opportunity index<InfoTooltip title="Opportunity score = impressions × ranking potential." /></span>}
         subtitle={`Top ${ROWS_INITIAL} by Impressions × position gap × CTR deficit`}
         className={className}
         headerRight={

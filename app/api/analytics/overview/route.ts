@@ -10,8 +10,6 @@ export async function GET(request: NextRequest) {
   const endDate = searchParams.get("endDate");
   const priorStartDate = searchParams.get("priorStartDate");
   const priorEndDate = searchParams.get("priorEndDate");
-  const engine = searchParams.get("engine") === "bing" ? "bing" : "google";
-
   if (!startDate || !endDate || !priorStartDate || !priorEndDate) {
     return NextResponse.json(
       { error: "Missing startDate, endDate, priorStartDate, or priorEndDate" },
@@ -30,22 +28,18 @@ export async function GET(request: NextRequest) {
         endDate,
         priorStartDate,
         priorEndDate,
-        engine,
       });
       return NextResponse.json(data, {
         headers: { "Cache-Control": "no-store" },
       });
     }
 
-    const data =
-      engine === "bing"
-        ? []
-        : await getOverviewMetrics(
-            startDate,
-            endDate,
-            priorStartDate,
-            priorEndDate
-          );
+    const data = await getOverviewMetrics(
+      startDate,
+      endDate,
+      priorStartDate,
+      priorEndDate
+    );
     return NextResponse.json(data, {
       headers: { "Cache-Control": "no-store" },
     });

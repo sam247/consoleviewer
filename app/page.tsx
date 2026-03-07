@@ -9,7 +9,6 @@ import { SiteCardSkeleton } from "@/components/site-card-skeleton";
 import { SortSelect, type SortKey } from "@/components/sort-select";
 import { FilterSelect, type FilterKey } from "@/components/filter-select";
 import { useDateRange } from "@/contexts/date-range-context";
-import { useEngineSelectionOptional } from "@/contexts/engine-selection-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
 import type { SiteOverviewMetrics } from "@/types/gsc";
@@ -18,15 +17,13 @@ async function fetchOverview(
   startDate: string,
   endDate: string,
   priorStartDate: string,
-  priorEndDate: string,
-  engine: "google" | "bing"
+  priorEndDate: string
 ): Promise<SiteOverviewMetrics[]> {
   const params = new URLSearchParams({
     startDate,
     endDate,
     priorStartDate,
     priorEndDate,
-    engine,
   });
   const res = await fetch(`/api/analytics/overview?${params}`, {
     credentials: "include",
@@ -87,8 +84,6 @@ export default function OverviewPage() {
     try { localStorage.setItem("consoleview-filter", v); } catch { /* ignore */ }
   }, []);
   const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
-  const engineSelection = useEngineSelectionOptional();
-  const effectiveEngine = engineSelection?.effectiveEngine ?? "google";
   const { hiddenSet } = useHiddenProjects();
   const { pinnedSet } = usePinnedProjects();
 
@@ -104,11 +99,11 @@ export default function OverviewPage() {
   const gscConnected = authStatus?.gscConnected ?? false;
 
   const { data: rawMetrics = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["overview", startDate, endDate, priorStartDate, priorEndDate, effectiveEngine],
+    queryKey: ["overview", startDate, endDate, priorStartDate, priorEndDate],
     queryFn: () =>
-      fetchOverview(startDate, endDate, priorStartDate, priorEndDate, effectiveEngine),
+      fetchOverview(startDate, endDate, priorStartDate, priorEndDate),
     staleTime: 60 * 1000,
-    enabled: gscConnected || effectiveEngine === "bing",
+    enabled: gscConnected,
   });
 
   const metrics = useMemo(() => rawMetrics, [rawMetrics]);
@@ -224,7 +219,6 @@ export default function OverviewPage() {
                             <SiteCard
                               metrics={m}
                               hasKeywords={(m.trackedKeywordCount ?? 0) > 0}
-                              sourceEngine={effectiveEngine}
                             />
                           </div>
                         ))}

@@ -18,25 +18,11 @@ import { cn } from "@/lib/utils";
 interface AiQuerySignalsCardProps {
   queries: DataTableRow[];
   daily?: { date: string; impressions?: number; clicks?: number }[];
-  sourceEngine?: "google" | "bing";
 }
 
 type AiSortKey = "key" | "clicks" | "impressions" | "position";
 
-function EngineChip({ engine }: { engine: "google" | "bing" }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
-        engine === "google" ? "bg-[#4285f4]/12 text-[#4285f4]" : "bg-[#008373]/12 text-[#008373]"
-      )}
-    >
-      {engine === "google" ? "Google" : "Bing"}
-    </span>
-  );
-}
-
-export function AiQuerySignalsCard({ queries, sourceEngine = "google" }: AiQuerySignalsCardProps) {
+export function AiQuerySignalsCard({ queries }: AiQuerySignalsCardProps) {
   const { sortKey, sortDir, onSort } = useTableSort<AiSortKey>("impressions");
 
   const stats = useMemo(() => {
@@ -89,7 +75,6 @@ export function AiQuerySignalsCard({ queries, sourceEngine = "google" }: AiQuery
         <span className="font-semibold text-sm text-foreground flex items-center gap-2 flex-wrap">
             AI-style query signals
             <InfoTooltip title="Queries that look like long-form or conversational search (LLM-style)" />
-            <EngineChip engine={sourceEngine} />
           </span>
       }
       headerRight={

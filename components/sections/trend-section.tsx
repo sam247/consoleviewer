@@ -9,10 +9,8 @@ import { exportToCsv, exportChartToPng, formatExportFilename } from "@/lib/expor
 import type { DataTableRow } from "@/components/data-table";
 import type { PropertyData } from "@/hooks/use-property-data";
 import { useDateRange } from "@/contexts/date-range-context";
-import { useEngineSelection } from "@/contexts/engine-selection-context";
 import { useSparkSeries } from "@/contexts/spark-series-context";
 import type { DateRangeKey } from "@/types/gsc";
-import type { SearchEngine } from "@/contexts/engine-selection-context";
 import { CHART_CARD_MIN_H, CHART_PLOT_H } from "@/components/ui/chart-frame";
 import { applySeriesBudget } from "@/lib/analysis-series-budget";
 
@@ -73,8 +71,7 @@ export function TrendSection({
   const [trendExportMenuOpen, setTrendExportMenuOpen] = useState(false);
   const [budgetMessage, setBudgetMessage] = useState<string | null>(null);
 
-  const { effectiveEngine, showBothOnGraph } = useEngineSelection();
-  const { series, setSeries } = useSparkSeries();
+  const { series, setSeries, overlays } = useSparkSeries();
   const selectedMetrics = useMemo(
     () =>
       (Object.entries(series)
@@ -83,31 +80,31 @@ export function TrendSection({
     [series]
   );
 
-  const chartSources = useMemo((): SearchEngine[] => {
-    if (showBothOnGraph && data.googleDaily?.length && data.bingDaily?.length) return ["google", "bing"];
-    return [effectiveEngine];
-  }, [showBothOnGraph, effectiveEngine, data.googleDaily?.length, data.bingDaily?.length]);
+  const showBingOverlay = Boolean(overlays.bing && data.bingDaily?.length);
+  const chartSources = useMemo((): ("google" | "bing")[] => {
+    if (showBingOverlay) return ["google", "bing"];
+    return ["google"];
+  }, [showBingOverlay]);
 
   const chartDaily = useMemo(
     () => smoothDailyIfSparse(data.daily ?? []),
     [data.daily]
   );
   const chartDataByEngine = useMemo(() => {
-    if (!showBothOnGraph || !data.googleDaily?.length || !data.bingDaily?.length) return undefined;
+    if (!showBingOverlay || !data.bingDaily?.length) return undefined;
     return {
-      google: data.googleDaily,
+      google: chartDaily,
       bing: smoothDailyIfSparse(data.bingDaily),
     };
-  }, [showBothOnGraph, data.googleDaily, data.bingDaily]);
+  }, [showBingOverlay, chartDaily, data.bingDaily]);
 
   const budget = useMemo(
     () =>
       applySeriesBudget({
-        selectedSources: chartSources,
         selectedMetrics,
         currentSeriesState: series,
       }),
-    [chartSources, selectedMetrics, series]
+    [selectedMetrics, series]
   );
 
   useEffect(() => {
@@ -122,9 +119,9 @@ export function TrendSection({
   }, [budget.helperMessage, budget.nextSeriesState, budget.wasAutoTrimmed, series, setSeries]);
 
   const enginesLabel = useMemo(() => {
-    if (showBothOnGraph && chartSources.length === 2) return "Source: Google + Bing";
-    return effectiveEngine === "google" ? "Source: Google" : "Source: Bing";
-  }, [showBothOnGraph, chartSources.length, effectiveEngine]);
+    if (showBingOverlay) return "Source: Google + Bing";
+    return "Source: Google";
+  }, [showBingOverlay]);
 
   useEffect(() => {
     const close = (e: MouseEvent) => {

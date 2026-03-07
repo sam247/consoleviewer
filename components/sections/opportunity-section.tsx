@@ -17,7 +17,6 @@ export function OpportunitySection({
   propertyId,
   querySparklines,
   newQueriesRows,
-  sourceEngine = "google",
 }: {
   queriesRows: DataTableRow[];
   pagesRows: DataTableRow[];
@@ -28,7 +27,6 @@ export function OpportunitySection({
   propertyId?: string;
   querySparklines?: Record<string, number[]>;
   newQueriesRows?: DataTableRow[];
-  sourceEngine?: "google" | "bing";
 }) {
   const [trendFilter, setTrendFilter] = useState<TrendFilter>("all");
 
@@ -39,11 +37,10 @@ export function OpportunitySection({
           queries={queriesRows}
           className="shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
           exportFilename={formatExportFilename(siteSlug, "opportunity-index", startDate, endDate)}
-          sourceEngine={sourceEngine}
         />
       )}
       {queriesRows.length > 0 && (
-        <OpportunityIntelligence queries={queriesRows} sourceEngine={sourceEngine} />
+        <OpportunityIntelligence queries={queriesRows} />
       )}
       <MovementIntelligence
         queriesRows={queriesRows}

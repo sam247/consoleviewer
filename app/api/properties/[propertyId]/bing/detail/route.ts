@@ -8,8 +8,7 @@ const BING_API_BASE = "https://ssl.bing.com/webmaster/api.svc/json";
 const CACHE_TTL_MS = 5 * 60_000;
 const cache = new Map<string, { expires: number; data: unknown }>();
 
-type BingDailyRow = { date: string; clicks: number; impressions: number; ctr?: number; position?: number };
-type BingTableRow = { key: string; clicks: number; impressions: number; changePercent: number; position?: number };
+type BingDailyRow = { date: string; clicks: number; impressions: number };
 
 function cacheKey(propertyId: string, startDate: string, endDate: string) {
   return `${propertyId}:${startDate}:${endDate}:bing`;
@@ -230,34 +229,23 @@ export async function GET(
   );
 
   let queryStatsRaw: unknown[] = [];
-  let pageStatsRaw: unknown[] = [];
   const debugCalls: Array<Record<string, unknown>> = [];
 
   for (const variant of siteUrlVariants) {
-    const [qRes, pRes] = await Promise.all([
-      debug
-        ? callBingVerbose("GetQueryStats", token, { siteUrl: variant })
-        : Promise.resolve({ ok: true, status: 200, rows: (await callBing("GetQueryStats", token, { siteUrl: variant })) ?? [], sampleKeys: [], body: "" }),
-      debug
-        ? callBingVerbose("GetPageStats", token, { siteUrl: variant })
-        : Promise.resolve({ ok: true, status: 200, rows: (await callBing("GetPageStats", token, { siteUrl: variant })) ?? [], sampleKeys: [], body: "" }),
-    ]);
+    const qRes = debug
+      ? await callBingVerbose("GetQueryStats", token, { siteUrl: variant })
+      : { ok: true as const, status: 200, rows: (await callBing("GetQueryStats", token, { siteUrl: variant })) ?? [], sampleKeys: [] as string[], body: "" };
     if (debug) {
       debugCalls.push({
         variant,
         queryStatus: qRes.status,
         queryRows: qRes.rows.length,
         querySampleKeys: qRes.sampleKeys,
-        queryErrorBody: qRes.ok ? undefined : qRes.body.slice(0, 300),
-        pageStatus: pRes.status,
-        pageRows: pRes.rows.length,
-        pageSampleKeys: pRes.sampleKeys,
-        pageErrorBody: pRes.ok ? undefined : pRes.body.slice(0, 300),
+        queryErrorBody: qRes.ok ? undefined : (qRes as { body?: string }).body?.slice(0, 300),
       });
     }
-    if (qRes.rows.length > 0 || pRes.rows.length > 0) {
+    if (qRes.rows.length > 0) {
       queryStatsRaw = qRes.rows;
-      pageStatsRaw = pRes.rows;
       break;
     }
   }
@@ -271,37 +259,22 @@ export async function GET(
     const date = getDateString(obj);
     return date ? inRange(date) : true;
   });
-  const pageRows = (pageStatsRaw ?? []).filter((entry) => {
-    const obj = entry as Record<string, unknown>;
-    const date = getDateString(obj);
-    return date ? inRange(date) : true;
-  });
 
-  const dailyByDate = new Map<string, { clicks: number; impressions: number; posWeighted: number }>();
+  const dailyByDate = new Map<string, { clicks: number; impressions: number }>();
   for (const entry of queryRows) {
     const obj = entry as Record<string, unknown>;
     const date = getDateString(obj);
     if (!date || !inRange(date)) continue;
     const clicks = getNumber(obj, ["Clicks", "clicks"]);
     const impressions = getNumber(obj, ["Impressions", "impressions"]);
-    const posRaw = getField(obj, ["AvgClickPosition", "AvgImpressionPosition", "Position", "position"]);
-    const pos = posRaw != null ? safeNumber(posRaw) : 0;
-    const cur = dailyByDate.get(date) ?? { clicks: 0, impressions: 0, posWeighted: 0 };
+    const cur = dailyByDate.get(date) ?? { clicks: 0, impressions: 0 };
     cur.clicks += clicks;
     cur.impressions += impressions;
-    cur.posWeighted += pos * Math.max(clicks, 1);
     dailyByDate.set(date, cur);
   }
 
-  // One row per calendar day in range (zero-fill missing days) so charts match dashboard and Bing WMT calendar view.
   const dailyFromApi = Array.from(dailyByDate.entries())
-    .map(([date, agg]) => ({
-      date,
-      clicks: agg.clicks,
-      impressions: agg.impressions,
-      ctr: agg.impressions > 0 ? (agg.clicks / agg.impressions) * 100 : 0,
-      position: agg.clicks > 0 ? agg.posWeighted / agg.clicks : undefined,
-    }))
+    .map(([date, agg]) => ({ date, clicks: agg.clicks, impressions: agg.impressions }))
     .sort((a, b) => a.date.localeCompare(b.date));
   const byDate = new Map(dailyFromApi.map((d) => [d.date, d]));
   const daily: BingDailyRow[] = [];
@@ -309,79 +282,30 @@ export async function GET(
   while (current <= to) {
     const existing = byDate.get(current);
     daily.push(
-      existing ?? {
-        date: current,
-        clicks: 0,
-        impressions: 0,
-        ctr: 0,
-      }
+      existing ?? { date: current, clicks: 0, impressions: 0 }
     );
     const d = new Date(current + "T00:00:00.000Z");
     d.setUTCDate(d.getUTCDate() + 1);
     current = d.toISOString().slice(0, 10);
   }
 
-  const aggregateByKey = (rows: unknown[], keyNames: string[]): BingTableRow[] => {
-    const byKey = new Map<string, { clicks: number; impressions: number; posWeighted: number; weight: number }>();
-    for (const entry of rows) {
-      const obj = entry as Record<string, unknown>;
-      const key = asNonEmptyString(getField(obj, keyNames));
-      if (!key) continue;
-      const clicks = getNumber(obj, ["Clicks", "clicks"]);
-      const impressions = getNumber(obj, ["Impressions", "impressions"]);
-      const posRaw = getField(obj, ["AvgClickPosition", "AvgImpressionPosition", "Position", "position"]);
-      const pos = posRaw != null ? safeNumber(posRaw) : 0;
-      const weight = Math.max(clicks, 1);
-      const cur = byKey.get(key) ?? { clicks: 0, impressions: 0, posWeighted: 0, weight: 0 };
-      cur.clicks += clicks;
-      cur.impressions += impressions;
-      cur.posWeighted += pos * weight;
-      cur.weight += weight;
-      byKey.set(key, cur);
-    }
-    return Array.from(byKey.entries())
-      .map(([key, agg]) => ({
-        key,
-        clicks: agg.clicks,
-        impressions: agg.impressions,
-        changePercent: 0,
-        position: agg.weight > 0 ? agg.posWeighted / agg.weight : undefined,
-      }))
-      .sort((a, b) => b.clicks - a.clicks)
-      .slice(0, 100);
-  };
-
-  const queries = aggregateByKey(queryRows, ["Query", "QueryText", "query", "keyword"]);
-  const pages = aggregateByKey(pageRows, ["Page", "Url", "page", "url", "Query", "query"]);
-  const analyticsReady = daily.length > 0 || queries.length > 0 || pages.length > 0;
+  const analyticsReady = daily.some((d) => d.clicks > 0 || d.impressions > 0);
   const data: Record<string, unknown> = {
     connected: true,
     analyticsReady,
     daily,
-    queries,
-    pages,
   };
   if (debug) {
     data.debug = {
       propertyId: resolved.propertyId,
       siteUrlVariants,
       selectedVariant:
-        queryStatsRaw.length > 0 || pageStatsRaw.length > 0
+        queryStatsRaw.length > 0
           ? siteUrlVariants.find((v) => v === bingSiteUrl || v === `${bingSiteUrl}/` || v === bingSiteUrl.replace(/\/$/, "")) ?? null
           : null,
-      rawCounts: {
-        queryRows: queryStatsRaw.length,
-        pageRows: pageStatsRaw.length,
-      },
-      filteredCounts: {
-        queryRows: queryRows.length,
-        pageRows: pageRows.length,
-      },
-      normalizedCounts: {
-        daily: daily.length,
-        queries: queries.length,
-        pages: pages.length,
-      },
+      rawCounts: { queryRows: queryStatsRaw.length },
+      filteredCounts: { queryRows: queryRows.length },
+      dailyCount: daily.length,
       dateRange: { startDate: from, endDate: to },
       calls: debugCalls,
     };

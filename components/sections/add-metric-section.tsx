@@ -12,14 +12,12 @@ export function AddMetricSection({
   siteSlug,
   startDate,
   endDate,
-  effectiveEngine = "google",
 }: {
   countriesRows: DataTableRow[];
   devicesRows: DataTableRow[];
   siteSlug: string;
   startDate: string;
   endDate: string;
-  effectiveEngine?: "google" | "bing";
 }) {
   const [addedMetrics, setAddedMetrics] = useState<[AddMetricId, AddMetricId]>([null, null]);
   const [addMetricModalOpen, setAddMetricModalOpen] = useState(false);
@@ -49,7 +47,7 @@ export function AddMetricSection({
               ) : metric === "countries" && countriesRows.length > 0 ? (
                 <div className="flex flex-col min-h-0 flex-1 rounded-lg border border-border bg-surface overflow-hidden">
                   <DataTable
-                    title={effectiveEngine === "bing" ? "Countries · Google only" : "Countries"}
+                    title="Countries"
                     rows={countriesRows}
                     showFilter={false}
                     expandInModal={true}
@@ -59,7 +57,7 @@ export function AddMetricSection({
               ) : metric === "devices" && devicesRows.length > 0 ? (
                 <div className="flex flex-col min-h-0 flex-1 rounded-lg border border-border bg-surface overflow-hidden">
                   <DataTable
-                    title={effectiveEngine === "bing" ? "Devices · Google only" : "Devices"}
+                    title="Devices"
                     rows={devicesRows}
                     showFilter={false}
                     expandInModal={true}

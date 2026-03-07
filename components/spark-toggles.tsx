@@ -51,28 +51,45 @@ const SERIES_CONFIG: {
 ];
 
 export function SparkToggles() {
-  const { series, toggle } = useSparkSeries();
+  const { series, toggle, overlays, setOverlay } = useSparkSeries();
 
   return (
-    <div className="flex h-9 items-center gap-0.5 rounded-md border border-input bg-surface px-0.5" role="group" aria-label="Sparkline metrics">
-      {SERIES_CONFIG.map(({ key, label, title, icon }) => (
-        <button
-          key={key}
-          type="button"
-          title={title}
-          onClick={() => toggle(key)}
-          className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            series[key]
-              ? "border border-input bg-background text-foreground"
-              : "text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/50"
-          )}
-          aria-pressed={series[key]}
-          aria-label={`${label}: ${series[key] ? "on" : "off"}`}
-        >
-          <span className="inline-flex size-4 shrink-0 items-center justify-center">{icon}</span>
-        </button>
-      ))}
+    <div className="flex h-9 items-center gap-1">
+      <div className="flex h-9 items-center gap-0.5 rounded-md border border-input bg-surface px-0.5" role="group" aria-label="Sparkline metrics">
+        {SERIES_CONFIG.map(({ key, label, title, icon }) => (
+          <button
+            key={key}
+            type="button"
+            title={title}
+            onClick={() => toggle(key)}
+            className={cn(
+              "flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              series[key]
+                ? "border border-input bg-background text-foreground"
+                : "text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/50"
+            )}
+            aria-pressed={series[key]}
+            aria-label={`${label}: ${series[key] ? "on" : "off"}`}
+          >
+            <span className="inline-flex size-4 shrink-0 items-center justify-center">{icon}</span>
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        title="Show Bing overlay on chart (when Bing connected)"
+        onClick={() => setOverlay("bing", !overlays.bing)}
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-md border transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          overlays.bing
+            ? "border-[#008373] bg-[#008373]/12 text-[#008373]"
+            : "border-input bg-surface text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/50"
+        )}
+        aria-pressed={overlays.bing}
+        aria-label={`Bing overlay: ${overlays.bing ? "on" : "off"}`}
+      >
+        <span className="text-[10px] font-bold">B</span>
+      </button>
     </div>
   );
 }

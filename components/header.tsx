@@ -5,7 +5,6 @@ import { useState } from "react";
 import { DateRangeSelect } from "./date-range-select";
 import { OverviewSearch } from "./overview-search";
 import { ProfileMenu } from "./profile-menu";
-import { EngineSwitch } from "./engine-switch";
 import { ShareModal } from "./share-modal";
 import { SparkToggles } from "./spark-toggles";
 import { ThemeToggle } from "./theme-toggle";
@@ -68,7 +67,6 @@ export function Header({
                   Share
                 </button>
               )}
-              <EngineSwitch />
               <SparkToggles />
               <AiHeaderButton />
               <ThemeToggle />

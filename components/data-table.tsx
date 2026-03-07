@@ -24,13 +24,6 @@ export interface DataTableRow {
   position?: number;
   /** SERP feature appearances (e.g. RICH_RESULT, VIDEO) for badge display */
   appearances?: string[];
-  /** When set, display engine-specific values (e.g. "34 G  6 B") instead of merged clicks/impressions/position */
-  clicksGoogle?: number;
-  clicksBing?: number;
-  impressionsGoogle?: number;
-  impressionsBing?: number;
-  positionGoogle?: number;
-  positionBing?: number;
 }
 
 type SortKey = "key" | "clicks" | "impressions" | "changePercent" | "position";
@@ -64,29 +57,13 @@ function formatNum(n: number): string {
   return String(n);
 }
 
-/** Format clicks or impressions for display; when engine-specific values exist, show "34 G  6 B" style. */
+/** Format clicks or impressions for display (Google data only). */
 export function formatClicksOrImpressions(row: DataTableRow, kind: "clicks" | "impressions"): React.ReactNode {
-  const g = kind === "clicks" ? row.clicksGoogle : row.impressionsGoogle;
-  const b = kind === "clicks" ? row.clicksBing : row.impressionsBing;
-  if (g != null || b != null) {
-    const parts: string[] = [];
-    if (g != null) parts.push(`${formatNum(g)} G`);
-    if (b != null) parts.push(`${formatNum(b)} B`);
-    return parts.join("  ");
-  }
   return formatNum(kind === "clicks" ? row.clicks : row.impressions);
 }
 
-/** Format position for display; when engine-specific values exist, show "16.4 G  12.1 B" style. */
+/** Format position for display (Google data only). */
 export function formatPosition(row: DataTableRow): React.ReactNode {
-  const g = row.positionGoogle;
-  const b = row.positionBing;
-  if (g != null || b != null) {
-    const parts: string[] = [];
-    if (g != null) parts.push(`${g.toFixed(1)} G`);
-    if (b != null) parts.push(`${b.toFixed(1)} B`);
-    return parts.join("  ");
-  }
   return row.position != null ? row.position.toFixed(1) : "—";
 }
 

@@ -1,4 +1,3 @@
-import type { SearchEngine } from "@/contexts/engine-selection-context";
 import type { SparkSeriesKey, SparkSeriesState } from "@/contexts/spark-series-context";
 
 export const MAX_VISIBLE_SERIES = 4;
@@ -6,7 +5,6 @@ export const MAX_VISIBLE_SERIES = 4;
 const METRIC_PRIORITY: SparkSeriesKey[] = ["clicks", "impressions", "ctr", "position"];
 
 export type BudgetResult = {
-  effectiveSources: SearchEngine[];
   effectiveMetrics: SparkSeriesKey[];
   nextSeriesState: SparkSeriesState;
   helperMessage: string | null;
@@ -26,23 +24,19 @@ function uniqueMetrics(metrics: SparkSeriesKey[]): SparkSeriesKey[] {
 }
 
 /**
- * Hybrid budget rule:
+ * Budget rule for Google metrics only (overlays like Bing are not counted):
  * - apply as-is when series count <= MAX_VISIBLE_SERIES
  * - auto-trim metrics once when over budget and return helper message
  */
 export function applySeriesBudget(params: {
-  selectedSources: SearchEngine[];
   selectedMetrics: SparkSeriesKey[];
   currentSeriesState: SparkSeriesState;
 }): BudgetResult {
-  const effectiveSources: SearchEngine[] =
-    params.selectedSources.length > 0 ? params.selectedSources : (["google"] as SearchEngine[]);
   const selectedMetrics = uniqueMetrics(params.selectedMetrics);
-  const seriesCount = effectiveSources.length * selectedMetrics.length;
+  const seriesCount = selectedMetrics.length;
 
   if (seriesCount <= MAX_VISIBLE_SERIES) {
     return {
-      effectiveSources,
       effectiveMetrics: selectedMetrics,
       nextSeriesState: params.currentSeriesState,
       helperMessage: null,
@@ -50,7 +44,7 @@ export function applySeriesBudget(params: {
     };
   }
 
-  const maxMetrics = Math.max(1, Math.floor(MAX_VISIBLE_SERIES / effectiveSources.length));
+  const maxMetrics = Math.max(1, Math.min(MAX_VISIBLE_SERIES, selectedMetrics.length));
   const sortedByPriority = METRIC_PRIORITY.filter((m) => selectedMetrics.includes(m));
   const trimmed = sortedByPriority.slice(0, maxMetrics);
 
@@ -65,10 +59,9 @@ export function applySeriesBudget(params: {
   }
 
   return {
-    effectiveSources,
     effectiveMetrics: trimmed,
     nextSeriesState,
-    helperMessage: "Max 4 series visible. Disable a metric or source.",
+    helperMessage: "Max 4 series visible. Disable a metric.",
     wasAutoTrimmed: true,
   };
 }

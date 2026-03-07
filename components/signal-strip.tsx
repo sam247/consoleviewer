@@ -20,7 +20,6 @@ export interface SignalStripProps {
   pagesRows: DataTableRow[];
   newQueries?: DataTableRow[];
   dateKey: string;
-  sourceEngine?: "google" | "bing";
 }
 
 function toneClass(tone: SignalTone): string {
@@ -48,7 +47,6 @@ export function SignalStrip({
   pagesRows,
   newQueries = [],
   dateKey,
-  sourceEngine = "google",
 }: SignalStripProps) {
   const signals = useMemo<SignalItem[]>(() => {
     const items: SignalItem[] = [];
@@ -141,14 +139,6 @@ export function SignalStrip({
       >
         <span className="text-xs font-medium text-muted-foreground">Signals</span>
         <span className="flex items-center gap-2">
-          <span
-            className={cn(
-              "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
-              sourceEngine === "google" ? "bg-[#4285f4]/12 text-[#4285f4]" : "bg-[#008373]/12 text-[#008373]"
-            )}
-          >
-            {sourceEngine === "google" ? "Google" : "Bing"}
-          </span>
           <svg
             className={cn("size-4 text-muted-foreground transition-transform", collapsed ? "" : "rotate-180")}
             fill="none"

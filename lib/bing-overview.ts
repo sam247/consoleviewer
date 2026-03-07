@@ -152,7 +152,7 @@ export async function fetchBingOverviewForSite(
     dailyByDate.set(date, cur);
   }
 
-  const daily = Array.from(dailyByDate.entries())
+  const dailyFromApi = Array.from(dailyByDate.entries())
     .map(([date, agg]) => ({
       date,
       clicks: agg.clicks,
@@ -161,8 +161,20 @@ export async function fetchBingOverviewForSite(
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const totalClicks = daily.reduce((s, d) => s + d.clicks, 0);
-  const totalImpressions = daily.reduce((s, d) => s + d.impressions, 0);
+  const totalClicks = dailyFromApi.reduce((s, d) => s + d.clicks, 0);
+  const totalImpressions = dailyFromApi.reduce((s, d) => s + d.impressions, 0);
+
+  const byDate = new Map(dailyFromApi.map((d) => [d.date, d]));
+  const daily: { date: string; clicks: number; impressions: number; position?: number }[] = [];
+  let current = from;
+  while (current <= to) {
+    daily.push(
+      byDate.get(current) ?? { date: current, clicks: 0, impressions: 0 }
+    );
+    const d = new Date(current + "T00:00:00.000Z");
+    d.setUTCDate(d.getUTCDate() + 1);
+    current = d.toISOString().slice(0, 10);
+  }
 
   return {
     clicks: totalClicks,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { DataTableRow } from "@/components/data-table";
 import type { Summary } from "@/hooks/use-property-data";
@@ -125,37 +125,57 @@ export function SignalStrip({
     return items.slice(0, 5);
   }, [summary?.clicksChangePercent, queriesRows, pagesRows, newQueries]);
 
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <section
-      aria-label="Signal strip"
-      className="rounded-lg border border-border bg-surface px-5 py-4"
+      aria-label="Signals"
+      className="rounded-lg border border-border bg-surface"
       key={dateKey}
     >
-      <div className="flex items-center justify-between gap-2 mb-2.5">
-        <span className="text-xs text-muted-foreground">Signals</span>
-        <span
-          className={cn(
-            "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
-            sourceEngine === "google" ? "bg-[#4285f4]/12 text-[#4285f4]" : "bg-[#008373]/12 text-[#008373]"
-          )}
-        >
-          {sourceEngine === "google" ? "Google" : "Bing"}
-        </span>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-        {signals.map((signal) => (
-          <div
-            key={signal.id}
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        className="flex w-full items-center justify-between gap-2 px-5 py-3 text-left hover:bg-muted/50 transition-colors rounded-t-lg"
+        aria-expanded={!collapsed}
+      >
+        <span className="text-xs font-medium text-muted-foreground">Signals</span>
+        <span className="flex items-center gap-2">
+          <span
             className={cn(
-              "flex items-start gap-2 rounded border border-border/60 bg-background/60 px-3 py-2 text-sm animate-signal-enter",
-              toneClass(signal.tone)
+              "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
+              sourceEngine === "google" ? "bg-[#4285f4]/12 text-[#4285f4]" : "bg-[#008373]/12 text-[#008373]"
             )}
           >
-            <span className="mt-0.5 shrink-0">{signal.icon}</span>
-            <span className="truncate text-foreground">{signal.text}</span>
-          </div>
-        ))}
-      </div>
+            {sourceEngine === "google" ? "Google" : "Bing"}
+          </span>
+          <svg
+            className={cn("size-4 text-muted-foreground transition-transform", collapsed ? "" : "rotate-180")}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </span>
+      </button>
+      {!collapsed && (
+        <div className="px-5 pb-4 pt-0 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          {signals.map((signal) => (
+            <div
+              key={signal.id}
+              className={cn(
+                "flex items-start gap-2 rounded border border-border/60 bg-background/60 px-3 py-2 text-sm animate-signal-enter",
+                toneClass(signal.tone)
+              )}
+            >
+              <span className="mt-0.5 shrink-0">{signal.icon}</span>
+              <span className="truncate text-foreground">{signal.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

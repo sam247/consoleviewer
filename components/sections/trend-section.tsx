@@ -128,8 +128,8 @@ export function TrendSection({
 
   return (
     <section aria-label="Trend" className="space-y-6">
-      <div className="flex flex-col gap-6 min-w-0 lg:flex-row lg:items-stretch">
-        <div className="performance-chart-card rounded-lg border border-border bg-surface transition-colors duration-[120ms] min-w-0 flex-1 flex flex-col shadow-[0_2px_8px_rgba(0,0,0,0.05)]" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
+      <div className="flex flex-col gap-6 min-w-0">
+        <div className="performance-chart-card rounded-lg border border-border bg-surface transition-colors duration-[120ms] min-w-0 flex flex-col shadow-[0_2px_8px_rgba(0,0,0,0.05)]" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
           {data.summary && (
             <MomentumScoreCard
               variant="strip"
@@ -319,11 +319,10 @@ export function TrendSection({
           </div>
         </div>
         {queriesRows.length > 0 && (
-          <div className="w-full max-w-[320px] lg:w-[320px] lg:min-w-[280px] flex-shrink-0 flex flex-col" style={{ minHeight: CHART_CARD_MIN_H.primary }}>
+          <div className="min-w-0">
             <QueryFootprint
               queries={queriesRows}
-              daily={dailyForCharts}
-              className="flex flex-col min-h-full"
+              className="flex flex-col"
               onBandSelect={onBandSelect}
               selectedBand={bandFilter}
               compareToPrior={compareToPrior}

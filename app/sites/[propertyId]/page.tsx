@@ -141,16 +141,6 @@ export default function SiteDetailPage({
                 />
               )}
 
-              <InsightsSection
-                queriesRows={queriesRows}
-                daily={data.daily}
-                propertyId={propertyId}
-                siteSlug={siteSlug}
-                startDate={startDate}
-                endDate={endDate}
-                effectiveEngine={engineForDisplay}
-              />
-
               <SignalStrip
                 summary={data.summary}
                 queriesRows={queriesRows}
@@ -176,6 +166,16 @@ export default function SiteDetailPage({
                 />
               )}
 
+              <InsightsSection
+                queriesRows={queriesRows}
+                daily={data.daily}
+                propertyId={propertyId}
+                siteSlug={siteSlug}
+                startDate={startDate}
+                endDate={endDate}
+                effectiveEngine={engineForDisplay}
+              />
+
               {data.daily.length > 0 && (
                 <VolatilityBrandedSection
                   data={data}
@@ -189,7 +189,6 @@ export default function SiteDetailPage({
                 <>
                   <QueryFootprint
                     queries={queriesRows}
-                    daily={dailyForCharts}
                     onBandSelect={setBandFilter}
                     selectedBand={bandFilter}
                   />

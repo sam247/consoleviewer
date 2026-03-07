@@ -1,18 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LineChart, Line, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis } from "recharts";
 import { cn } from "@/lib/utils";
 import { InfoTooltip } from "@/components/info-tooltip";
-import { ChartPlot } from "@/components/ui/chart-plot";
-import {
-  CHART_AXIS_TICK,
-  CHART_MARGIN_SPARK,
-  CHART_PLOT_H,
-  CHART_GRID_PROPS,
-  CHART_TOOLTIP_STYLE,
-  createDateTickFormatter,
-} from "@/components/ui/chart-frame";
+
 export type BandFilter = { min: number; max: number } | null;
 
 type FootprintView = "total" | "bands";
@@ -23,12 +14,21 @@ interface QueryFootprintContentProps {
   total: number;
   bands: { label: string; min: number; max: number; count: number; color: string; deltaPercent?: number }[];
   maxBandCount: number;
-  sparkData: { date: string; clicks: number }[];
   pillStats: { label: string; value: number; deltaPercent?: number }[];
   rootClassName: string;
   onBandSelect?: (band: BandFilter) => void;
   selectedBand: BandFilter;
   compareToPrior?: boolean;
+}
+
+function pillStatToBand(stat: { label: string }): BandFilter {
+  switch (stat.label) {
+    case "Top 3": return { min: 1, max: 3 };
+    case "Top 10": return { min: 1, max: 10 };
+    case "Top 20": return { min: 1, max: 20 };
+    case "Top 50": return { min: 1, max: 50 };
+    default: return null;
+  }
 }
 
 export function QueryFootprintContent({
@@ -37,7 +37,6 @@ export function QueryFootprintContent({
   total,
   bands,
   maxBandCount,
-  sparkData,
   pillStats,
   rootClassName,
   onBandSelect,
@@ -49,7 +48,6 @@ export function QueryFootprintContent({
     const t = setTimeout(() => setBarMounted(true), 50);
     return () => clearTimeout(t);
   }, []);
-  const sparkTickFormatter = createDateTickFormatter(sparkData.length);
 
   return (
     <div className={rootClassName}>
@@ -117,10 +115,8 @@ export function QueryFootprintContent({
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-2 w-full min-w-0">
               {pillStats.map((stat) => {
-                const isAll = stat.label === "Total";
-                const band: BandFilter = isAll ? null : stat.label === "Top 3" ? { min: 1, max: 3 } : stat.label === "Top 10" ? { min: 1, max: 10 } : stat.label === "Top 20" ? { min: 1, max: 20 } : null;
-                const isSelected = isAll ? selectedBand === null : (selectedBand != null && band != null && selectedBand.min === band.min && selectedBand.max === band.max);
-                const handleClick = () => onBandSelect?.(band ?? null);
+                const band = pillStatToBand(stat);
+                const isSelected = selectedBand != null && band != null && selectedBand.min === band.min && selectedBand.max === band.max;
                 return (
                   <button
                     key={stat.label}
@@ -130,13 +126,13 @@ export function QueryFootprintContent({
                       (onBandSelect != null) && "cursor-pointer hover:bg-accent/50",
                       isSelected && "ring-2 ring-foreground/30 bg-accent/50"
                     )}
-                    onClick={onBandSelect ? handleClick : undefined}
-                    title={total ? `${stat.label}: ${stat.value} queries (${stat.label !== "Total" ? Math.round((stat.value / total) * 100) + "%" : "total"})` : undefined}
+                    onClick={() => onBandSelect?.(band)}
+                    title={total ? `${stat.label}: ${stat.value} queries (${Math.round((stat.value / total) * 100)}%)` : undefined}
                   >
                     <span className="text-xs text-muted-foreground">{stat.label}</span>
                     <span className="text-xl font-semibold tabular-nums text-foreground leading-tight">
                       {stat.value}
-                      {total > 0 && stat.label !== "Total" && (
+                      {total > 0 && (
                         <span className="text-xs font-normal text-muted-foreground ml-1">
                           ({Math.round((stat.value / total) * 100)}%)
                         </span>
@@ -156,42 +152,6 @@ export function QueryFootprintContent({
                 );
               })}
             </div>
-            <ChartPlot
-              height={CHART_PLOT_H.spark}
-              minHeight={CHART_PLOT_H.spark}
-              isEmpty={sparkData.length === 0}
-              emptyMessage="No recent trend data."
-              className="shrink-0"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sparkData} margin={CHART_MARGIN_SPARK}>
-                  <CartesianGrid {...CHART_GRID_PROPS} />
-                  <XAxis
-                    dataKey="date"
-                    tick={CHART_AXIS_TICK}
-                    tickFormatter={sparkTickFormatter}
-                    minTickGap={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={6}
-                    padding={{ left: 2, right: 2 }}
-                  />
-                  <YAxis hide tick={CHART_AXIS_TICK} />
-                  <Tooltip
-                    contentStyle={CHART_TOOLTIP_STYLE}
-                    labelFormatter={(v) => new Date(v).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                    formatter={(v: number | undefined) => [(v ?? 0).toLocaleString(), "Clicks"]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="clicks"
-                    stroke="var(--chart-clicks)"
-                    strokeWidth={1.6}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartPlot>
           </div>
         ) : (
           <div className="space-y-2.5">

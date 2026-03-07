@@ -56,7 +56,7 @@ export function PerformanceTablesSection({
   const engineSelection = useEngineSelectionOptional();
   const effectiveEngine = engineSelection?.effectiveEngine ?? "google";
 
-  const applyEngineSelectionToRow = (r: DataTableRow): DataTableRow => {
+  const applyEngineSelectionToRow = useCallback((r: DataTableRow): DataTableRow => {
     if (effectiveEngine === "bing") {
       return {
         ...r,
@@ -74,7 +74,7 @@ export function PerformanceTablesSection({
       impressionsBing: undefined,
       positionBing: undefined,
     };
-  };
+  }, [effectiveEngine]);
 
   useEffect(() => {
     try {

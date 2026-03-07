@@ -279,19 +279,28 @@ export function TrendChart({
   className,
   annotations = [],
 }: TrendChartProps) {
-  const { series } = useSparkSeries();
+  const { series, overlays } = useSparkSeries();
   const chartMargin = buildChartMargin(height, marginOverride);
-  const usePerEngine = (analyticsSeries != null || dataByEngine != null) && selectedEngines.length > 0;
+  // Use context overlay so Bing shows even when parent passes stale selectedEngines (render timing)
+  const effectiveEngines = useMemo((): SearchEngine[] => {
+    const hasBingData = dataByEngine?.bing && dataByEngine.bing.length > 0;
+    if (overlays.bing && hasBingData) {
+      const withBing = selectedEngines.includes("bing") ? selectedEngines : [...selectedEngines, "bing"];
+      return withBing;
+    }
+    return selectedEngines;
+  }, [overlays.bing, dataByEngine?.bing, selectedEngines]);
+  const usePerEngine = (analyticsSeries != null || dataByEngine != null) && effectiveEngines.length > 0;
   const mergedDataByEngine = useMemo(
     () => {
-      if (!selectedEngines.length) return [];
+      if (!effectiveEngines.length) return [];
       // When Bing overlay is on, use dataByEngine so bing_clicks/bing_impressions are present
-      if (dataByEngine?.bing && selectedEngines.includes("bing")) return buildMergedDataByEngine(dataByEngine, selectedEngines);
-      if (analyticsSeries && analyticsSeries.length) return buildMergedDataFromSeries(analyticsSeries, selectedEngines);
-      if (dataByEngine) return buildMergedDataByEngine(dataByEngine, selectedEngines);
+      if (dataByEngine?.bing && effectiveEngines.includes("bing")) return buildMergedDataByEngine(dataByEngine, effectiveEngines);
+      if (analyticsSeries && analyticsSeries.length) return buildMergedDataFromSeries(analyticsSeries, effectiveEngines);
+      if (dataByEngine) return buildMergedDataByEngine(dataByEngine, effectiveEngines);
       return [];
     },
-    [dataByEngine, selectedEngines, analyticsSeries]
+    [dataByEngine, effectiveEngines, analyticsSeries]
   );
   const dateTickFormatter = useMemo(
     () =>
@@ -322,10 +331,10 @@ export function TrendChart({
   );
 
   const perEngineSeriesToShow = useMemo(() => {
-    if (!usePerEngine || selectedEngines.length === 0) return [];
+    if (!usePerEngine || effectiveEngines.length === 0) return [];
     const pairs: { metric: SparkSeriesKey; engine: SearchEngine; dataKey: string; label: string; stroke: string; strokeDasharray?: string; strokeWidth: number }[] = [];
     for (const s of visibleSeries) {
-      for (const engine of selectedEngines) {
+      for (const engine of effectiveEngines) {
         if (engine === "bing" && (s.key === "ctr" || s.key === "position")) continue;
         const dataKey = `${engine}_${s.dataKey}`;
         const metricStyle = METRIC_STYLE[s.key];
@@ -342,7 +351,7 @@ export function TrendChart({
       }
     }
     return pairs.slice(0, MAX_PER_ENGINE_LINES);
-  }, [usePerEngine, selectedEngines, visibleSeries]);
+  }, [usePerEngine, effectiveEngines, visibleSeries]);
 
   // #region agent log
   useEffect(() => {
@@ -359,6 +368,7 @@ export function TrendChart({
           dataByEngineHasBing: !!dataByEngine?.bing,
           dataByEngineBingLen: dataByEngine?.bing?.length ?? 0,
           selectedEngines,
+          effectiveEngines,
           mergedDataByEngineLen: mergedDataByEngine.length,
           firstRowKeys: firstRow ? Object.keys(firstRow) : [],
           visibleSeriesLen: visibleSeries.length,
@@ -368,7 +378,7 @@ export function TrendChart({
         hypothesisId: "H2-H5",
       }),
     }).catch(() => {});
-  }, [usePerEngine, dataByEngine, selectedEngines, mergedDataByEngine, visibleSeries.length, perEngineSeriesToShow.length]);
+  }, [usePerEngine, dataByEngine, selectedEngines, effectiveEngines, mergedDataByEngine, visibleSeries.length, perEngineSeriesToShow.length]);
   // #endregion
 
   const useNormalized =

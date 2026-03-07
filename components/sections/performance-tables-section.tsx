@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DataTable, type DataTableRow, type TrendFilter } from "@/components/data-table";
 import type { BandFilter } from "@/components/query-footprint";
 import { InfoTooltip } from "@/components/info-tooltip";
@@ -116,13 +116,13 @@ export function PerformanceTablesSection({
       rows = rows.filter((r) => r.position != null && r.position >= bandFilter.min && r.position <= bandFilter.max);
     }
     return rows;
-  }, [queriesTrendFilter, queriesRows, newQueriesRows, lostQueriesRows, bandFilter, effectiveEngine]);
+  }, [queriesTrendFilter, queriesRows, newQueriesRows, lostQueriesRows, bandFilter, applyEngineSelectionToRow]);
 
   const pagesRowsForTable = useMemo(() => {
     if (pagesTrendFilter === "new") return newPagesRows.map(applyEngineSelectionToRow);
     if (pagesTrendFilter === "lost") return lostPagesRows.map(applyEngineSelectionToRow);
     return pagesRows.map(applyEngineSelectionToRow);
-  }, [pagesTrendFilter, pagesRows, newPagesRows, lostPagesRows, effectiveEngine]);
+  }, [pagesTrendFilter, pagesRows, newPagesRows, lostPagesRows, applyEngineSelectionToRow]);
 
   const contentGroupsFilteredPages = useMemo(() => {
     const raw = contentFilterPattern.trim();

@@ -7,7 +7,7 @@ import { MomentumScoreCard } from "@/components/momentum-score-card";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { exportToCsv, exportChartToPng, formatExportFilename } from "@/lib/export-csv";
 import type { DataTableRow } from "@/components/data-table";
-import type { PropertyData, DailyRow } from "@/hooks/use-property-data";
+import type { PropertyData } from "@/hooks/use-property-data";
 import { useDateRange } from "@/contexts/date-range-context";
 import { useEngineSelection } from "@/contexts/engine-selection-context";
 import { useSparkSeries } from "@/contexts/spark-series-context";
@@ -19,7 +19,6 @@ import { applySeriesBudget } from "@/lib/analysis-series-budget";
 export function TrendSection({
   data,
   queriesRows,
-  dailyForCharts,
   siteSlug,
   startDate,
   endDate,
@@ -31,7 +30,6 @@ export function TrendSection({
 }: {
   data: PropertyData;
   queriesRows: DataTableRow[];
-  dailyForCharts: DailyRow[];
   siteSlug: string;
   startDate: string;
   endDate: string;

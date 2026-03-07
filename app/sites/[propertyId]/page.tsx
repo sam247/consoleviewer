@@ -33,7 +33,6 @@ export default function SiteDetailPage({
     queriesRows,
     pagesRows,
     queryCounting,
-    dailyForCharts,
     siteUrl,
     siteSlug,
     startDate,
@@ -154,7 +153,6 @@ export default function SiteDetailPage({
                 <TrendSection
                   data={data}
                   queriesRows={queriesRows}
-                  dailyForCharts={dailyForCharts}
                   siteSlug={siteSlug}
                   startDate={startDate}
                   endDate={endDate}

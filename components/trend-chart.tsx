@@ -151,19 +151,30 @@ function buildChartMargin(height: number, marginOverride?: TrendChartProps["marg
   return marginOverride ? { ...base, ...marginOverride } : base;
 }
 
+type SparklineSeriesDescriptor = {
+  id: string;
+  label: string;
+  metric: SparkSeriesKey;
+  dataKey: string;
+  stroke: string;
+  strokeDasharray?: string;
+  strokeWidth: number;
+  connectNulls?: boolean;
+};
+
 function SparklineTooltip({
   active,
   label,
-  data,
+  rows,
   visible,
 }: {
   active?: boolean;
   label?: string;
-  data: SparklineDataPoint[];
-  visible: typeof SERIES_CONFIG;
+  rows: Record<string, string | number | null>[];
+  visible: SparklineSeriesDescriptor[];
 }) {
   if (!active || !label) return null;
-  const raw = data.find((d) => d.date === label);
+  const raw = rows.find((d) => d.date === label);
   if (!raw) return null;
 
   return (
@@ -181,10 +192,10 @@ function SparklineTooltip({
       <div className="flex flex-col gap-0.5 text-muted-foreground">
         {visible.map((s) => {
           const v = raw[s.dataKey];
-          if (v == null) return null;
+          if (typeof v !== "number") return null;
           return (
-            <span key={s.key} className="tabular-nums">
-              {s.label}: {formatTooltipValue(s.key, v as number)}
+            <span key={s.id} className="tabular-nums">
+              {s.label}: {formatTooltipValue(s.metric, v)}
             </span>
           );
         })}
@@ -193,12 +204,10 @@ function SparklineTooltip({
   );
 }
 
-const MAX_PER_ENGINE_LINES = 4;
-
 function buildMergedDataByEngine(
   dataByEngine: { google: DataPoint[]; bing?: DataPoint[] },
   selectedEngines: SearchEngine[]
-): Record<string, string | number>[] {
+): Record<string, string | number | null>[] {
   const google = dataByEngine.google ?? [];
   const bing = dataByEngine.bing ?? [];
   const dateSet = new Set<string>([
@@ -214,7 +223,7 @@ function buildMergedDataByEngine(
   const bingByDate = byDate(bing);
 
   return dates.map((date) => {
-    const row: Record<string, string | number> = { date };
+    const row: Record<string, string | number | null> = { date };
     if (selectedEngines.includes("google")) {
       const g = googleByDate.get(date);
       if (g) {
@@ -226,10 +235,8 @@ function buildMergedDataByEngine(
     }
     if (selectedEngines.includes("bing")) {
       const b = bingByDate.get(date);
-      if (b) {
-        row.bing_clicks = b.clicks;
-        row.bing_impressions = b.impressions;
-      }
+      row.bing_clicks = b ? b.clicks : null;
+      row.bing_impressions = b ? b.impressions : null;
     }
     return row;
   });
@@ -279,16 +286,9 @@ export function TrendChart({
   className,
   annotations = [],
 }: TrendChartProps) {
-  const { series, engines } = useSparkSeries();
+  const { series } = useSparkSeries();
   const chartMargin = buildChartMargin(height, marginOverride);
-  // Use context engines; add Bing when parent omitted it but Bing is on and data exists (stale props fix). When parent sends ["bing"] only, keep it.
-  const effectiveEngines = useMemo((): SearchEngine[] => {
-    const hasBingData = dataByEngine?.bing && dataByEngine.bing.length > 0;
-    if (engines.bing && hasBingData && !selectedEngines.includes("bing")) {
-      return ([...selectedEngines, "bing"] as SearchEngine[]);
-    }
-    return selectedEngines;
-  }, [engines.bing, dataByEngine?.bing, selectedEngines]);
+  const effectiveEngines = selectedEngines;
   const usePerEngine = (analyticsSeries != null || dataByEngine != null) && effectiveEngines.length > 0;
   const mergedDataByEngine = useMemo(
     () => {
@@ -329,21 +329,15 @@ export function TrendChart({
     [showClicks, showCtr, showImpr, showPosition, useSeriesContext]
   );
 
-  // When per-engine data exists but no metric toggles are on, show clicks+impressions so chart isn't blank
-  const effectiveVisibleSeries = useMemo(
-    () =>
-      usePerEngine && mergedDataByEngine.length > 0 && visibleSeries.length === 0
-        ? SERIES_CONFIG.filter((s) => s.key === "clicks" || s.key === "impressions")
-        : visibleSeries,
-    [usePerEngine, mergedDataByEngine.length, visibleSeries]
-  );
-
   const perEngineSeriesToShow = useMemo(() => {
     if (!usePerEngine || effectiveEngines.length === 0) return [];
     const pairs: { metric: SparkSeriesKey; engine: SearchEngine; dataKey: string; label: string; stroke: string; strokeDasharray?: string; strokeWidth: number }[] = [];
-    for (const s of effectiveVisibleSeries) {
-      for (const engine of effectiveEngines) {
-        if (engine === "bing" && (s.key === "ctr" || s.key === "position")) continue;
+    for (const engine of effectiveEngines) {
+      const engineMetrics =
+        engine === "google"
+          ? visibleSeries
+          : SERIES_CONFIG.filter((s) => s.key === "clicks" || s.key === "impressions");
+      for (const s of engineMetrics) {
         const dataKey = `${engine}_${s.dataKey}`;
         const metricStyle = METRIC_STYLE[s.key];
         const isBingOverlay = engine === "bing";
@@ -358,8 +352,8 @@ export function TrendChart({
         });
       }
     }
-    return pairs.slice(0, MAX_PER_ENGINE_LINES);
-  }, [usePerEngine, effectiveEngines, effectiveVisibleSeries]);
+    return pairs;
+  }, [usePerEngine, effectiveEngines, visibleSeries]);
 
   const useNormalized =
     (
@@ -378,7 +372,7 @@ export function TrendChart({
     if (usePerEngine && mergedDataByEngine.length > 0) {
       if (!useNormalized) return mergedDataByEngine;
       return mergedDataByEngine.map((point, i) => {
-        const out: Record<string, string | number> = { ...point };
+        const out: Record<string, string | number | null> = { ...point };
         perEngineSeriesToShow.forEach((s) => {
           const values = mergedDataByEngine.map((d) => {
             const v = (d as Record<string, unknown>)[s.dataKey];
@@ -434,10 +428,10 @@ export function TrendChart({
   const useDualAxisPerEngine =
     usePerEngine &&
     !useNormalized &&
-    effectiveVisibleSeries.some((s) => s.key === "clicks") &&
-    effectiveVisibleSeries.some((s) => s.key === "impressions") &&
-    !effectiveVisibleSeries.some((s) => s.key === "ctr") &&
-    !effectiveVisibleSeries.some((s) => s.key === "position") &&
+    perEngineSeriesToShow.some((s) => s.metric === "clicks") &&
+    perEngineSeriesToShow.some((s) => s.metric === "impressions") &&
+    !perEngineSeriesToShow.some((s) => s.metric === "ctr") &&
+    !perEngineSeriesToShow.some((s) => s.metric === "position") &&
     mergedDataByEngine.length > 0;
 
   // When only one metric (e.g. Clicks) but two engines, use left=Google right=Bing so Bing isn't flattened
@@ -446,7 +440,7 @@ export function TrendChart({
     !useNormalized &&
     !useDualAxisPerEngine &&
     effectiveEngines.length === 2 &&
-    effectiveVisibleSeries.length === 1 &&
+    perEngineSeriesToShow.length === 1 &&
     mergedDataByEngine.length > 0;
 
   const yDomain = useMemo((): [number, number] | undefined => {
@@ -574,6 +568,24 @@ export function TrendChart({
     return [Math.max(0, min - pad), max + pad];
   }, [chartData, useDualAxis, compareToPrior, useDualAxisPerEngine, useDualAxisBySource, effectiveEngines, perEngineSeriesToShow, useNormalized]);
 
+  const hasSelectedSeries = usePerEngine
+    ? perEngineSeriesToShow.length > 0
+    : useSeriesContext
+      ? visibleSeries.length > 0
+      : true;
+
+  if (!hasSelectedSeries) {
+    return (
+      <ChartPlot
+        height={height}
+        minHeight={height}
+        isEmpty
+        emptyMessage="No metrics selected."
+        className={className}
+      />
+    );
+  }
+
   const hasData = usePerEngine ? mergedDataByEngine.length > 0 : (data?.length ?? 0) > 0;
   if (!hasData) {
     return (
@@ -694,6 +706,7 @@ export function TrendChart({
                   stroke={s.stroke}
                   strokeWidth={s.strokeWidth}
                   strokeDasharray={s.strokeDasharray}
+                  connectNulls={s.engine === "bing"}
                   dot={false}
                   name={s.label}
                   {...(useDualAxisPerEngine
@@ -829,46 +842,135 @@ export function TrendChart({
 const SPARK_CLICKS_AXIS = "clicks";
 const SPARK_IMPR_AXIS = "impressions";
 
-export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
-  const { series } = useSparkSeries();
-  const visible = useMemo(
+export function Sparkline({
+  data,
+  bingOverlayData,
+}: {
+  data: SparklineDataPoint[];
+  bingOverlayData?: SparklineDataPoint[];
+}) {
+  const { series, engines } = useSparkSeries();
+  const hasGoogleData = data?.length > 0;
+  const hasBingData = Boolean(engines.bing && bingOverlayData?.length);
+  const googleCoreHidden = !series.clicks && !series.impressions;
+  const bingOnly = googleCoreHidden && engines.bing;
+
+  const googleVisible = useMemo(
     () =>
-      data?.length
-        ? SERIES_CONFIG.filter((s) => series[s.key] && data.some((d) => d[s.dataKey] != null))
+      hasGoogleData
+        ? SERIES_CONFIG.filter(
+            (s) => series[s.key] && data.some((d) => d[s.dataKey] != null)
+          )
         : [],
-    [data, series]
+    [data, hasGoogleData, series]
   );
-  const hasClicks = visible.some((s) => s.key === "clicks");
-  const hasImpressions = visible.some((s) => s.key === "impressions");
-  const useDualAxis = hasClicks && hasImpressions;
+
+  const visible = useMemo((): SparklineSeriesDescriptor[] => {
+    const out: SparklineSeriesDescriptor[] = [];
+    if (!bingOnly) {
+      for (const s of googleVisible) {
+        out.push({
+          id: `google_${s.key}`,
+          label: `${s.label} (Google)`,
+          metric: s.key,
+          dataKey: `google_${s.key}`,
+          stroke: s.stroke,
+          strokeWidth: 1.4,
+          strokeDasharray: s.key === "impressions" ? "6 4" : undefined,
+        });
+      }
+    }
+    if (hasBingData) {
+      out.push({
+        id: "bing_clicks",
+        label: "Clicks (Bing)",
+        metric: "clicks",
+        dataKey: "bing_clicks",
+        stroke: CHART_ENGINE_BING,
+        strokeWidth: 1.4,
+        connectNulls: true,
+      });
+      out.push({
+        id: "bing_impressions",
+        label: "Impressions (Bing)",
+        metric: "impressions",
+        dataKey: "bing_impressions",
+        stroke: CHART_ENGINE_BING,
+        strokeWidth: 1.4,
+        strokeDasharray: "6 4",
+        connectNulls: true,
+      });
+    }
+    return out;
+  }, [bingOnly, googleVisible, hasBingData]);
+
+  const useDualAxis = useMemo(() => {
+    const hasClicks = visible.some((s) => s.metric === "clicks");
+    const hasImpressions = visible.some((s) => s.metric === "impressions");
+    const hasOther = visible.some((s) => s.metric === "ctr" || s.metric === "position");
+    return hasClicks && hasImpressions && !hasOther;
+  }, [visible]);
 
   const chartData = useMemo(() => {
-    if (!data?.length) return [];
-    if (useDualAxis) {
-      const clicksValues = data.map((d) => (d.clicks as number) ?? 0);
-      const impressionsValues = data.map((d) => (d.impressions as number) ?? 0);
-      const clicksSmoothed = smoothSeries(clicksValues);
-      const impressionsSmoothed = smoothSeries(impressionsValues);
-      return data.map((point, i) => ({
-        date: point.date,
-        clicks: clicksSmoothed[i],
-        impressions: impressionsSmoothed[i],
-      }));
-    }
-    const out = data.map((point, i) => {
-      const row: Record<string, string | number> = { date: point.date };
-      visible.forEach((s) => {
-        const values = data.map((d) => (d[s.dataKey] as number) ?? 0);
-        const smoothed = smoothSeries(values);
-        row[`_norm_${s.key}`] = normalizeSeries(smoothed)[i];
-      });
+    const google = data ?? [];
+    const bing = bingOverlayData ?? [];
+    const dateSet = new Set<string>([
+      ...google.map((d) => d.date),
+      ...bing.map((d) => d.date),
+    ]);
+    const dates = Array.from(dateSet).sort();
+    if (!dates.length || !visible.length) return [];
+
+    const buildSeriesMap = (
+      source: SparklineDataPoint[],
+      metric: keyof SparklineDataPoint
+    ): Map<string, number> => {
+      if (!source.length) return new Map();
+      const values = source.map((d) => (d[metric] as number) ?? 0);
+      const smoothed = smoothSeries(values);
+      const out = new Map<string, number>();
+      source.forEach((d, i) => out.set(d.date, smoothed[i]));
+      return out;
+    };
+
+    const byKey: Record<string, Map<string, number>> = {
+      google_clicks: buildSeriesMap(google, "clicks"),
+      google_impressions: buildSeriesMap(google, "impressions"),
+      google_ctr: buildSeriesMap(google, "ctr"),
+      google_position: buildSeriesMap(google, "position"),
+      bing_clicks: buildSeriesMap(bing, "clicks"),
+      bing_impressions: buildSeriesMap(bing, "impressions"),
+    };
+
+    const rows = dates.map((date) => {
+      const row: Record<string, string | number | null> = { date };
+      for (const s of visible) {
+        const v = byKey[s.dataKey]?.get(date);
+        if (typeof v === "number") {
+          row[s.dataKey] = v;
+        } else if (s.dataKey.startsWith("bing_")) {
+          row[s.dataKey] = null;
+        }
+      }
       return row;
     });
-    return out;
-  }, [data, visible, useDualAxis]);
 
-  if (!data?.length) return null;
-  if (!visible.length) return null;
+    if (useDualAxis) return rows;
+
+    return rows.map((row, i) => {
+      const out = { ...row };
+      for (const s of visible) {
+        const values = rows.map((r) => {
+          const v = r[s.dataKey];
+          return typeof v === "number" ? v : 0;
+        });
+        out[`_norm_${s.dataKey}`] = normalizeSeries(values)[i];
+      }
+      return out;
+    });
+  }, [data, bingOverlayData, useDualAxis, visible]);
+
+  if (!chartData.length || !visible.length) return null;
 
   return (
     <ChartPlot height={CHART_PLOT_H.spark} minHeight={CHART_PLOT_H.spark}>
@@ -887,49 +989,31 @@ export function Sparkline({ data }: { data: SparklineDataPoint[] }) {
               <SparklineTooltip
                 active={active}
                 label={label != null ? String(label) : undefined}
-                data={data}
+                rows={chartData}
                 visible={visible}
               />
             )}
           />
-          {useDualAxis ? (
-            <>
-              {hasClicks && (
-                <Line
-                  type="monotone"
-                  dataKey="clicks"
-                  yAxisId={SPARK_CLICKS_AXIS}
-                  stroke={CHART_CLICKS}
-                  strokeWidth={1.4}
-                  dot={false}
-                  strokeOpacity={0.9}
-                />
-              )}
-              {hasImpressions && (
-                <Line
-                  type="monotone"
-                  dataKey="impressions"
-                  yAxisId={SPARK_IMPR_AXIS}
-                  stroke={CHART_IMPRESSIONS}
-                  strokeWidth={1.4}
-                  dot={false}
-                  strokeOpacity={0.9}
-                />
-              )}
-            </>
-          ) : (
-            visible.map((s) => (
+          {visible.map((s) => {
+            const yAxisId =
+              useDualAxis
+                ? (s.metric === "impressions" ? SPARK_IMPR_AXIS : SPARK_CLICKS_AXIS)
+                : undefined;
+            return (
               <Line
-                key={s.key}
+                key={s.id}
                 type="monotone"
-                dataKey={`_norm_${s.key}`}
+                dataKey={useDualAxis ? s.dataKey : `_norm_${s.dataKey}`}
+                {...(useDualAxis ? { yAxisId } : {})}
                 stroke={s.stroke}
-                strokeWidth={1.4}
+                strokeWidth={s.strokeWidth}
+                strokeDasharray={s.strokeDasharray}
+                connectNulls={s.connectNulls}
                 dot={false}
                 strokeOpacity={0.9}
               />
-            ))
-          )}
+            );
+          })}
         </LineChart>
       </ResponsiveContainer>
     </ChartPlot>

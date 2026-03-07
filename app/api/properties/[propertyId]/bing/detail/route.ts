@@ -294,6 +294,7 @@ export async function GET(
     connected: true,
     analyticsReady,
     daily,
+    dailySparse: dailyFromApi,
   };
   if (debug) {
     data.debug = {
@@ -313,4 +314,3 @@ export async function GET(
   cache.set(key, { data, expires: Date.now() + CACHE_TTL_MS });
   return NextResponse.json(data);
 }
-

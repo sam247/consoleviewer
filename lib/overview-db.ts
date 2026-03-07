@@ -154,8 +154,9 @@ export async function getOverviewMetricsFromDb(
     const bingMap = await getBingOverviewForTeam(teamId, properties, startDate, endDate);
     for (const row of result) {
       const bing = bingMap.get(row.siteUrl);
-      if (bing?.daily?.length) {
-        row.bingDaily = bing.daily.map((d) => ({ date: d.date, clicks: d.clicks, impressions: d.impressions }));
+      const bingSeries = bing?.dailySparse?.length ? bing.dailySparse : bing?.daily;
+      if (bingSeries?.length) {
+        row.bingDaily = bingSeries.map((d) => ({ date: d.date, clicks: d.clicks, impressions: d.impressions }));
       }
     }
   }

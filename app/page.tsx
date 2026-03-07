@@ -143,7 +143,7 @@ export default function OverviewPage() {
     : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4";
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-x-hidden">
       <Header
         showSearch={gscConnected}
         searchValue={search}
@@ -152,7 +152,7 @@ export default function OverviewPage() {
         filterSelect={gscConnected ? <FilterSelect value={filterBy} onChange={setFilterBy} /> : undefined}
         shareScope={gscConnected ? "dashboard" : undefined}
       />
-      <main className="flex-1 p-4 md:p-6">
+      <main className="flex-1 p-3 md:p-6">
         <div className="mx-auto max-w-[86rem]">
           {authLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

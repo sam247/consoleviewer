@@ -13,6 +13,7 @@ import { useSparkSeries } from "@/contexts/spark-series-context";
 import type { DateRangeKey } from "@/types/gsc";
 import { CHART_CARD_MIN_H, CHART_PLOT_H } from "@/components/ui/chart-frame";
 import { applySeriesBudget } from "@/lib/analysis-series-budget";
+import { MobileOverflowMenu } from "@/components/ui/mobile-overflow-menu";
 
 export function TrendSection({
   data,
@@ -85,15 +86,24 @@ export function TrendSection({
     [data.daily]
   );
   const hasBingData = Boolean(data.bingDaily?.length);
-  const noMetricsOn = !series.clicks && !series.impressions && !series.ctr && !series.position;
-  // When all metric toggles are off and Bing overlay is on, show Bing only (so scale fits Bing). Otherwise Google + optional Bing.
+  const googleMetricsOn = series.clicks || series.impressions || series.ctr || series.position;
+  const googleCoreOn = series.clicks || series.impressions;
+  const bingOn = engines.bing;
+  // Deterministic source selection:
+  // - no metrics + no Bing => no engines (explicit empty state)
+  // - no Google core + Bing => Bing only
+  // - otherwise Google + optional Bing overlay
   const chartSources = useMemo((): ("google" | "bing")[] => {
-    if (noMetricsOn && engines.bing && hasBingData) return ["bing"];
-    return engines.bing ? ["google", "bing"] : ["google"];
-  }, [noMetricsOn, engines.bing, hasBingData]);
+    if (!googleMetricsOn && !bingOn) return [];
+    if (!googleCoreOn && bingOn) return ["bing"];
+    return bingOn ? ["google", "bing"] : ["google"];
+  }, [googleMetricsOn, googleCoreOn, bingOn]);
   const chartDataByEngine = useMemo(() => {
     const google = chartDaily;
     const bing = hasBingData ? smoothDailyIfSparse(data.bingDaily!) : [];
+    if (chartSources.length === 0) {
+      return { google: [], bing: [] };
+    }
     if (chartSources.includes("google") && chartSources.includes("bing")) {
       return { google, bing };
     }
@@ -124,11 +134,13 @@ export function TrendSection({
   }, [budget.helperMessage, budget.nextSeriesState, budget.wasAutoTrimmed, series, setSeries]);
 
   const enginesLabel = useMemo(() => {
+    if (chartSources.length === 0) return null;
     if (chartSources.length === 2) return "Source: Google + Bing";
     if (chartSources[0] === "bing") return "Source: Bing";
     return "Source: Google";
   }, [chartSources]);
 
+  const noMetricsSelected = !googleMetricsOn && !bingOn;
   const bingOnlyNoData = chartSources.length === 1 && chartSources[0] === "bing" && !hasBingData;
 
   useEffect(() => {
@@ -155,17 +167,17 @@ export function TrendSection({
               }}
             />
           )}
-          <div className="px-4 py-2 flex items-center justify-between gap-4 flex-wrap border-b border-border">
+          <div className="px-3 py-2 md:px-4 flex items-center justify-between gap-3 flex-wrap border-b border-border">
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-1">
               Performance over time
               <InfoTooltip title="Search performance by selected source and metric for the current date range" />
             </h2>
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="relative" ref={trendExportMenuRef}>
+              <div className="hidden md:block relative" ref={trendExportMenuRef}>
                 <button
                   type="button"
                   onClick={() => setTrendExportMenuOpen((o) => !o)}
-                  className="p-1.5 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms] focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                  className="p-2 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms] focus:ring-2 focus:ring-ring focus:ring-offset-1 min-h-[40px] min-w-[40px]"
                   title="Export"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -174,7 +186,7 @@ export function TrendSection({
                   <div className="absolute right-0 top-full mt-0.5 z-20 min-w-[120px] rounded border border-border bg-surface py-1 shadow-lg">
                     <button
                       type="button"
-                      className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                      className="w-full px-3 py-2 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1 min-h-[40px]"
                       onClick={() => {
                         exportToCsv((data.daily ?? []).map((d) => ({
                           date: d.date,
@@ -190,7 +202,7 @@ export function TrendSection({
                     </button>
                     <button
                       type="button"
-                      className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                      className="w-full px-3 py-2 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1 min-h-[40px]"
                       onClick={() => {
                         exportChartToPng(trendChartContainerRef.current, formatExportFilename(siteSlug, "performance-over-time", startDate, endDate));
                         setTrendExportMenuOpen(false);
@@ -201,7 +213,7 @@ export function TrendSection({
                   </div>
                 )}
               </div>
-              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-[120ms]">
+              <label className="hidden md:flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-[120ms] min-h-[40px]">
                 <input
                   type="checkbox"
                   checked={compareToPrior}
@@ -210,7 +222,7 @@ export function TrendSection({
                 />
                 Compare to previous
               </label>
-              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-[120ms]">
+              <label className="hidden md:flex items-center gap-2 text-sm text-muted-foreground cursor-pointer transition-colors duration-[120ms] min-h-[40px]">
                 <input
                   type="checkbox"
                   checked={showPercentView}
@@ -219,7 +231,7 @@ export function TrendSection({
                 />
                 View as %
               </label>
-              <div className="flex items-center gap-1 rounded-md border border-input bg-background p-0.5">
+              <div className="flex items-center gap-1 rounded-md border border-input bg-background p-0.5 overflow-x-auto max-w-full">
                 {quickRanges.map((r) => (
                   <button
                     key={r.key}
@@ -243,12 +255,74 @@ export function TrendSection({
                     setNewAnnotationLabel("");
                     setAddAnnotationOpen(true);
                   }}
-                  className="p-1.5 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms] focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                  className="hidden md:inline-flex p-2 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms] focus:ring-2 focus:ring-ring focus:ring-offset-1 min-h-[40px] min-w-[40px]"
                   title="Add annotation"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 </button>
               )}
+              <div className="md:hidden">
+                <MobileOverflowMenu buttonLabel="Trend controls" panelClassName="min-w-[240px]">
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      data-menu-close="true"
+                      className="w-full rounded border border-border bg-background px-3 py-2 text-left text-xs min-h-[40px]"
+                      onClick={() =>
+                        exportToCsv((data.daily ?? []).map((d) => ({
+                          date: d.date,
+                          clicks: d.clicks,
+                          impressions: d.impressions ?? 0,
+                          ctr: d.ctr ?? 0,
+                          position: d.position ?? "",
+                        })), formatExportFilename(siteSlug, "performance-over-time", startDate, endDate))
+                      }
+                    >
+                      Export CSV
+                    </button>
+                    <button
+                      type="button"
+                      data-menu-close="true"
+                      className="w-full rounded border border-border bg-background px-3 py-2 text-left text-xs min-h-[40px]"
+                      onClick={() =>
+                        exportChartToPng(trendChartContainerRef.current, formatExportFilename(siteSlug, "performance-over-time", startDate, endDate))
+                      }
+                    >
+                      Export PNG
+                    </button>
+                    <button
+                      type="button"
+                      data-menu-close="true"
+                      className="w-full rounded border border-border bg-background px-3 py-2 text-left text-xs min-h-[40px]"
+                      onClick={() => setCompareToPrior(!compareToPrior)}
+                    >
+                      {compareToPrior ? "Hide previous period" : "Compare to previous"}
+                    </button>
+                    <button
+                      type="button"
+                      data-menu-close="true"
+                      className="w-full rounded border border-border bg-background px-3 py-2 text-left text-xs min-h-[40px]"
+                      onClick={() => setShowPercentView(!showPercentView)}
+                    >
+                      {showPercentView ? "View as absolute values" : "View as %"}
+                    </button>
+                    {propertyId && onAddAnnotation && (
+                      <button
+                        type="button"
+                        data-menu-close="true"
+                        className="w-full rounded border border-border bg-background px-3 py-2 text-left text-xs min-h-[40px]"
+                        onClick={() => {
+                          setNewAnnotationDate(startDate);
+                          setNewAnnotationLabel("");
+                          setAddAnnotationOpen(true);
+                        }}
+                      >
+                        Add annotation
+                      </button>
+                    )}
+                  </div>
+                </MobileOverflowMenu>
+              </div>
             </div>
           </div>
           {addAnnotationOpen && propertyId && onAddAnnotation && (
@@ -305,7 +379,11 @@ export function TrendSection({
             {budgetMessage && (
               <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">{budgetMessage}</p>
             )}
-            {bingOnlyNoData ? (
+            {noMetricsSelected ? (
+              <div className="flex-1 flex items-center justify-center min-h-[200px] text-sm text-muted-foreground">
+                No metrics selected.
+              </div>
+            ) : bingOnlyNoData ? (
               <div className="flex-1 flex items-center justify-center min-h-[200px] text-sm text-muted-foreground">
                 No Bing data for this period. Connect Bing in Settings or switch to Google.
               </div>
@@ -328,7 +406,7 @@ export function TrendSection({
                   normalizeWhenMultiSeries={showPercentView}
                   annotations={chartAnnotations}
                 />
-                <p className="text-[10px] text-muted-foreground mt-1.5">{enginesLabel}</p>
+                {enginesLabel && <p className="text-[10px] text-muted-foreground mt-1.5">{enginesLabel}</p>}
               </>
             )}
           </div>

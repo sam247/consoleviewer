@@ -6,6 +6,7 @@ import { classifyQuery } from "@/lib/ai-query-detection";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { TableFullViewModal } from "@/components/table-full-view-modal";
 import { RowTableCard } from "@/components/ui/row-table-card";
+import { MobileOverflowMenu } from "@/components/ui/mobile-overflow-menu";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -157,64 +158,102 @@ function DataTableView({
       className={className}
       headerRight={
         <div className="flex items-center gap-2 flex-wrap ml-auto">
-          {showFilterBar && trend !== "new" && trend !== "lost" && (
-            <div className="flex flex-wrap gap-0.5 rounded-md border border-input bg-background p-0.5">
-              {filterOptions.filter((t) => t !== "new" && t !== "lost").map((t) => (
+          <div className="hidden md:flex items-center gap-2 flex-wrap">
+            {showFilterBar && trend !== "new" && trend !== "lost" && (
+              <div className="flex flex-wrap gap-0.5 rounded-md border border-input bg-background p-0.5">
+                {filterOptions.filter((t) => t !== "new" && t !== "lost").map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTrend(t)}
+                    className={cn(
+                      "rounded px-2 py-1 text-xs transition-colors duration-[120ms] whitespace-nowrap min-h-[40px]",
+                      trend === t
+                        ? "bg-background text-foreground font-medium border border-input"
+                        : "text-muted-foreground hover:bg-accent"
+                    )}
+                  >
+                    {FILTER_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+            )}
+            {showFilterBar && (trend === "new" || trend === "lost") && (
+              <div className="flex gap-0.5 rounded-md border border-input bg-background p-0.5">
                 <button
-                  key={t}
                   type="button"
-                  onClick={() => setTrend(t)}
-                  className={cn(
-                    "rounded px-2 py-1 text-xs transition-colors duration-[120ms] whitespace-nowrap",
-                    trend === t
-                      ? "bg-background text-foreground font-medium border border-input"
-                      : "text-muted-foreground hover:bg-accent"
-                  )}
+                  onClick={() => setTrend("all")}
+                  className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent transition-colors duration-[120ms] min-h-[40px]"
                 >
-                  {FILTER_LABELS[t]}
+                  ← All
                 </button>
-              ))}
-            </div>
-          )}
-          {showFilterBar && (trend === "new" || trend === "lost") && (
-            <div className="flex gap-0.5 rounded-md border border-input bg-background p-0.5">
-              <button
-                type="button"
-                onClick={() => setTrend("all")}
-                className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent transition-colors duration-[120ms]"
-              >
-                ← All
-              </button>
-              <span className={cn(
-                "rounded px-2 py-1 text-xs font-medium capitalize bg-background text-foreground border border-input"
-              )}>
-                {FILTER_LABELS[trend]}
-              </span>
-            </div>
-          )}
-          {onExportCsv && (
-            <div className="relative shrink-0" ref={exportMenuRef}>
-              <button
-                type="button"
-                onClick={() => setExportMenuOpen((o) => !o)}
-                className="p-1.5 rounded text-muted-foreground/80 hover:text-muted-foreground hover:bg-accent/50 transition-colors duration-[120ms] opacity-80 hover:opacity-100"
-                title="Export"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-              </button>
-              {exportMenuOpen && (
-                <div className="absolute right-0 top-full mt-0.5 z-20 min-w-[100px] rounded border border-border bg-surface py-1 shadow-lg">
+                <span className={cn(
+                  "rounded px-2 py-1 text-xs font-medium capitalize bg-background text-foreground border border-input min-h-[40px] inline-flex items-center"
+                )}>
+                  {FILTER_LABELS[trend]}
+                </span>
+              </div>
+            )}
+            {onExportCsv && (
+              <div className="relative shrink-0" ref={exportMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setExportMenuOpen((o) => !o)}
+                  className="p-2 rounded text-muted-foreground/80 hover:text-muted-foreground hover:bg-accent/50 transition-colors duration-[120ms] opacity-80 hover:opacity-100 min-h-[40px] min-w-[40px]"
+                  title="Export"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                </button>
+                {exportMenuOpen && (
+                  <div className="absolute right-0 top-full mt-0.5 z-20 min-w-[100px] rounded border border-border bg-surface py-1 shadow-lg">
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1 min-h-[40px]"
+                      onClick={() => { onExportCsv(); setExportMenuOpen(false); }}
+                    >
+                      Export CSV
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="md:hidden">
+            <MobileOverflowMenu buttonLabel={`${title} controls`} panelClassName="min-w-[240px]">
+              <div className="flex flex-col gap-2">
+                {showFilterBar && (
+                  <div className="grid grid-cols-2 gap-1">
+                    {filterOptions.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        data-menu-close="true"
+                        onClick={() => setTrend(t)}
+                        className={cn(
+                          "rounded border px-2 py-2 text-xs text-left min-h-[40px]",
+                          trend === t
+                            ? "border-input bg-background text-foreground"
+                            : "border-border bg-muted/20 text-muted-foreground hover:bg-accent"
+                        )}
+                      >
+                        {FILTER_LABELS[t]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {onExportCsv && (
                   <button
                     type="button"
-                    className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                    onClick={() => { onExportCsv(); setExportMenuOpen(false); }}
+                    data-menu-close="true"
+                    onClick={onExportCsv}
+                    className="w-full rounded border border-border bg-background px-3 py-2 text-left text-xs text-muted-foreground hover:bg-accent hover:text-foreground min-h-[40px]"
                   >
                     Export CSV
                   </button>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            </MobileOverflowMenu>
+          </div>
         </div>
       }
       footer={

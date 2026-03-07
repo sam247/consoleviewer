@@ -44,6 +44,7 @@ type BingDetailResponse = {
   connected: boolean;
   analyticsReady: boolean;
   daily: { date: string; clicks: number; impressions: number }[];
+  dailySparse?: { date: string; clicks: number; impressions: number }[];
 };
 
 type EngineAvailabilityResponse = {
@@ -415,7 +416,8 @@ export function usePropertyData(propertyId: string) {
       : { brandedClicks: 0, nonBrandedClicks: 0, brandedChangePercent: 0, nonBrandedChangePercent: 0 };
     const snapshotTop3 = queries.filter((r) => r.position != null && r.position <= 3).length;
     const snapshotTop10 = queries.filter((r) => r.position != null && r.position <= 10).length;
-    const bingDaily: DailyRow[] = (bingDetail?.daily ?? []).map((d) => ({
+    const bingRawDaily = (bingDetail?.dailySparse?.length ? bingDetail.dailySparse : bingDetail?.daily) ?? [];
+    const bingDaily: DailyRow[] = bingRawDaily.map((d) => ({
       date: d.date,
       clicks: d.clicks,
       impressions: d.impressions,

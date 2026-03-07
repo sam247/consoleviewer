@@ -248,7 +248,6 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
   const { engines } = useSparkSeries();
   const domain = faviconDomain(metrics.siteUrl);
   const showBingSparkline = Boolean(engines.bing && metrics.bingDaily?.length);
-  const sparklineDaily = showBingSparkline ? metrics.bingDaily! : metrics.daily;
   const recent = getRecentDaySummary(metrics.daily);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -347,11 +346,15 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
       {/* Metrics row: Clicks, Impressions, CTR, Position */}
       <CardMetricsRow metrics={metrics} />
 
-      {/* Trend sparkline (Google daily, or Bing daily when overlay is on) */}
+      {/* Trend sparkline (Google metrics + optional Bing clicks/impressions overlay) */}
       <div className="pt-1 mb-4">
         <div className="flex items-center gap-1.5">
           <Sparkline
-            data={sparklineDaily.map((d) => ({
+            data={metrics.daily.map((d) => ({
+              ...d,
+              ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
+            }))}
+            bingOverlayData={(metrics.bingDaily ?? []).map((d) => ({
               ...d,
               ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
             }))}

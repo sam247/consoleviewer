@@ -100,6 +100,7 @@ export type BingOverviewResult = {
   clicks: number;
   impressions: number;
   daily: { date: string; clicks: number; impressions: number; position?: number }[];
+  dailySparse?: { date: string; clicks: number; impressions: number; position?: number }[];
 };
 
 /**
@@ -180,6 +181,7 @@ export async function fetchBingOverviewForSite(
     clicks: totalClicks,
     impressions: totalImpressions,
     daily,
+    dailySparse: dailyFromApi,
   };
 }
 

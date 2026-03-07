@@ -285,8 +285,7 @@ export function TrendChart({
   const effectiveEngines = useMemo((): SearchEngine[] => {
     const hasBingData = dataByEngine?.bing && dataByEngine.bing.length > 0;
     if (overlays.bing && hasBingData) {
-      const withBing = selectedEngines.includes("bing") ? selectedEngines : [...selectedEngines, "bing"];
-      return withBing;
+      return selectedEngines.includes("bing") ? selectedEngines : ([...selectedEngines, "bing"] as SearchEngine[]);
     }
     return selectedEngines;
   }, [overlays.bing, dataByEngine?.bing, selectedEngines]);

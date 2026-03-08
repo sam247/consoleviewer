@@ -880,7 +880,6 @@ export function Sparkline({
           rawValueKey: `_raw_google_${s.key}`,
           stroke: s.stroke,
           strokeWidth: 1.4,
-          strokeDasharray: s.key === "impressions" ? "6 4" : undefined,
         });
       }
     }

@@ -117,37 +117,63 @@ export async function fetchBingOverviewForSite(
   const to = endDate.slice(0, 10);
   const inRange = (d: string) => d >= from && d <= to;
 
-  const siteUrlVariants = [
-    siteUrl,
-    siteUrl.endsWith("/") ? siteUrl.slice(0, -1) : `${siteUrl}/`,
-  ].filter(Boolean);
+  const siteUrlVariants = (() => {
+    const out = new Set<string>();
+    const push = (v: string) => {
+      const t = v.trim();
+      if (t) out.add(t);
+    };
+    push(siteUrl);
+    try {
+      const parsed = new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`);
+      const hostNoWww = parsed.hostname.replace(/^www\./i, "");
+      const hostWww = parsed.hostname.startsWith("www.") ? parsed.hostname : `www.${parsed.hostname}`;
+      const path = parsed.pathname === "/" ? "" : parsed.pathname.replace(/\/+$/, "");
+      push(`https://${hostNoWww}${path}`);
+      push(`https://${hostWww}${path}`);
+      push(`http://${hostNoWww}${path}`);
+      push(`http://${hostWww}${path}`);
+      push(`https://${hostNoWww}${path}/`);
+      push(`https://${hostWww}${path}/`);
+      push(`http://${hostNoWww}${path}/`);
+      push(`http://${hostWww}${path}/`);
+    } catch {
+      push(siteUrl.endsWith("/") ? siteUrl.slice(0, -1) : `${siteUrl}/`);
+    }
+    return Array.from(out);
+  })();
 
-  let statsRaw: unknown[] = [];
+  let queryStatsRaw: unknown[] = [];
+  let pageStatsRaw: unknown[] = [];
   for (const variant of siteUrlVariants) {
     const queryRows = (await callBing("GetQueryStats", token, { siteUrl: variant })) ?? [];
-    const rows =
-      queryRows.length > 0
-        ? queryRows
-        : ((await callBing("GetPageStats", token, { siteUrl: variant })) ?? []);
-    if (rows && rows.length > 0) {
-      statsRaw = rows;
+    const pageRows = (await callBing("GetPageStats", token, { siteUrl: variant })) ?? [];
+    if (queryRows.length > 0 || pageRows.length > 0) {
+      queryStatsRaw = queryRows;
+      pageStatsRaw = pageRows;
       break;
     }
   }
 
-  const statRows = (statsRaw ?? []).filter((entry) => {
+  const statRows = [...queryStatsRaw, ...pageStatsRaw].filter((entry) => {
     const obj = entry as Record<string, unknown>;
     const date = getDateString(obj);
     return date ? inRange(date) : true;
   });
 
   const dailyByDate = new Map<string, { clicks: number; impressions: number; posWeighted: number }>();
+  let undatedClicks = 0;
+  let undatedImpressions = 0;
   for (const entry of statRows) {
     const obj = entry as Record<string, unknown>;
     const date = getDateString(obj);
-    if (!date || !inRange(date)) continue;
     const clicks = getNumber(obj, ["Clicks", "clicks"]);
     const impressions = getNumber(obj, ["Impressions", "impressions"]);
+    if (!date || !inRange(date)) {
+      undatedClicks += clicks;
+      undatedImpressions += impressions;
+      continue;
+    }
     const posRaw = getField(obj, ["AvgClickPosition", "AvgImpressionPosition", "Position", "position"]);
     const pos = posRaw != null ? safeNumber(posRaw) : 0;
     const cur = dailyByDate.get(date) ?? { clicks: 0, impressions: 0, posWeighted: 0 };
@@ -157,7 +183,7 @@ export async function fetchBingOverviewForSite(
     dailyByDate.set(date, cur);
   }
 
-  const dailyFromApi = Array.from(dailyByDate.entries())
+  const dailyFromApi: { date: string; clicks: number; impressions: number; position?: number }[] = Array.from(dailyByDate.entries())
     .map(([date, agg]) => ({
       date,
       clicks: agg.clicks,
@@ -165,6 +191,29 @@ export async function fetchBingOverviewForSite(
       position: agg.clicks > 0 ? agg.posWeighted / agg.clicks : undefined,
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Last-resort fallback: if Bing returns undated aggregate rows, distribute totals across range.
+  if (dailyFromApi.length === 0 && (undatedClicks > 0 || undatedImpressions > 0)) {
+    let current = from;
+    const days: string[] = [];
+    while (current <= to) {
+      days.push(current);
+      const d = new Date(current + "T00:00:00.000Z");
+      d.setUTCDate(d.getUTCDate() + 1);
+      current = d.toISOString().slice(0, 10);
+    }
+    const dayCount = Math.max(1, days.length);
+    let clicksLeft = undatedClicks;
+    let impressionsLeft = undatedImpressions;
+    for (let i = 0; i < days.length; i += 1) {
+      const isLast = i === days.length - 1;
+      const clicks = isLast ? clicksLeft : Math.floor(clicksLeft / (dayCount - i));
+      const impressions = isLast ? impressionsLeft : Math.floor(impressionsLeft / (dayCount - i));
+      clicksLeft -= clicks;
+      impressionsLeft -= impressions;
+      dailyFromApi.push({ date: days[i], clicks, impressions });
+    }
+  }
 
   const totalClicks = dailyFromApi.reduce((s, d) => s + d.clicks, 0);
   const totalImpressions = dailyFromApi.reduce((s, d) => s + d.impressions, 0);

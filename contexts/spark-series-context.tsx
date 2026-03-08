@@ -41,18 +41,13 @@ const DEFAULT_OVERLAYS: ChartOverlays = { bing: false };
 const DEFAULT_ENGINES: EngineSelection = { google: true, bing: false };
 
 function sanitizeSeries(input: Partial<SparkSeriesState> | null | undefined): SparkSeriesState {
-  const next: SparkSeriesState = {
-    clicks: input?.clicks === true,
-    impressions: input?.impressions === true,
-    ctr: input?.ctr === true,
-    position: input?.position === true,
+  if (!input || typeof input !== "object") return { ...DEFAULT_SERIES };
+  return {
+    clicks: typeof input.clicks === "boolean" ? input.clicks : DEFAULT_SERIES.clicks,
+    impressions: typeof input.impressions === "boolean" ? input.impressions : DEFAULT_SERIES.impressions,
+    ctr: typeof input.ctr === "boolean" ? input.ctr : DEFAULT_SERIES.ctr,
+    position: typeof input.position === "boolean" ? input.position : DEFAULT_SERIES.position,
   };
-
-  // Keep core GSC metrics as the fallback default when everything is disabled.
-  if (!next.clicks && !next.impressions && !next.ctr && !next.position) {
-    return { ...DEFAULT_SERIES };
-  }
-  return next;
 }
 
 function loadSeries(): SparkSeriesState {

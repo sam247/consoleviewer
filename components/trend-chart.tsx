@@ -156,6 +156,7 @@ type SparklineSeriesDescriptor = {
   label: string;
   metric: SparkSeriesKey;
   dataKey: string;
+  rawValueKey?: string;
   stroke: string;
   strokeDasharray?: string;
   strokeWidth: number;
@@ -191,7 +192,9 @@ function SparklineTooltip({
       </div>
       <div className="flex flex-col gap-0.5 text-muted-foreground">
         {visible.map((s) => {
-          const v = raw[s.dataKey];
+          const rawKey = s.rawValueKey ?? `_raw_${s.dataKey}`;
+          const rawValue = raw[rawKey];
+          const v = typeof rawValue === "number" ? rawValue : raw[s.dataKey];
           if (typeof v !== "number") return null;
           return (
             <span key={s.id} className="tabular-nums">
@@ -874,6 +877,7 @@ export function Sparkline({
           label: `${s.label} (Google)`,
           metric: s.key,
           dataKey: `google_${s.key}`,
+          rawValueKey: `_raw_google_${s.key}`,
           stroke: s.stroke,
           strokeWidth: 1.4,
           strokeDasharray: s.key === "impressions" ? "6 4" : undefined,
@@ -886,6 +890,7 @@ export function Sparkline({
         label: "Clicks (Bing)",
         metric: "clicks",
         dataKey: "bing_clicks",
+        rawValueKey: "_raw_bing_clicks",
         stroke: CHART_ENGINE_BING,
         strokeWidth: 1.4,
         connectNulls: true,
@@ -895,6 +900,7 @@ export function Sparkline({
         label: "Impressions (Bing)",
         metric: "impressions",
         dataKey: "bing_impressions",
+        rawValueKey: "_raw_bing_impressions",
         stroke: CHART_ENGINE_BING,
         strokeWidth: 1.4,
         strokeDasharray: "6 4",
@@ -923,29 +929,40 @@ export function Sparkline({
 
     const buildSeriesMap = (
       source: SparklineDataPoint[],
-      metric: keyof SparklineDataPoint
+      metric: keyof SparklineDataPoint,
+      smooth = true
     ): Map<string, number> => {
       if (!source.length) return new Map();
       const values = source.map((d) => (d[metric] as number) ?? 0);
-      const smoothed = smoothSeries(values);
+      const outValues = smooth ? smoothSeries(values) : values;
       const out = new Map<string, number>();
-      source.forEach((d, i) => out.set(d.date, smoothed[i]));
+      source.forEach((d, i) => out.set(d.date, outValues[i]));
       return out;
     };
 
     const byKey: Record<string, Map<string, number>> = {
       google_clicks: buildSeriesMap(google, "clicks"),
+      google_clicks__raw: buildSeriesMap(google, "clicks", false),
       google_impressions: buildSeriesMap(google, "impressions"),
+      google_impressions__raw: buildSeriesMap(google, "impressions", false),
       google_ctr: buildSeriesMap(google, "ctr"),
+      google_ctr__raw: buildSeriesMap(google, "ctr", false),
       google_position: buildSeriesMap(google, "position"),
+      google_position__raw: buildSeriesMap(google, "position", false),
       bing_clicks: buildSeriesMap(bing, "clicks"),
+      bing_clicks__raw: buildSeriesMap(bing, "clicks", false),
       bing_impressions: buildSeriesMap(bing, "impressions"),
+      bing_impressions__raw: buildSeriesMap(bing, "impressions", false),
     };
 
     const rows = dates.map((date) => {
       const row: Record<string, string | number | null> = { date };
       for (const s of visible) {
         const v = byKey[s.dataKey]?.get(date);
+        const rawKey = s.dataKey.replace(/^/, "_raw_");
+        const rawSeries = byKey[`${s.dataKey}__raw`];
+        const rawV = rawSeries?.get(date);
+        if (typeof rawV === "number") row[rawKey] = rawV;
         if (typeof v === "number") {
           row[s.dataKey] = v;
         } else if (s.dataKey.startsWith("bing_")) {
@@ -985,6 +1002,7 @@ export function Sparkline({
             <YAxis hide domain={[0, 1]} allowDataOverflow />
           )}
           <Tooltip
+            cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}
             content={({ active, label }) => (
               <SparklineTooltip
                 active={active}
@@ -1010,6 +1028,7 @@ export function Sparkline({
                 strokeDasharray={s.strokeDasharray}
                 connectNulls={s.connectNulls}
                 dot={false}
+                activeDot={{ r: 3, strokeWidth: 1.5, stroke: "var(--surface)", fill: s.stroke }}
                 strokeOpacity={0.9}
               />
             );

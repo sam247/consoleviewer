@@ -1,15 +1,35 @@
 "use client";
 
 import { useState } from "react";
+import { useAiPanel, type AiPanelScope } from "@/contexts/ai-panel-context";
 import { cn } from "@/lib/utils";
 
-export function AiHeaderButton() {
+export function AiHeaderButton({
+  scope,
+  propertyId,
+  siteUrl,
+}: {
+  scope: AiPanelScope;
+  propertyId?: string;
+  siteUrl?: string;
+}) {
   const [hovered, setHovered] = useState(false);
+  const { openPanel } = useAiPanel();
 
   return (
     <div className="relative">
       <button
         type="button"
+        onClick={(event) =>
+          openPanel(
+            {
+              scope,
+              propertyId,
+              siteUrl,
+            },
+            event.currentTarget
+          )
+        }
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         className={cn(
@@ -17,7 +37,7 @@ export function AiHeaderButton() {
           "text-muted-foreground hover:bg-accent hover:text-foreground transition-colors",
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
         )}
-        aria-label="AI Insights — coming soon"
+        aria-label="Open AI insights panel"
       >
         <svg
           width="20"
@@ -41,7 +61,7 @@ export function AiHeaderButton() {
       {hovered && (
         <div className="absolute right-0 top-full z-30 mt-1.5 w-48 rounded-md border border-border bg-background px-3 py-2 shadow-md pointer-events-none">
           <p className="text-xs font-medium text-foreground">AI Insights</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Powered by AI — coming soon</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Open side panel</p>
         </div>
       )}
     </div>

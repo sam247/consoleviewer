@@ -8,6 +8,8 @@ import { SiteCard } from "@/components/site-card";
 import { SiteCardSkeleton } from "@/components/site-card-skeleton";
 import { SortSelect, type SortKey } from "@/components/sort-select";
 import { FilterSelect, type FilterKey } from "@/components/filter-select";
+import { AiPanelShell } from "@/components/ai-panel-shell";
+import { DashboardRadar } from "@/components/dashboard-radar";
 import { useDateRange } from "@/contexts/date-range-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
@@ -151,7 +153,15 @@ export default function OverviewPage() {
         sortSelect={gscConnected ? <SortSelect value={sortBy} onChange={setSortBy} /> : undefined}
         filterSelect={gscConnected ? <FilterSelect value={filterBy} onChange={setFilterBy} /> : undefined}
         shareScope={gscConnected ? "dashboard" : undefined}
+        aiScope={gscConnected ? "dashboard" : undefined}
       />
+      {gscConnected && (
+        <div className="px-3 md:px-6">
+          <div className="mx-auto max-w-[86rem]">
+            <DashboardRadar metrics={notHidden} isLoading={isLoading} />
+          </div>
+        </div>
+      )}
       <main className="flex-1 p-3 md:p-6">
         <div className="mx-auto max-w-[86rem]">
           {authLoading ? (
@@ -248,6 +258,7 @@ export default function OverviewPage() {
           )}
         </div>
       </main>
+      <AiPanelShell />
     </div>
   );
 }

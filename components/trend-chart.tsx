@@ -71,11 +71,20 @@ const CHART_CTR = "var(--chart-ctr)";
 const CHART_POSITION = "var(--chart-position)";
 const CHART_ENGINE_GOOGLE = "var(--chart-engine-google)";
 const CHART_ENGINE_BING = "var(--chart-engine-bing)";
+const CHART_ENGINE_BING_CLICKS = "var(--chart-engine-bing-clicks)";
+const CHART_ENGINE_BING_IMPRESSIONS = "var(--chart-engine-bing-impressions)";
 
 const ENGINE_COLORS: Record<SearchEngine, string> = {
   google: CHART_ENGINE_GOOGLE,
   bing: CHART_ENGINE_BING,
 };
+
+function getEngineMetricStroke(engine: SearchEngine, metric: SparkSeriesKey): string {
+  if (engine === "bing") {
+    return metric === "impressions" ? CHART_ENGINE_BING_IMPRESSIONS : CHART_ENGINE_BING_CLICKS;
+  }
+  return ENGINE_COLORS[engine];
+}
 
 /** Metric → line style (strokeDasharray, strokeWidth). */
 const METRIC_STYLE: Record<SparkSeriesKey, { strokeDasharray?: string; strokeWidth: number }> = {
@@ -349,7 +358,7 @@ export function TrendChart({
           engine,
           dataKey,
           label: `${s.label} (${engine === "google" ? "Google" : "Bing"})`,
-          stroke: ENGINE_COLORS[engine],
+          stroke: getEngineMetricStroke(engine, s.key),
           strokeWidth: metricStyle.strokeWidth,
           strokeDasharray: isBingOverlay ? "6 4" : metricStyle.strokeDasharray,
         });
@@ -890,7 +899,7 @@ export function Sparkline({
         metric: "clicks",
         dataKey: "bing_clicks",
         rawValueKey: "_raw_bing_clicks",
-        stroke: CHART_ENGINE_BING,
+        stroke: CHART_ENGINE_BING_CLICKS,
         strokeWidth: 1.4,
         connectNulls: true,
       });
@@ -900,7 +909,7 @@ export function Sparkline({
         metric: "impressions",
         dataKey: "bing_impressions",
         rawValueKey: "_raw_bing_impressions",
-        stroke: CHART_ENGINE_BING,
+        stroke: CHART_ENGINE_BING_IMPRESSIONS,
         strokeWidth: 1.4,
         strokeDasharray: "6 4",
         connectNulls: true,

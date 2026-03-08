@@ -22,6 +22,8 @@
   --chart-position: #ea580c;
   --chart-engine-google: #2563eb;
   --chart-engine-bing: #15803d;
+  --chart-engine-bing-clicks: #15803d;
+  --chart-engine-bing-impressions: #4ade80;
 }
 
 /* Dark theme */
@@ -44,6 +46,8 @@
   --chart-position: #f97316;
   --chart-engine-google: #3b82f6;
   --chart-engine-bing: #22c55e;
+  --chart-engine-bing-clicks: #22c55e;
+  --chart-engine-bing-impressions: #86efac;
 }
 
 body {

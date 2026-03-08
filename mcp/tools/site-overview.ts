@@ -1,5 +1,6 @@
 import { readQuery } from "@/mcp/db";
-import { buildDefaultWindow, getLatestSnapshotDate, isValidToolInput, normalizeSiteLabel, resolveMcpProperty } from "@/mcp/shared";
+import { buildDefaultWindow, getLatestSnapshotDate, normalizeSiteLabel, resolveMcpProperty } from "@/mcp/shared";
+import { validateSiteScopedParams } from "@/mcp/validation";
 import type { SiteOverviewItem, SiteOverviewResult, ToolDefinition } from "@/mcp/types";
 
 function weightByPosition(pos: number): number {
@@ -15,17 +16,16 @@ export const getSiteOverviewTool: ToolDefinition<"get_site_overview"> = {
   inputSchema: {
     type: "object",
     properties: {
-      site: {
-        type: "string",
-        description: "Consoleviewer property UUID or encoded property ID",
-      },
+      site: { type: "string", description: "Consoleviewer property UUID or encoded property ID" },
+      startDate: { type: "string", description: "Optional YYYY-MM-DD (validated, ignored in v1)" },
+      endDate: { type: "string", description: "Optional YYYY-MM-DD (validated, ignored in v1)" },
     },
     required: ["site"],
     additionalProperties: false,
   },
-  validate: isValidToolInput,
+  validate: validateSiteScopedParams,
   async handler(input, context): Promise<SiteOverviewResult> {
-    const property = await resolveMcpProperty(context.userId, input.site);
+    const property = context.validatedProperty ?? (await resolveMcpProperty(context.userId, input.site));
     if (!property) {
       return {
         site: input.site,
@@ -39,10 +39,10 @@ export const getSiteOverviewTool: ToolDefinition<"get_site_overview"> = {
       };
     }
 
-    const latestDate = await getLatestSnapshotDate(property.id);
+    const latestDate = await getLatestSnapshotDate(property.propertyId);
     if (!latestDate) {
       return {
-        site: normalizeSiteLabel(property.site_url, property.gsc_site_url),
+        site: normalizeSiteLabel(property.siteUrl, property.gscSiteUrl),
         clicks: 0,
         impressions: 0,
         ctr: 0,
@@ -56,30 +56,21 @@ export const getSiteOverviewTool: ToolDefinition<"get_site_overview"> = {
     const window = buildDefaultWindow(latestDate);
 
     const [snapshotRes, scoreRes, topQueriesRes, topPagesRes] = await Promise.all([
-      readQuery<{
-        clicks: number;
-        impressions: number;
-        position_sum: number;
-      }>(
+      readQuery<{ clicks: number; impressions: number; position_sum: number }>(
         `SELECT clicks, impressions, position_sum
          FROM property_snapshots
          WHERE property_id = $1 AND date = $2::date
          LIMIT 1`,
-        [property.id, latestDate]
+        [property.propertyId, latestDate]
       ),
       readQuery<{ visibility_score: number }>(
         `SELECT visibility_score
          FROM property_scores
          WHERE property_id = $1 AND date = $2::date
          LIMIT 1`,
-        [property.id, latestDate]
+        [property.propertyId, latestDate]
       ),
-      readQuery<{
-        query: string;
-        clicks: number;
-        impressions: number;
-        avg_position: number;
-      }>(
+      readQuery<{ query: string; clicks: number; impressions: number; avg_position: number }>(
         `SELECT
            q.query_text AS query,
            SUM(g.clicks)::int AS clicks,
@@ -92,14 +83,9 @@ export const getSiteOverviewTool: ToolDefinition<"get_site_overview"> = {
          GROUP BY g.query_id, q.query_text
          ORDER BY SUM(g.clicks) DESC
          LIMIT 10`,
-        [property.id, window.currentStart, window.currentEnd]
+        [property.propertyId, window.currentStart, window.currentEnd]
       ),
-      readQuery<{
-        url: string;
-        clicks: number;
-        impressions: number;
-        avg_position: number;
-      }>(
+      readQuery<{ url: string; clicks: number; impressions: number; avg_position: number }>(
         `SELECT
            p.page_url AS url,
            SUM(g.clicks)::int AS clicks,
@@ -112,7 +98,7 @@ export const getSiteOverviewTool: ToolDefinition<"get_site_overview"> = {
          GROUP BY g.page_id, p.page_url
          ORDER BY SUM(g.clicks) DESC
          LIMIT 10`,
-        [property.id, window.currentStart, window.currentEnd]
+        [property.propertyId, window.currentStart, window.currentEnd]
       ),
     ]);
 
@@ -149,21 +135,14 @@ export const getSiteOverviewTool: ToolDefinition<"get_site_overview"> = {
 
     let visibilityScore = Number(scoreRes.rows[0]?.visibility_score ?? 0);
 
-    // Dashboard-compatible fallback when cached visibility_score is missing.
     if (visibilityScore === 0 && topQueries.length > 0) {
       const impressionsInQueries = topQueries.reduce((acc, row) => acc + row.impressions, 0);
-      const weightedSum = topQueries.reduce(
-        (acc, row) => acc + row.impressions * weightByPosition(row.position),
-        0
-      );
-      visibilityScore =
-        impressionsInQueries > 0
-          ? Math.round((weightedSum / impressionsInQueries) * 1000) / 10
-          : 0;
+      const weightedSum = topQueries.reduce((acc, row) => acc + row.impressions * weightByPosition(row.position), 0);
+      visibilityScore = impressionsInQueries > 0 ? Math.round((weightedSum / impressionsInQueries) * 1000) / 10 : 0;
     }
 
     return {
-      site: normalizeSiteLabel(property.site_url, property.gsc_site_url),
+      site: normalizeSiteLabel(property.siteUrl, property.gscSiteUrl),
       clicks,
       impressions,
       ctr,

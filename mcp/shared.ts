@@ -1,6 +1,6 @@
 import { resolvePropertyForUser } from "@/lib/property-resolver";
 import { readQuery } from "@/mcp/db";
-import type { ToolInput } from "@/mcp/types";
+import type { SiteScopedToolInput, ValidatedProperty } from "@/mcp/types";
 
 type PropertyRow = {
   id: string;
@@ -27,13 +27,24 @@ function addDays(input: string, days: number): string {
   return fmtDate(d);
 }
 
-export function isValidToolInput(value: unknown): value is ToolInput {
+export function isValidSiteScopedInput(value: unknown): value is SiteScopedToolInput {
   if (!value || typeof value !== "object") return false;
   const asRecord = value as Record<string, unknown>;
-  return typeof asRecord.site === "string" && asRecord.site.trim().length > 0;
+
+  const siteOk = typeof asRecord.site === "string" && asRecord.site.trim().length > 0;
+  const startOk = asRecord.startDate === undefined || typeof asRecord.startDate === "string";
+  const endOk = asRecord.endDate === undefined || typeof asRecord.endDate === "string";
+
+  return siteOk && startOk && endOk;
 }
 
-export async function resolveMcpProperty(userId: string, site: string): Promise<PropertyRow | null> {
+export function isValidListToolsInput(value: unknown): value is Record<string, never> | undefined {
+  if (value === undefined) return true;
+  if (value === null || typeof value !== "object") return false;
+  return Object.keys(value as Record<string, unknown>).length === 0;
+}
+
+export async function resolveMcpProperty(userId: string, site: string): Promise<ValidatedProperty | null> {
   const resolved = await resolvePropertyForUser(userId, site);
   if (!resolved) return null;
 
@@ -45,7 +56,16 @@ export async function resolveMcpProperty(userId: string, site: string): Promise<
     [resolved.propertyId]
   );
 
-  return prop.rows[0] ?? null;
+  const row = prop.rows[0];
+  if (!row) return null;
+
+  return {
+    propertyId: row.id,
+    teamId: row.team_id,
+    siteUrl: row.site_url,
+    gscSiteUrl: row.gsc_site_url,
+    requestedSite: site,
+  };
 }
 
 export async function getLatestSnapshotDate(propertyId: string): Promise<string | null> {

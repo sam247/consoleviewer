@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
   let logUserId = "anonymous";
   let logPropertyId = "unknown";
   let logToolCalled: Parameters<typeof logAiToolExecution>[0]["toolCalled"] = "none";
+  let logToolSequence: NonNullable<Parameters<typeof logAiToolExecution>[0]["toolSequence"]> = [];
+  let logNumberOfToolsUsed = 0;
   let logStatus: Parameters<typeof logAiToolExecution>[0]["status"] = "fallback";
 
   try {
@@ -72,13 +74,15 @@ export async function POST(request: NextRequest) {
         callBudgetContext,
       });
 
+      logToolCalled = assist.toolCalled ?? "none";
+      logToolSequence = assist.toolSequence ?? [];
+      logNumberOfToolsUsed = assist.numberOfToolsUsed ?? 0;
+
       if (assist.usedMcp && assist.promptContextText) {
         systemContext += `\n\nAnalytics Data:\n${assist.promptContextText}`;
-        logToolCalled = assist.toolCalled ?? "none";
         logStatus = "success";
       } else {
         console.info("[AI] MCP fallback reason:", assist.fallbackReason ?? "unknown");
-        logToolCalled = assist.toolCalled ?? "none";
         logStatus = "fallback";
       }
     } else {
@@ -125,12 +129,16 @@ export async function POST(request: NextRequest) {
     logStatus = "error";
     return NextResponse.json({ summary: null, error: "Failed to generate summary" });
   } finally {
+    const totalDuration = Date.now() - requestStartedAt;
     logAiToolExecution({
       timestamp,
       userId: logUserId,
       propertyId: logPropertyId,
       toolCalled: logToolCalled,
-      executionTimeMs: Date.now() - requestStartedAt,
+      toolSequence: logToolSequence,
+      numberOfToolsUsed: logNumberOfToolsUsed,
+      executionTimeMs: totalDuration,
+      totalExecutionTimeMs: totalDuration,
       status: logStatus,
     });
   }

@@ -66,7 +66,7 @@ export function DateRangeSelect() {
       </button>
       {open && (
         <div
-          className="absolute right-0 top-full z-10 mt-1 min-w-[220px] rounded-md border border-input bg-background shadow-md overflow-hidden"
+          className="absolute right-0 top-full z-50 mt-1 min-w-[220px] rounded-md border border-input bg-background shadow-md overflow-hidden"
           role="listbox"
         >
           <div className="max-h-[360px] overflow-y-auto py-1">

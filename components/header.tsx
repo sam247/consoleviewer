@@ -56,7 +56,7 @@ export function Header({
   return (
     <>
       <header className="sticky top-0 z-20 py-4 bg-background">
-        <div className="mx-auto max-w-[86rem] overflow-x-hidden rounded-lg border border-border bg-surface px-4 py-3 shadow-sm md:px-6">
+        <div className="mx-auto max-w-[86rem] overflow-visible rounded-lg border border-border bg-surface px-4 py-3 shadow-sm md:px-6">
           <div className="hidden md:flex md:items-center md:justify-between md:gap-4">
             <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-4">
               <Link

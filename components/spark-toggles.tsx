@@ -69,9 +69,9 @@ export function SparkToggles() {
             title={title}
             onClick={() => toggle(key)}
             className={cn(
-              "flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               series[key]
-                ? "border-2 border-primary/60 bg-primary/10 text-foreground ring-1 ring-primary/20"
+                ? "border-border bg-background text-foreground"
                 : "text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/50"
             )}
             aria-pressed={series[key]}
@@ -85,9 +85,9 @@ export function SparkToggles() {
           title={engines.bing ? "Hide Bing overlay" : "Show Bing overlay"}
           onClick={() => setEngine("bing", !engines.bing)}
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "flex size-8 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             engines.bing
-              ? "border-2 border-[#008373] bg-[#008373]/15 text-[#008373] ring-1 ring-[#008373]/30"
+              ? "border-border bg-background text-foreground"
               : "text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted/50"
           )}
           aria-pressed={engines.bing}

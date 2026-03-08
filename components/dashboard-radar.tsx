@@ -60,7 +60,7 @@ function buildDeterministicSummary(movements: RadarMovementItem[]): string {
 }
 
 const RadarIcon = () => (
-  <svg className="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+  <svg className="size-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
     <circle cx="12" cy="12" r="8" />
     <circle cx="12" cy="12" r="4.5" opacity="0.65" />
     <path d="M12 12l5.5-3.5" />
@@ -124,7 +124,7 @@ export function DashboardRadar({
   }, [movements]);
 
   return (
-    <section className="mb-4 rounded-lg border border-border bg-muted/30 px-3 py-2.5 md:px-4">
+    <section className="mb-4 rounded-lg border border-border bg-surface px-3 py-2.5 md:px-4">
       <div className="flex items-center gap-2 text-xs">
         <RadarIcon />
         {isLoading ? (

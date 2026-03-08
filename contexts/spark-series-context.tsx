@@ -111,16 +111,15 @@ export function SparkSeriesProvider({ children }: { children: ReactNode }) {
 
   const toggle = useCallback((key: SparkSeriesKey) => {
     setSeries((prev) => {
-      const next = sanitizeSeries({ ...prev, [key]: !prev[key] });
+      const next = { ...prev, [key]: !prev[key] };
       try { localStorage.setItem(SERIES_STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
   }, []);
 
   const setSeriesState = useCallback((next: SparkSeriesState) => {
-    const safeNext = sanitizeSeries(next);
-    setSeries(safeNext);
-    try { localStorage.setItem(SERIES_STORAGE_KEY, JSON.stringify(safeNext)); } catch { /* ignore */ }
+    setSeries(next);
+    try { localStorage.setItem(SERIES_STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
   }, []);
 
   const setOverlay = useCallback((key: keyof ChartOverlays, value: boolean) => {

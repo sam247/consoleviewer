@@ -140,7 +140,7 @@ export function IndexSignalsCard({ propertyId, pagesRows }: IndexSignalsCardProp
   })();
 
   return (
-    <section aria-label="Index signals" className="min-w-0">
+    <section aria-label="Index signals" className="min-w-0 rounded-lg border border-border bg-surface">
       <button
         type="button"
         onClick={toggle}

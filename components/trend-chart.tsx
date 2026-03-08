@@ -353,6 +353,7 @@ export function TrendChart({
         const dataKey = `${engine}_${s.dataKey}`;
         const metricStyle = METRIC_STYLE[s.key];
         const isBingOverlay = engine === "bing";
+        const bingDash = isBingOverlay && s.key === "impressions" ? "6 4" : undefined;
         pairs.push({
           metric: s.key,
           engine,
@@ -360,7 +361,7 @@ export function TrendChart({
           label: `${s.label} (${engine === "google" ? "Google" : "Bing"})`,
           stroke: getEngineMetricStroke(engine, s.key),
           strokeWidth: metricStyle.strokeWidth,
-          strokeDasharray: isBingOverlay ? "6 4" : metricStyle.strokeDasharray,
+          strokeDasharray: isBingOverlay ? bingDash : metricStyle.strokeDasharray,
         });
       }
     }

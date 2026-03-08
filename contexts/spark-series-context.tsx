@@ -40,13 +40,28 @@ const DEFAULT_OVERLAYS: ChartOverlays = { bing: false };
 
 const DEFAULT_ENGINES: EngineSelection = { google: true, bing: false };
 
+function sanitizeSeries(input: Partial<SparkSeriesState> | null | undefined): SparkSeriesState {
+  const next: SparkSeriesState = {
+    clicks: input?.clicks === true,
+    impressions: input?.impressions === true,
+    ctr: input?.ctr === true,
+    position: input?.position === true,
+  };
+
+  // Keep core GSC metrics as the fallback default when everything is disabled.
+  if (!next.clicks && !next.impressions && !next.ctr && !next.position) {
+    return { ...DEFAULT_SERIES };
+  }
+  return next;
+}
+
 function loadSeries(): SparkSeriesState {
   if (typeof window === "undefined") return DEFAULT_SERIES;
   try {
     const raw = localStorage.getItem(SERIES_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return { ...DEFAULT_SERIES, ...parsed };
+      return sanitizeSeries(parsed);
     }
   } catch { /* ignore */ }
   return DEFAULT_SERIES;
@@ -101,15 +116,16 @@ export function SparkSeriesProvider({ children }: { children: ReactNode }) {
 
   const toggle = useCallback((key: SparkSeriesKey) => {
     setSeries((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
+      const next = sanitizeSeries({ ...prev, [key]: !prev[key] });
       try { localStorage.setItem(SERIES_STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
   }, []);
 
   const setSeriesState = useCallback((next: SparkSeriesState) => {
-    setSeries(next);
-    try { localStorage.setItem(SERIES_STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+    const safeNext = sanitizeSeries(next);
+    setSeries(safeNext);
+    try { localStorage.setItem(SERIES_STORAGE_KEY, JSON.stringify(safeNext)); } catch { /* ignore */ }
   }, []);
 
   const setOverlay = useCallback((key: keyof ChartOverlays, value: boolean) => {

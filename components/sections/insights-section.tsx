@@ -20,18 +20,18 @@ export function InsightsSection({
   endDate: string;
 }) {
   return (
-    <section aria-label="Insights" className="rounded-lg border border-border bg-surface p-4 md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
-      <h2 className="text-sm font-semibold text-foreground mb-4">Insights</h2>
+    <section aria-label="Insights">
+      <h2 className="mb-3 text-sm font-semibold text-foreground">Insights</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch min-w-0">
-      {queriesRows.length > 0 && (
-        <AiQuerySignalsCard queries={queriesRows} daily={daily} />
-      )}
-      <div className="min-w-0">
-        <TrackedKeywordsSection
-          propertyId={propertyId}
-          exportFilename={formatExportFilename(siteSlug, "keywords-tracked", startDate, endDate)}
-        />
-      </div>
+        {queriesRows.length > 0 && (
+          <AiQuerySignalsCard queries={queriesRows} daily={daily} />
+        )}
+        <div className="min-w-0">
+          <TrackedKeywordsSection
+            propertyId={propertyId}
+            exportFilename={formatExportFilename(siteSlug, "keywords-tracked", startDate, endDate)}
+          />
+        </div>
       </div>
     </section>
   );

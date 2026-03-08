@@ -122,23 +122,27 @@ export async function fetchBingOverviewForSite(
     siteUrl.endsWith("/") ? siteUrl.slice(0, -1) : `${siteUrl}/`,
   ].filter(Boolean);
 
-  let queryStatsRaw: unknown[] = [];
+  let statsRaw: unknown[] = [];
   for (const variant of siteUrlVariants) {
-    const rows = await callBing("GetQueryStats", token, { siteUrl: variant });
+    const queryRows = (await callBing("GetQueryStats", token, { siteUrl: variant })) ?? [];
+    const rows =
+      queryRows.length > 0
+        ? queryRows
+        : ((await callBing("GetPageStats", token, { siteUrl: variant })) ?? []);
     if (rows && rows.length > 0) {
-      queryStatsRaw = rows;
+      statsRaw = rows;
       break;
     }
   }
 
-  const queryRows = (queryStatsRaw ?? []).filter((entry) => {
+  const statRows = (statsRaw ?? []).filter((entry) => {
     const obj = entry as Record<string, unknown>;
     const date = getDateString(obj);
     return date ? inRange(date) : true;
   });
 
   const dailyByDate = new Map<string, { clicks: number; impressions: number; posWeighted: number }>();
-  for (const entry of queryRows) {
+  for (const entry of statRows) {
     const obj = entry as Record<string, unknown>;
     const date = getDateString(obj);
     if (!date || !inRange(date)) continue;

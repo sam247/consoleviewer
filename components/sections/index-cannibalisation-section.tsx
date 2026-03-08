@@ -17,7 +17,7 @@ export function IndexCannibalisationSection({
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="rounded-lg border border-border bg-surface px-4 py-3 min-w-0">
+      <div className="min-w-0">
         <IndexSignalsCard propertyId={propertyId} pagesRows={pagesRows} />
       </div>
       <CannibalisationCard

@@ -11,7 +11,7 @@ const cache = new Map<string, { expires: number; data: unknown }>();
 type BingDailyRow = { date: string; clicks: number; impressions: number };
 
 function cacheKey(propertyId: string, startDate: string, endDate: string) {
-  return `${propertyId}:${startDate}:${endDate}:bing`;
+  return `${propertyId}:${startDate}:${endDate}:bing:v2`;
 }
 
 function safeNumber(v: unknown): number {
@@ -228,13 +228,22 @@ export async function GET(
     )
   );
 
-  let queryStatsRaw: unknown[] = [];
+  let statsRaw: unknown[] = [];
+  let statsSource: "query" | "page" | null = null;
   const debugCalls: Array<Record<string, unknown>> = [];
 
   for (const variant of siteUrlVariants) {
     const qRes = debug
       ? await callBingVerbose("GetQueryStats", token, { siteUrl: variant })
       : { ok: true as const, status: 200, rows: (await callBing("GetQueryStats", token, { siteUrl: variant })) ?? [], sampleKeys: [] as string[], body: "" };
+    const pRes = qRes.rows.length > 0
+      ? null
+      : (
+        debug
+          ? await callBingVerbose("GetPageStats", token, { siteUrl: variant })
+          : { ok: true as const, status: 200, rows: (await callBing("GetPageStats", token, { siteUrl: variant })) ?? [], sampleKeys: [] as string[], body: "" }
+      );
+    const pickedRows = qRes.rows.length > 0 ? qRes.rows : (pRes?.rows ?? []);
     if (debug) {
       debugCalls.push({
         variant,
@@ -242,10 +251,15 @@ export async function GET(
         queryRows: qRes.rows.length,
         querySampleKeys: qRes.sampleKeys,
         queryErrorBody: qRes.ok ? undefined : (qRes as { body?: string }).body?.slice(0, 300),
+        pageStatus: pRes?.status,
+        pageRows: pRes?.rows.length ?? 0,
+        pageSampleKeys: pRes?.sampleKeys ?? [],
+        pageErrorBody: pRes?.ok ? undefined : (pRes as { body?: string }).body?.slice(0, 300),
       });
     }
-    if (qRes.rows.length > 0) {
-      queryStatsRaw = qRes.rows;
+    if (pickedRows.length > 0) {
+      statsRaw = pickedRows;
+      statsSource = qRes.rows.length > 0 ? "query" : "page";
       break;
     }
   }
@@ -254,7 +268,7 @@ export async function GET(
   const to = toDateOnly(endDate);
   const inRange = (d: string) => d >= from && d <= to;
 
-  const queryRows = (queryStatsRaw ?? []).filter((entry) => {
+  const queryRows = (statsRaw ?? []).filter((entry) => {
     const obj = entry as Record<string, unknown>;
     const date = getDateString(obj);
     return date ? inRange(date) : true;
@@ -301,10 +315,11 @@ export async function GET(
       propertyId: resolved.propertyId,
       siteUrlVariants,
       selectedVariant:
-        queryStatsRaw.length > 0
+        statsRaw.length > 0
           ? siteUrlVariants.find((v) => v === bingSiteUrl || v === `${bingSiteUrl}/` || v === bingSiteUrl.replace(/\/$/, "")) ?? null
           : null,
-      rawCounts: { queryRows: queryStatsRaw.length },
+      source: statsSource,
+      rawCounts: { queryRows: statsRaw.length },
       filteredCounts: { queryRows: queryRows.length },
       dailyCount: daily.length,
       dateRange: { startDate: from, endDate: to },

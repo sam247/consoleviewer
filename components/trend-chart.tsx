@@ -80,6 +80,10 @@ const ENGINE_COLORS: Record<SearchEngine, string> = {
 };
 
 function getEngineMetricStroke(engine: SearchEngine, metric: SparkSeriesKey): string {
+  if (engine === "google") {
+    const metricColor = SERIES_CONFIG.find((s) => s.key === metric)?.stroke;
+    return metricColor ?? CHART_ENGINE_GOOGLE;
+  }
   if (engine === "bing") {
     return metric === "impressions" ? CHART_ENGINE_BING_IMPRESSIONS : CHART_ENGINE_BING_CLICKS;
   }
@@ -753,7 +757,7 @@ export function TrendChart({
                   dataKey={`_norm_${s.key}Prior`}
                   stroke={s.stroke}
                   strokeWidth={1}
-                  strokeDasharray="5 4"
+                  strokeDasharray="2 2"
                   strokeOpacity={0.45}
                   dot={false}
                   name={`${s.label} (prior)`}
@@ -787,7 +791,7 @@ export function TrendChart({
                   stroke={CHART_CLICKS}
                   strokeWidth={1}
                   dot={false}
-                  strokeDasharray="5 4"
+                  strokeDasharray="2 2"
                   strokeOpacity={0.5}
                   name="Clicks (prior)"
                   {...(useDualAxis && { yAxisId: "left" })}
@@ -816,7 +820,7 @@ export function TrendChart({
                   stroke={CHART_IMPRESSIONS}
                   strokeWidth={1}
                   dot={false}
-                  strokeDasharray="5 4"
+                  strokeDasharray="2 2"
                   strokeOpacity={0.45}
                   name="Impressions (prior)"
                   {...(useDualAxis && { yAxisId: "right" })}

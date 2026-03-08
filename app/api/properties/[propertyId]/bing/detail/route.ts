@@ -122,60 +122,10 @@ async function callBing(path: string, token: string, params: Record<string, stri
   return [];
 }
 
-async function callBingVerbose(path: string, token: string, params: Record<string, string>) {
-  const sp = new URLSearchParams(params);
-  const url = `${BING_API_BASE}/${path}?${sp.toString()}`;
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    return { ok: false, status: res.status, rows: [] as unknown[], sampleKeys: [] as string[], body };
-  }
-  const data = (await res.json()) as unknown;
-  const d = (data as { d?: unknown }).d;
-  const extractRows = (payload: unknown): unknown[] => {
-    if (Array.isArray(payload)) return payload;
-    if (payload && typeof payload === "object") {
-      const obj = payload as Record<string, unknown>;
-      const candidates = [
-        obj.Results,
-        obj.results,
-        obj.Data,
-        obj.data,
-        obj.Items,
-        obj.items,
-        obj.Rows,
-        obj.rows,
-        obj.QueryStats,
-        obj.PageStats,
-      ];
-      for (const c of candidates) {
-        if (Array.isArray(c)) return c;
-      }
-    }
-    return [];
-  };
-  const rows = extractRows(d) || extractRows(data);
-  const first = rows[0] as Record<string, unknown> | undefined;
-  return {
-    ok: true,
-    status: res.status,
-    rows,
-    sampleKeys: first ? Object.keys(first).slice(0, 30) : [],
-    body: "",
-  };
-}
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ propertyId: string }> }
 ) {
-  const debug = request.nextUrl.searchParams.get("debug") === "1";
   const userId = await getSessionUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -247,38 +197,14 @@ export async function GET(
 
   let queryStatsRaw: unknown[] = [];
   let pageStatsRaw: unknown[] = [];
-  let statsSource: "query" | "page" | null = null;
-  const debugCalls: Array<Record<string, unknown>> = [];
 
   for (const variant of siteUrlVariants) {
-    const qRes = debug
-      ? await callBingVerbose("GetQueryStats", token, { siteUrl: variant })
-      : { ok: true as const, status: 200, rows: (await callBing("GetQueryStats", token, { siteUrl: variant })) ?? [], sampleKeys: [] as string[], body: "" };
-    const pRes = qRes.rows.length > 0
-      ? null
-      : (
-        debug
-          ? await callBingVerbose("GetPageStats", token, { siteUrl: variant })
-          : { ok: true as const, status: 200, rows: (await callBing("GetPageStats", token, { siteUrl: variant })) ?? [], sampleKeys: [] as string[], body: "" }
-      );
-    const pickedRows = qRes.rows.length > 0 ? qRes.rows : (pRes?.rows ?? []);
-    if (debug) {
-      debugCalls.push({
-        variant,
-        queryStatus: qRes.status,
-        queryRows: qRes.rows.length,
-        querySampleKeys: qRes.sampleKeys,
-        queryErrorBody: qRes.ok ? undefined : (qRes as { body?: string }).body?.slice(0, 300),
-        pageStatus: pRes?.status,
-        pageRows: pRes?.rows.length ?? 0,
-        pageSampleKeys: pRes?.sampleKeys ?? [],
-        pageErrorBody: pRes?.ok ? undefined : (pRes as { body?: string }).body?.slice(0, 300),
-      });
-    }
+    const qRows = (await callBing("GetQueryStats", token, { siteUrl: variant })) ?? [];
+    const pRows = qRows.length > 0 ? [] : (await callBing("GetPageStats", token, { siteUrl: variant })) ?? [];
+    const pickedRows = qRows.length > 0 ? qRows : pRows;
     if (pickedRows.length > 0) {
-      queryStatsRaw = qRes.rows;
-      pageStatsRaw = pRes?.rows ?? [];
-      statsSource = qRes.rows.length > 0 ? "query" : "page";
+      queryStatsRaw = qRows;
+      pageStatsRaw = pRows;
       break;
     }
   }
@@ -351,28 +277,12 @@ export async function GET(
   }
 
   const analyticsReady = daily.some((d) => d.clicks > 0 || d.impressions > 0);
-  const data: Record<string, unknown> = {
+  const data = {
     connected: true,
     analyticsReady,
     daily,
     dailySparse: dailyFromApi,
   };
-  if (debug) {
-    data.debug = {
-      propertyId: resolved.propertyId,
-      siteUrlVariants,
-      selectedVariant:
-        (queryStatsRaw.length > 0 || pageStatsRaw.length > 0)
-          ? siteUrlVariants.find((v) => v === bingSiteUrl || v === `${bingSiteUrl}/` || v === bingSiteUrl.replace(/\/$/, "")) ?? null
-          : null,
-      source: statsSource,
-      rawCounts: { queryRows: queryStatsRaw.length + pageStatsRaw.length },
-      filteredCounts: { queryRows: queryRows.length },
-      dailyCount: daily.length,
-      dateRange: { startDate: from, endDate: to },
-      calls: debugCalls,
-    };
-  }
   cache.set(key, { data, expires: Date.now() + CACHE_TTL_MS });
   return NextResponse.json(data);
 }

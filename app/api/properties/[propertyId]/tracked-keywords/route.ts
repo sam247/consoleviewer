@@ -278,9 +278,7 @@ export async function POST(
           const targetUrl = normalizeTargetUrl(rawUrl);
           const region = clientRegion || (process.env.SERPROBOT_GOOGLE_REGION ?? "www.google.co.uk").trim();
           const checkParams = { region, keyword: phrase, target_url: targetUrl };
-          console.log("[rank_check] request params:", JSON.stringify(checkParams));
           const check = await serprobotFetch("rank_check", checkParams);
-          console.log("[rank_check] response:", JSON.stringify(check));
           position = extractRankPosition(check);
           lastCheckedAt = new Date().toISOString();
           if (keywordId) {

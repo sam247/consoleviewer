@@ -40,10 +40,12 @@ export function QueryFootprint({
 
   const withPosition = useMemo(() => queries.filter((r) => r.position != null), [queries]);
   const total = queries.length;
+  const firstPosition = useMemo(() => countInBand(withPosition, 1, 1), [withPosition]);
   const top3 = useMemo(() => countInBand(withPosition, 1, 3), [withPosition]);
   const top10 = useMemo(() => countInBand(withPosition, 1, 10), [withPosition]);
   const top20 = useMemo(() => countInBand(withPosition, 1, 20), [withPosition]);
   const top50 = useMemo(() => countInBand(withPosition, 1, 50), [withPosition]);
+  const top100 = useMemo(() => countInBand(withPosition, 1, 100), [withPosition]);
 
   const bands = useMemo(
     () => BANDS.map((b) => ({ ...b, count: countInBand(withPosition, b.min, b.max) })),
@@ -53,10 +55,12 @@ export function QueryFootprint({
   const maxBandCount = Math.max(...bands.map((b) => b.count), 1);
 
   const pillStats = [
+    { label: "First position", value: firstPosition },
     { label: "Top 3", value: top3 },
     { label: "Top 10", value: top10 },
     { label: "Top 20", value: top20 },
     { label: "Top 50", value: top50 },
+    { label: "Top 100", value: top100 },
   ];
 
   const rootClassName = cn(

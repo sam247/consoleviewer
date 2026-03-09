@@ -163,6 +163,7 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
   const { data: serpData } = useQuery({
     queryKey,
     queryFn: () => fetchTrackedKeywords(propertyId),
+    placeholderData: (previousData) => previousData,
     refetchInterval: (query) => {
       const data = query.state.data as TrackedKeywordsResponse | undefined;
       if (!data?.configured) return false;
@@ -187,8 +188,9 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
     });
   }, [serpData?.configured, serpData?.keywords, fallbackKeywords, sortKey, sortDir]);
   const showConnectMessage = serpData?.configured === false;
-  const canAddDelete =
-    serpData?.configured === true && (isPropertyScoped || serpData?.canManageKeywords === true);
+  const canAddDelete = isPropertyScoped
+    ? true
+    : serpData?.configured === true && serpData?.canManageKeywords === true;
 
   const handleAdd = async () => {
     const phrase = addInput.trim();

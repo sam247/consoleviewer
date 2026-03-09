@@ -18,11 +18,15 @@ type KeywordRow = {
 };
 
 function normalizeTargetUrl(siteUrl: string): string {
+  const trimmed = siteUrl.trim();
+  if (trimmed.startsWith("sc-domain:")) {
+    return trimmed.slice("sc-domain:".length).replace(/^www\./i, "").replace(/\/+$/, "");
+  }
   try {
-    const url = new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`);
+    const url = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
     return url.hostname.replace(/^www\./i, "");
   } catch {
-    return siteUrl.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0] ?? siteUrl;
+    return trimmed.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0] ?? trimmed;
   }
 }
 
@@ -273,7 +277,9 @@ export async function POST(
           `SELECT site_url, gsc_site_url FROM properties WHERE id = $1 LIMIT 1`,
           [resolved.propertyId]
         );
-        const rawUrl = propRes.rows[0]?.gsc_site_url || propRes.rows[0]?.site_url;
+        const siteUrl = propRes.rows[0]?.site_url?.trim();
+        const gscSiteUrl = propRes.rows[0]?.gsc_site_url?.trim();
+        const rawUrl = siteUrl || gscSiteUrl;
         if (rawUrl) {
           const targetUrl = normalizeTargetUrl(rawUrl);
           const region = clientRegion || (process.env.SERPROBOT_GOOGLE_REGION ?? "www.google.co.uk").trim();

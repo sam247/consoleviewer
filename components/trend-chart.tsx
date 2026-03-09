@@ -179,17 +179,27 @@ type SparklineSeriesDescriptor = {
 function SparklineTooltip({
   active,
   label,
+  payload,
   rows,
   visible,
 }: {
   active?: boolean;
   label?: string;
+  payload?: Array<{ payload?: Record<string, string | number | null> }>;
   rows: Record<string, string | number | null>[];
   visible: SparklineSeriesDescriptor[];
 }) {
-  if (!active || !label) return null;
-  const raw = rows.find((d) => d.date === label);
+  if (!active) return null;
+  const fromPayload =
+    payload && payload.length > 0 && payload[0]?.payload
+      ? payload[0].payload
+      : null;
+  const raw =
+    fromPayload ??
+    (label ? rows.find((d) => d.date === label) ?? null : null);
   if (!raw) return null;
+  const dateValue = typeof raw.date === "string" ? raw.date : label;
+  if (!dateValue) return null;
 
   return (
     <div
@@ -197,7 +207,7 @@ function SparklineTooltip({
       style={CHART_TOOLTIP_STYLE}
     >
       <div className="mb-1.5 font-medium text-foreground">
-        {new Date(label).toLocaleDateString(undefined, {
+        {new Date(dateValue).toLocaleDateString(undefined, {
           weekday: "short",
           month: "short",
           day: "numeric",
@@ -1016,10 +1026,11 @@ export function Sparkline({
           )}
           <Tooltip
             cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}
-            content={({ active, label }) => (
+            content={({ active, label, payload }) => (
               <SparklineTooltip
                 active={active}
                 label={label != null ? String(label) : undefined}
+                payload={payload as Array<{ payload?: Record<string, string | number | null> }> | undefined}
                 rows={chartData}
                 visible={visible}
               />

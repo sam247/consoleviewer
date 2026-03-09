@@ -23,10 +23,12 @@ interface QueryFootprintContentProps {
 
 function pillStatToBand(stat: { label: string }): BandFilter {
   switch (stat.label) {
+    case "First position": return { min: 1, max: 1 };
     case "Top 3": return { min: 1, max: 3 };
     case "Top 10": return { min: 1, max: 10 };
     case "Top 20": return { min: 1, max: 20 };
     case "Top 50": return { min: 1, max: 50 };
+    case "Top 100": return { min: 1, max: 100 };
     default: return null;
   }
 }

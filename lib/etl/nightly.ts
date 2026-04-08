@@ -152,12 +152,23 @@ async function insertRawRows(
       const impressions = chunk.map((r) => r.impressions);
       const positions = chunk.map((r) => r.position);
 
-      await client.query(
-        `INSERT INTO gsc_raw (property_id, date, query_hash, page_hash, clicks, impressions, position)
-         SELECT $1, d::date, decode(qh, 'hex'), decode(ph, 'hex'), c::int, i::int, p::numeric
-         FROM UNNEST($2::text[], $3::text[], $4::text[], $5::int[], $6::int[], $7::numeric[]) AS x(d, qh, ph, c, i, p)`,
-        [propertyId, dates, qhash, phash, clicks, impressions, positions]
-      );
+      try {
+        await client.query(
+          `INSERT INTO gsc_raw (property_id, date, query_hash, page_hash, clicks, impressions, position)
+           SELECT $1, d::date, decode(qh, 'hex'), decode(ph, 'hex'), c::int, i::int, p::numeric
+           FROM UNNEST($2::text[], $3::text[], $4::text[], $5::int[], $6::int[], $7::numeric[]) AS x(d, qh, ph, c, i, p)`,
+          [propertyId, dates, qhash, phash, clicks, impressions, positions]
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // Raw data is partitioned by date; if partitions are missing, continue ETL so
+        // daily aggregates and snapshots still update.
+        if (msg.includes("no partition of relation") && msg.includes("gsc_raw")) {
+          console.warn("Skipping gsc_raw insert due to missing partition:", msg);
+          continue;
+        }
+        throw err;
+      }
     }
   } finally {
     client.release();

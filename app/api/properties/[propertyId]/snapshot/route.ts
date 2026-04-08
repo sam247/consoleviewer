@@ -61,6 +61,20 @@ export async function GET(
     [resolved.propertyId, start, end]
   );
   const chart = chartRes.rows;
+
+  const toYmd = (value: unknown): string => {
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    const s = String(value ?? "");
+    return s.length >= 10 ? s.slice(0, 10) : s;
+  };
+
+  const countDaysInclusive = (startDate: string, endDate: string): number => {
+    const s = new Date(`${startDate}T00:00:00Z`);
+    const e = new Date(`${endDate}T00:00:00Z`);
+    if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return 0;
+    const days = Math.floor((e.getTime() - s.getTime()) / 86400000);
+    return Math.max(0, days) + 1;
+  };
   const queryChartRes = await pool.query<{
     date: string;
     query_count: number;
@@ -80,8 +94,14 @@ export async function GET(
     top3: Number(r.top3_count) || 0,
   }));
 
-  // If DB has chart data, return it
-  if (chart.length > 0) {
+  const expectedDays = countDaysInclusive(start, end);
+  const chartFirst = chart.length ? toYmd(chart[0].date) : "";
+  const chartLast = chart.length ? toYmd(chart[chart.length - 1].date) : "";
+  const chartLooksComplete =
+    expectedDays < 14 ||
+    (chart.length > 0 && chart.length / expectedDays >= 0.85 && chartFirst === start && chartLast === end);
+
+  if (chart.length > 0 && chartLooksComplete) {
     if (!snap) {
       return NextResponse.json({ snapshot: null, chart, query_chart, site_url });
     }

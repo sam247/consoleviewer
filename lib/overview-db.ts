@@ -244,6 +244,14 @@ async function fetchFromDb(
   const { teamId, startDate, endDate, priorStartDate, priorEndDate } = params;
   const result: SiteOverviewMetrics[] = [];
 
+  const countDaysInclusive = (start: string, end: string): number => {
+    const s = new Date(`${start}T00:00:00Z`);
+    const e = new Date(`${end}T00:00:00Z`);
+    if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return 0;
+    const days = Math.floor((e.getTime() - s.getTime()) / 86400000);
+    return Math.max(0, days) + 1;
+  };
+
   for (const prop of properties) {
     const [currentRes, priorRes, dailyRes] = await Promise.all([
       pool.query(
@@ -295,9 +303,12 @@ async function fetchFromDb(
       };
     });
 
-    // Per-property fallback: if DB has no rows in-range yet, fetch live to avoid
-    // showing a newly connected property as zero-data.
-    if (daily.length === 0 && teamAccessToken) {
+    const expectedDays = countDaysInclusive(startDate, endDate);
+    const isIncompleteRange =
+      expectedDays >= 14 &&
+      (daily.length === 0 || daily.length / expectedDays < 0.85 || daily[0]?.date !== startDate || daily[daily.length - 1]?.date !== endDate);
+
+    if (isIncompleteRange && teamAccessToken) {
       const gscUrl = prop.gsc_site_url || `https://${prop.site_url.replace(/^https?:\/\//, "")}`;
       try {
         const [liveCurrent, livePrior, liveDaily] = await Promise.all([

@@ -15,22 +15,49 @@ jobs:
           CRON_BASE_URL: ${{ secrets.CRON_BASE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          set -euo pipefail
           if [ -z "$CRON_BASE_URL" ] || [ -z "$CRON_SECRET" ]; then
             echo "Missing required secrets: CRON_BASE_URL and/or CRON_SECRET"
             exit 1
           fi
 
-          RESPONSE=$(curl --silent --show-error --location \
-            --write-out "\n%{http_code}" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            "$CRON_BASE_URL/api/cron/nightly-etl")
+          CURSOR=""
+          ITER=0
+          MAX_ITERS=30
+          LIMIT=2
 
-          BODY=$(printf "%s" "$RESPONSE" | sed '$d')
-          STATUS=$(printf "%s" "$RESPONSE" | sed -n '$p')
+          while [ "$ITER" -lt "$MAX_ITERS" ]; do
+            if [ -n "$CURSOR" ]; then
+              URL="$CRON_BASE_URL/api/cron/nightly-etl?limit=$LIMIT&cursor=$CURSOR"
+            else
+              URL="$CRON_BASE_URL/api/cron/nightly-etl?limit=$LIMIT"
+            fi
 
-          echo "HTTP $STATUS"
-          echo "$BODY"
+            RESPONSE=$(curl --silent --show-error --location \
+              --write-out "\n%{http_code}" \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              "$URL")
 
-          if [ "$STATUS" -ge 400 ]; then
-            exit 1
-          fi
+            BODY=$(printf "%s" "$RESPONSE" | sed '$d')
+            STATUS=$(printf "%s" "$RESPONSE" | sed -n '$p')
+
+            echo "Batch $((ITER + 1)) HTTP $STATUS"
+            echo "$BODY"
+
+            if [ "$STATUS" -ge 400 ]; then
+              exit 1
+            fi
+
+            CURSOR=$(printf "%s" "$BODY" | jq -r '.nextCursor // empty')
+            DONE=$(printf "%s" "$BODY" | jq -r '.done // false')
+
+            if [ "$DONE" = "true" ] || [ -z "$CURSOR" ]; then
+              echo "ETL batches complete."
+              exit 0
+            fi
+
+            ITER=$((ITER + 1))
+          done
+
+          echo "Exceeded max ETL batches ($MAX_ITERS)."
+          exit 1

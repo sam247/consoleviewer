@@ -27,12 +27,16 @@ export async function GET(request: NextRequest) {
     const modeParam = searchParams.get("mode");
     const daysParam = searchParams.get("days");
     const advanceParam = searchParams.get("advance");
+    const cursorParam = searchParams.get("cursor");
+    const limitParam = searchParams.get("limit");
     const result = await runNightlyEtl({
       mode: modeParam === "backfill" ? "backfill" : "nightly",
       backfillDays: daysParam ? Number(daysParam) : undefined,
       advanceWatermark: advanceParam === "0" ? false : undefined,
+      cursor: cursorParam ?? undefined,
+      propertyLimit: limitParam ? Number(limitParam) : undefined,
     });
-    return NextResponse.json(result);
+    return NextResponse.json(result, { status: result.ok ? 200 : 500 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "ETL failed";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

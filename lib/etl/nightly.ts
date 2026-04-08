@@ -16,6 +16,8 @@ export type EtlOptions = {
   mode?: EtlMode;
   backfillDays?: number;
   advanceWatermark?: boolean;
+  cursor?: string;
+  propertyLimit?: number;
 };
 
 function toDateString(d: Date): string {
@@ -672,9 +674,25 @@ export async function runNightlyEtl(options: EtlOptions = {}) {
   let failed = false;
   let errorMessage = "";
 
-  const propsRes = await getPool().query(
-    `SELECT id, team_id, site_url, gsc_site_url FROM properties WHERE active = true`
-  );
+  const limit = Math.max(1, Math.min(25, Number(options.propertyLimit ?? 3)));
+  const cursor = options.cursor?.trim() || null;
+  const propsRes = cursor
+    ? await getPool().query(
+        `SELECT id, team_id, site_url, gsc_site_url
+         FROM properties
+         WHERE active = true AND id > $1
+         ORDER BY id
+         LIMIT $2`,
+        [cursor, limit]
+      )
+    : await getPool().query(
+        `SELECT id, team_id, site_url, gsc_site_url
+         FROM properties
+         WHERE active = true
+         ORDER BY id
+         LIMIT $1`,
+        [limit]
+      );
 
   for (const property of propsRes.rows) {
     try {
@@ -696,9 +714,14 @@ export async function runNightlyEtl(options: EtlOptions = {}) {
     [failed ? "failed" : "success", totalRows, failed ? errorMessage : null, runId]
   );
 
-  if (failed) {
-    throw new Error(errorMessage || "Nightly ETL failed");
-  }
-
-  return { ok: true, runId };
+  const lastRow = propsRes.rows[propsRes.rows.length - 1] as { id?: string } | undefined;
+  const nextCursor = propsRes.rows.length === limit ? (lastRow?.id ?? null) : null;
+  return {
+    ok: !failed,
+    runId,
+    processedProperties: totalRows,
+    failed,
+    nextCursor,
+    done: nextCursor == null,
+  };
 }

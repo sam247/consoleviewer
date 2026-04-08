@@ -12,7 +12,7 @@ const SUGGESTED_PROMPTS = [
 ];
 
 export function AiPanelShell() {
-  const { isOpen, panelContext, prompt, setPrompt, submitPrompt, entries, closePanel } = useAiPanel();
+  const { isOpen, panelContext, prompt, setPrompt, submitPrompt, entries, closePanel, isSubmitting } = useAiPanel();
   const panelRef = useRef<HTMLDivElement>(null);
 
   const contextLabel = useMemo(() => {
@@ -93,7 +93,7 @@ export function AiPanelShell() {
                     <div className="rounded-md bg-accent px-2.5 py-2 text-xs text-foreground">
                       {entry.prompt.text}
                     </div>
-                    <div className="rounded-md border border-border bg-background px-2.5 py-2 text-xs text-muted-foreground">
+                    <div className="rounded-md border border-border bg-background px-2.5 py-2 text-xs text-muted-foreground whitespace-pre-wrap">
                       {entry.response.text}
                     </div>
                   </div>
@@ -110,6 +110,7 @@ export function AiPanelShell() {
                   type="button"
                   onClick={() => submitPrompt(item)}
                   className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                  disabled={isSubmitting}
                 >
                   {item}
                 </button>
@@ -132,9 +133,9 @@ export function AiPanelShell() {
               <button
                 type="submit"
                 className="h-10 rounded-md bg-foreground px-3 text-sm font-medium text-background hover:opacity-90 disabled:opacity-50"
-                disabled={!prompt.trim()}
+                disabled={!prompt.trim() || isSubmitting}
               >
-                Send
+                {isSubmitting ? "…" : "Send"}
               </button>
             </form>
           </div>
@@ -143,4 +144,3 @@ export function AiPanelShell() {
     </>
   );
 }
-

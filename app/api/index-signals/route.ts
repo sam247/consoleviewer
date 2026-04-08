@@ -3,6 +3,7 @@ import { getSessionUserId } from "@/lib/session";
 import { resolvePropertyForUser } from "@/lib/property-resolver";
 import { getPool } from "@/lib/db";
 import { getSiteDetail, querySearchAnalytics } from "@/lib/gsc";
+import { getAccessTokenForTeam } from "@/lib/gsc-tokens";
 
 export type IndexSignalRow = {
   id: string;
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
   let pages: { key: string; impressions: number; clicks: number; changePercent?: number }[] = [];
   let priorPages: { key: string; impressions: number }[] = [];
   try {
+    const token = await getAccessTokenForTeam(resolved.teamId);
     const [detail, priorPageRes] = await Promise.all([
       getSiteDetail(
         siteUrl,
@@ -63,9 +65,10 @@ export async function GET(request: NextRequest) {
         fmt(end),
         fmt(priorStart),
         fmt(priorEnd),
-        undefined
+        undefined,
+        token
       ),
-      querySearchAnalytics(siteUrl, fmt(priorStart), fmt(priorEnd), ["page"]),
+      querySearchAnalytics(siteUrl, fmt(priorStart), fmt(priorEnd), ["page"], undefined, token ?? undefined),
     ]);
     pages = (detail.pages ?? []).map((p) => ({
       key: p.key,

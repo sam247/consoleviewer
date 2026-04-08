@@ -164,9 +164,9 @@ export async function GET(
          OFFSET 7 LIMIT 1
        ) prev7 ON TRUE
        LEFT JOIN LATERAL (
-         SELECT ARRAY_AGG(x.position ORDER BY x.date) AS spark_data
+        SELECT ARRAY_AGG(x.position ORDER BY x.date) AS spark_data
          FROM (
-           SELECT rp.date, rp.position
+          SELECT rp.date, rp.position::float8 AS position
            FROM rank_positions rp
            WHERE rp.keyword_id = rk.id
            ORDER BY rp.date DESC
@@ -210,8 +210,8 @@ export async function GET(
         delta1d: Number(row.delta1d ?? 0),
         delta7d: Number(row.delta7d ?? 0),
         sparkData: (row.spark_data ?? [])
-          .filter((n): n is number => typeof n === "number")
-          .map((n) => Number(n)),
+          .map((n) => coerceNumber(n))
+          .filter((n): n is number => n != null),
         status,
         lastCheckedAt: row.last_checked_at,
         warning,

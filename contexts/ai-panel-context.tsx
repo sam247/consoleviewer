@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from "react";
 import { useDateRange } from "@/contexts/date-range-context";
+import { callMcp, createMcpCallBudgetContext } from "@/lib/mcp-client";
+import { routeAiIntent } from "@/lib/ai/tool-router";
 
 export type AiPanelScope = "dashboard" | "project";
 
@@ -38,6 +40,7 @@ interface AiPanelContextValue {
   panelContext: AiPanelContextData | null;
   prompt: string;
   entries: AiPanelEntry[];
+  isSubmitting: boolean;
   openPanel: (
     nextContext: Omit<AiPanelContextData, "startDate" | "endDate">,
     trigger?: HTMLElement | null
@@ -50,6 +53,17 @@ interface AiPanelContextValue {
 const AiPanelContext = createContext<AiPanelContextValue | null>(null);
 
 const MAX_ENTRIES = 20;
+
+function formatAssistantText(input: unknown): string {
+  if (typeof input === "string") return input;
+  try {
+    const json = JSON.stringify(input, null, 2);
+    if (!json) return "No data.";
+    return json.length > 6000 ? json.slice(0, 6000) + "\n…" : json;
+  } catch {
+    return "No data.";
+  }
+}
 
 function buildPlaceholderResponse(prompt: string, context: AiPanelContextData | null): string {
   const clean = prompt.trim();
@@ -64,6 +78,7 @@ export function AiPanelProvider({ children }: { children: ReactNode }) {
   const [prompt, setPrompt] = useState("");
   const [entries, setEntries] = useState<AiPanelEntry[]>([]);
   const [panelContext, setPanelContext] = useState<AiPanelContextData | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const lastTriggerRef = useRef<HTMLElement | null>(null);
 
   const openPanel = useCallback(
@@ -92,17 +107,99 @@ export function AiPanelProvider({ children }: { children: ReactNode }) {
       const nextPrompt = (overridePrompt ?? prompt).trim();
       if (!nextPrompt) return;
       const now = Date.now();
+      const entryId = `${now}-${Math.random().toString(36).slice(2, 8)}`;
       const entry: AiPanelEntry = {
-        id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
+        id: entryId,
         prompt: { role: "user", text: nextPrompt, timestamp: now },
         response: {
           role: "assistant",
-          text: buildPlaceholderResponse(nextPrompt, panelContext),
+          text: "Thinking…",
           timestamp: now + 1,
         },
       };
       setEntries((prev) => [...prev, entry].slice(-MAX_ENTRIES));
       setPrompt("");
+
+      const ctx = panelContext;
+      void (async () => {
+        setIsSubmitting(true);
+        try {
+          if (!ctx) {
+            throw new Error("No context available. Open the AI panel from a page with data.");
+          }
+
+          if (ctx.scope !== "project" || !ctx.propertyId) {
+            const responseText =
+              "Project-only for now. Open AI Insights from a specific project to ask about traffic, opportunities, pages, or recent changes.";
+            setEntries((prev) =>
+              prev.map((e) =>
+                e.id === entryId
+                  ? {
+                      ...e,
+                      response: { role: "assistant", text: responseText, timestamp: Date.now() },
+                    }
+                  : e
+              )
+            );
+            return;
+          }
+
+          const route = routeAiIntent(nextPrompt);
+          if (!route) {
+            const responseText =
+              "Try: \"site overview\", \"recent changes\", \"page performance\", \"keyword opportunities\", \"traffic drop\", \"content ideas\", or \"keyword clusters\".";
+            setEntries((prev) =>
+              prev.map((e) =>
+                e.id === entryId
+                  ? {
+                      ...e,
+                      response: { role: "assistant", text: responseText, timestamp: Date.now() },
+                    }
+                  : e
+              )
+            );
+            return;
+          }
+
+          const params = {
+            ...route.paramsBuilder({ propertyId: ctx.propertyId }),
+            startDate: ctx.startDate,
+            endDate: ctx.endDate,
+          };
+
+          const budget = createMcpCallBudgetContext(6);
+          const res = await callMcp(route.method, params, { timeoutMs: 8000, budgetContext: budget });
+
+          const responseText = res.ok
+            ? formatAssistantText(res.result)
+            : `MCP error (${res.type}): ${res.message}`;
+
+          setEntries((prev) =>
+            prev.map((e) =>
+              e.id === entryId
+                ? {
+                    ...e,
+                    response: { role: "assistant", text: responseText, timestamp: Date.now() },
+                  }
+                : e
+            )
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Something went wrong.";
+          setEntries((prev) =>
+            prev.map((e) =>
+              e.id === entryId
+                ? {
+                    ...e,
+                    response: { role: "assistant", text: message, timestamp: Date.now() },
+                  }
+                : e
+            )
+          );
+        } finally {
+          setIsSubmitting(false);
+        }
+      })();
     },
     [panelContext, prompt]
   );
@@ -113,12 +210,13 @@ export function AiPanelProvider({ children }: { children: ReactNode }) {
       panelContext,
       prompt,
       entries,
+      isSubmitting,
       openPanel,
       closePanel,
       setPrompt,
       submitPrompt,
     }),
-    [closePanel, entries, isOpen, openPanel, panelContext, prompt, submitPrompt]
+    [closePanel, entries, isOpen, isSubmitting, openPanel, panelContext, prompt, submitPrompt]
   );
 
   return <AiPanelContext.Provider value={value}>{children}</AiPanelContext.Provider>;
@@ -129,4 +227,3 @@ export function useAiPanel() {
   if (!ctx) throw new Error("useAiPanel must be used within AiPanelProvider");
   return ctx;
 }
-

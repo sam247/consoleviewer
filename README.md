@@ -9,6 +9,7 @@ Minimal Google Search Console dashboard: overview grid (all sites) and drill-dow
 - **GSC**: Uses real Search Console API when `GOOGLE_REFRESH_TOKEN` is set; otherwise shows stub data.
 - **SerpRobot** (optional): Set `SERPROBOT_API_KEY` for real keyword tracking in the Tracked Keywords section. Only `rank_check` and `get_serps` consume credits; see [SerpRobot API docs](https://serprobot.com) for details.
 - **Share links & watchlist** (optional): Set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, then run the SQL migrations in `supabase/migrations/` to enable shareable read-only links and the index signals watchlist.
+- **AI Insights** (optional): Uses the built-in MCP tools (`/api/ai/mcp`) for project-scoped questions (overview, opportunities, recent changes, etc.). Movement summaries additionally support `DEEPSEEK_API_KEY`.
 
 ## Setup
 

@@ -307,26 +307,27 @@ export async function getSiteDetail(
   endDate: string,
   priorStartDate: string,
   priorEndDate: string,
-  brandedTerms?: string[]
+  brandedTerms?: string[],
+  accessToken?: string | null
 ): Promise<SiteDetailData> {
-  const token = await getAccessToken();
+  const token = accessToken ?? (await getAccessToken());
   if (!token) {
     return getStubSiteDetail(siteUrl, brandedTerms);
   }
   try {
     const [summaryCur, summaryPrior, dailyRes, dailyPriorRes, queriesCur, queriesPrior, pagesCur, pagesPrior, countriesCur, countriesPrior, devicesCur, devicesPrior] = await Promise.all([
-      querySearchAnalytics(siteUrl, startDate, endDate, []),
-      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, []),
-      querySearchAnalytics(siteUrl, startDate, endDate, ["date"]),
-      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["date"]),
-      querySearchAnalytics(siteUrl, startDate, endDate, ["query"]),
-      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["query"]),
-      querySearchAnalytics(siteUrl, startDate, endDate, ["page"]),
-      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["page"]),
-      querySearchAnalytics(siteUrl, startDate, endDate, ["country"]),
-      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["country"]),
-      querySearchAnalytics(siteUrl, startDate, endDate, ["device"]),
-      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["device"]),
+      querySearchAnalytics(siteUrl, startDate, endDate, [], undefined, token),
+      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, [], undefined, token),
+      querySearchAnalytics(siteUrl, startDate, endDate, ["date"], undefined, token),
+      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["date"], undefined, token),
+      querySearchAnalytics(siteUrl, startDate, endDate, ["query"], undefined, token),
+      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["query"], undefined, token),
+      querySearchAnalytics(siteUrl, startDate, endDate, ["page"], undefined, token),
+      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["page"], undefined, token),
+      querySearchAnalytics(siteUrl, startDate, endDate, ["country"], undefined, token),
+      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["country"], undefined, token),
+      querySearchAnalytics(siteUrl, startDate, endDate, ["device"], undefined, token),
+      querySearchAnalytics(siteUrl, priorStartDate, priorEndDate, ["device"], undefined, token),
     ]);
     const cur = summaryCur.rows[0];
     const prior = summaryPrior.rows[0];

@@ -3,6 +3,7 @@ import { getSessionUserId } from "@/lib/session";
 import { resolvePropertyForUser } from "@/lib/property-resolver";
 import { getPool } from "@/lib/db";
 import { getSiteDetail } from "@/lib/gsc";
+import { getAccessTokenForTeam } from "@/lib/gsc-tokens";
 
 const CACHE_TTL_MS = 60_000;
 const cache = new Map<string, { data: unknown; expires: number }>();
@@ -69,13 +70,18 @@ export async function GET(
   }
 
   try {
+    const token = await getAccessTokenForTeam(resolved.teamId);
+    if (!token) {
+      return NextResponse.json({ error: "GSC not connected" }, { status: 409 });
+    }
     const data = await getSiteDetail(
       gscUrl,
       startDate,
       endDate,
       priorStartDate,
       priorEndDate,
-      brandedTerms
+      brandedTerms,
+      token
     );
     cache.set(key, { data, expires: Date.now() + CACHE_TTL_MS });
     return NextResponse.json(data);

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteDetail } from "@/lib/gsc";
+import { getSessionUserId } from "@/lib/session";
+import { getTeamIdForUser } from "@/lib/team";
+import { getAccessTokenForTeam } from "@/lib/gsc-tokens";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -33,13 +36,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const userId = await getSessionUserId();
+    const teamId = userId ? await getTeamIdForUser(userId) : null;
+    const token = teamId ? await getAccessTokenForTeam(teamId) : null;
     const data = await getSiteDetail(
       site,
       startDate,
       endDate,
       priorStartDate,
       priorEndDate,
-      brandedTerms
+      brandedTerms,
+      token
     );
     return NextResponse.json(data);
   } catch (e) {

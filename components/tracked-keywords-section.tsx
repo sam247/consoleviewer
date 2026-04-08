@@ -7,6 +7,7 @@ import type { MockTrackedKeyword } from "@/lib/mock-rank";
 import { InfoTooltip } from "@/components/info-tooltip";
 import { exportToCsv } from "@/lib/export-csv";
 import { cn } from "@/lib/utils";
+import { useBlur } from "@/contexts/blur-context";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { SortableHeader } from "@/components/ui/sortable-header";
 import {
@@ -138,6 +139,7 @@ function regionStorageKey(propertyId: string) {
 }
 
 export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], propertyId, exportFilename }: TrackedKeywordsSectionProps) {
+  const { blurEnabled } = useBlur();
   const queryClient = useQueryClient();
   const [addInput, setAddInput] = useState("");
   const [addLoading, setAddLoading] = useState(false);
@@ -192,6 +194,8 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
     ? true
     : serpData?.configured === true && serpData?.canManageKeywords === true;
 
+  const blurClass = blurEnabled ? "blur-sm opacity-60 select-none" : undefined;
+
   const handleAdd = async () => {
     const phrase = addInput.trim();
     if (!phrase || addLoading) return;
@@ -235,9 +239,13 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
       setAddInput("");
       await queryClient.invalidateQueries({ queryKey });
       if (data.warning) {
-        setActionSuccess(`Added "${phrase}" (rank check pending: ${data.warning})`);
+        setActionSuccess(
+          blurEnabled
+            ? `Added keyword (rank check pending: ${data.warning})`
+            : `Added "${phrase}" (rank check pending: ${data.warning})`
+        );
       } else {
-        setActionSuccess(`Added "${phrase}"`);
+        setActionSuccess(blurEnabled ? "Added keyword" : `Added "${phrase}"`);
       }
     } catch (e) {
       await queryClient.invalidateQueries({ queryKey });
@@ -268,7 +276,7 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
         throw new Error(message);
       }
       await queryClient.invalidateQueries({ queryKey });
-      setActionSuccess(`Removed "${row.keyword}"`);
+      setActionSuccess(blurEnabled ? "Removed keyword" : `Removed "${row.keyword}"`);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to remove keyword";
       setActionError(message);
@@ -386,8 +394,11 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
                     key={`${row.keyword}-${idx}`}
                     className={TABLE_ROW_CLASS}
                   >
-                    <td className={cn("px-4 text-foreground truncate min-w-0", TABLE_CELL_Y)} title={row.keyword}>
-                      {row.keyword}
+                    <td
+                      className={cn("px-4 text-foreground truncate min-w-0", TABLE_CELL_Y)}
+                      title={blurEnabled ? undefined : row.keyword}
+                    >
+                      <span className={blurClass}>{row.keyword}</span>
                     </td>
                     <td className={cn("px-4 text-right tabular-nums text-foreground", TABLE_CELL_Y)}>
                       {row.status === "checking" ? (
@@ -435,7 +446,7 @@ export function TrackedKeywordsSection({ keywords: fallbackKeywords = [], proper
                           onClick={() => handleDelete(row)}
                           disabled={deleteLoading === row.keyword}
                           className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors disabled:opacity-50"
-                          aria-label={`Remove ${row.keyword}`}
+                          aria-label={blurEnabled ? "Remove keyword" : `Remove ${row.keyword}`}
                           title="Remove keyword"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>

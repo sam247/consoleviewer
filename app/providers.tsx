@@ -8,6 +8,7 @@ import { PinnedProjectsProvider } from "@/contexts/pinned-projects-context";
 import { SparkSeriesProvider } from "@/contexts/spark-series-context";
 import { ThemeProvider } from "@/contexts/theme-context";
 import { AiPanelProvider } from "@/contexts/ai-panel-context";
+import { BlurProvider } from "@/contexts/blur-context";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -25,15 +26,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <DateRangeProvider>
-          <AiPanelProvider>
-            <HiddenProjectsProvider>
-              <PinnedProjectsProvider>
-                <SparkSeriesProvider>{children}</SparkSeriesProvider>
-              </PinnedProjectsProvider>
-            </HiddenProjectsProvider>
-          </AiPanelProvider>
-        </DateRangeProvider>
+        <BlurProvider>
+          <DateRangeProvider>
+            <AiPanelProvider>
+              <HiddenProjectsProvider>
+                <PinnedProjectsProvider>
+                  <SparkSeriesProvider>{children}</SparkSeriesProvider>
+                </PinnedProjectsProvider>
+              </HiddenProjectsProvider>
+            </AiPanelProvider>
+          </DateRangeProvider>
+        </BlurProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

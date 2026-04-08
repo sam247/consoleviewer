@@ -11,6 +11,7 @@ import { useDateRange } from "@/contexts/date-range-context";
 import { useHiddenProjects } from "@/contexts/hidden-projects-context";
 import { usePinnedProjects } from "@/contexts/pinned-projects-context";
 import { useSparkSeries } from "@/contexts/spark-series-context";
+import { useBlur } from "@/contexts/blur-context";
 import { cn } from "@/lib/utils";
 
 interface SiteCardProps {
@@ -239,6 +240,7 @@ const KebabIcon = ({ className }: { className?: string }) => (
 );
 
 export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
+  const { blurEnabled } = useBlur();
   const router = useRouter();
   const propertyId = encodePropertyId(metrics.siteUrl);
   const href = `/sites/${propertyId}`;
@@ -249,6 +251,7 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
   const domain = faviconDomain(metrics.siteUrl);
   const showBingSparkline = Boolean(engines.bing && metrics.bingDaily?.length);
   const recent = getRecentDaySummary(metrics.daily);
+  const blurClass = blurEnabled ? "blur-sm opacity-60 select-none" : undefined;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -289,7 +292,7 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
     <Link
       href={href}
       onMouseEnter={prefetchDetail}
-      title={metrics.siteUrl}
+      title={blurEnabled ? undefined : metrics.siteUrl}
       className={cn(
         "block rounded-lg border border-border bg-surface p-5 transition-colors duration-150 cursor-pointer",
         "hover:border-foreground/20 hover:shadow-sm",
@@ -298,8 +301,11 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
     >
       {/* Domain row: favicon + domain + arrow + card menu */}
       <div className="flex items-center gap-2 mb-4">
-        <Favicon domain={domain} />
-        <span className="min-w-0 flex-1 font-medium text-foreground truncate text-sm" title={metrics.siteUrl}>
+        <Favicon domain={domain} className={blurClass} />
+        <span
+          className={cn("min-w-0 flex-1 font-medium text-foreground truncate text-sm", blurClass)}
+          title={blurEnabled ? undefined : metrics.siteUrl}
+        >
           {displayUrl(metrics.siteUrl)}
         </span>
         <div className="relative shrink-0" ref={menuRef}>

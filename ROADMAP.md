@@ -5,6 +5,7 @@
 - Improve overview card sparklines: use full card width, add subtle grid and clearer x-axis.
 - Stabilize local linting by making repo ESLint config root-scoped.
 - Improve fallback logic when DB daily series is incomplete.
+- Add privacy blur toggle for domains, favicons, and tracked keywords.
 
 ## Next
 

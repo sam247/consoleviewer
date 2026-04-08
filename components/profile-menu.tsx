@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { useBlur } from "@/contexts/blur-context";
 
 export function ProfileMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { blurEnabled, toggleBlur } = useBlur();
 
   const { data: authStatus } = useQuery({
     queryKey: ["authStatus"],
@@ -60,6 +62,20 @@ export function ProfileMenu() {
           className="absolute right-0 top-full z-30 mt-2 min-w-[180px] rounded-md border border-border bg-surface py-1 shadow-lg"
           role="menu"
         >
+          <li role="none">
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full items-center justify-between gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent"
+              onClick={(e) => {
+                e.preventDefault();
+                toggleBlur();
+              }}
+            >
+              <span>Blur</span>
+              <span className="text-xs text-muted-foreground">{blurEnabled ? "On" : "Off"}</span>
+            </button>
+          </li>
           {!signedIn ? (
             <li role="none">
               <a

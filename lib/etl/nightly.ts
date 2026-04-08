@@ -85,9 +85,11 @@ async function upsertDictionary(
     const hashes = Array.from(unique.keys());
     if (hashes.length === 0) return new Map();
 
+    const hashColumn = table === "query_dictionary" ? "query_hash" : "page_hash";
     const existing = await client.query(
-      `SELECT id, encode(query_hash, 'hex') AS hash FROM ${table === "query_dictionary" ? "query_dictionary" : "page_dictionary"}
-       WHERE encode(${table === "query_dictionary" ? "query_hash" : "page_hash"}, 'hex') = ANY($1)`,
+      `SELECT id, encode(${hashColumn}, 'hex') AS hash
+       FROM ${table === "query_dictionary" ? "query_dictionary" : "page_dictionary"}
+       WHERE encode(${hashColumn}, 'hex') = ANY($1)`,
       [hashes]
     );
 

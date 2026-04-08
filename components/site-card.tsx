@@ -349,16 +349,18 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
       {/* Trend sparkline (Google metrics + optional Bing clicks/impressions overlay) */}
       <div className="pt-1 mb-4">
         <div className="flex items-center gap-1.5">
-          <Sparkline
-            data={metrics.daily.map((d) => ({
-              ...d,
-              ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
-            }))}
-            bingOverlayData={(metrics.bingDaily ?? []).map((d) => ({
-              ...d,
-              ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
-            }))}
-          />
+          <div className="flex-1 min-w-0">
+            <Sparkline
+              data={metrics.daily.map((d) => ({
+                ...d,
+                ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
+              }))}
+              bingOverlayData={(metrics.bingDaily ?? []).map((d) => ({
+                ...d,
+                ctr: d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0,
+              }))}
+            />
+          </div>
           {showBingSparkline && (
             <span className="text-[10px] text-muted-foreground uppercase tracking-wide shrink-0" aria-hidden>
               Bing

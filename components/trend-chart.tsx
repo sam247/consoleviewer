@@ -869,6 +869,12 @@ export function TrendChart({
 const SPARK_CLICKS_AXIS = "clicks";
 const SPARK_IMPR_AXIS = "impressions";
 
+function formatSparkMonthDay(value: string): string {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 export function Sparkline({
   data,
   bingOverlayData,
@@ -1010,19 +1016,38 @@ export function Sparkline({
     });
   }, [data, bingOverlayData, useDualAxis, visible]);
 
+  const xTicks = useMemo(() => {
+    const first = chartData[0]?.date;
+    const last = chartData[chartData.length - 1]?.date;
+    if (!first) return [] as string[];
+    if (!last || last === first) return [first];
+    return [first, last];
+  }, [chartData]);
+
   if (!chartData.length || !visible.length) return null;
 
   return (
     <ChartPlot height={CHART_PLOT_H.spark} minHeight={CHART_PLOT_H.spark}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={CHART_MARGIN_SPARK}>
+          <CartesianGrid {...CHART_GRID_PROPS} strokeOpacity={0.22} />
+          <XAxis
+            dataKey="date"
+            ticks={xTicks}
+            tickFormatter={(v) => formatSparkMonthDay(String(v))}
+            interval={0}
+            tickLine={false}
+            axisLine={{ stroke: "var(--border)", strokeOpacity: 0.55 }}
+            tick={{ ...CHART_AXIS_TICK, fontSize: 9 }}
+            height={14}
+          />
           {useDualAxis ? (
             <>
-              <YAxis yAxisId={SPARK_CLICKS_AXIS} orientation="left" hide allowDataOverflow />
-              <YAxis yAxisId={SPARK_IMPR_AXIS} orientation="right" hide allowDataOverflow />
+              <YAxis yAxisId={SPARK_CLICKS_AXIS} orientation="left" hide width={0} allowDataOverflow />
+              <YAxis yAxisId={SPARK_IMPR_AXIS} orientation="right" hide width={0} allowDataOverflow />
             </>
           ) : (
-            <YAxis hide domain={[0, 1]} allowDataOverflow />
+            <YAxis hide width={0} domain={[0, 1]} allowDataOverflow />
           )}
           <Tooltip
             cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}

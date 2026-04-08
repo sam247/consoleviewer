@@ -20,6 +20,17 @@ jobs:
             exit 1
           fi
 
-          curl --fail --show-error --silent \
+          RESPONSE=$(curl --silent --show-error --location \
+            --write-out "\n%{http_code}" \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$CRON_BASE_URL/api/cron/nightly-etl"
+            "$CRON_BASE_URL/api/cron/nightly-etl")
+
+          BODY=$(printf "%s" "$RESPONSE" | sed '$d')
+          STATUS=$(printf "%s" "$RESPONSE" | sed -n '$p')
+
+          echo "HTTP $STATUS"
+          echo "$BODY"
+
+          if [ "$STATUS" -ge 400 ]; then
+            exit 1
+          fi

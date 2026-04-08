@@ -124,7 +124,8 @@ export async function getOverviewMetricsFromDb(
 
   let result: SiteOverviewMetrics[];
   if (hasDbData) {
-    result = await fetchFromDb(pool, properties, params, trackedKeywordStatsByProperty);
+    const token = await getAccessTokenForTeam(teamId);
+    result = await fetchFromDb(pool, properties, params, trackedKeywordStatsByProperty, token);
   } else {
     const token = await getAccessTokenForTeam(teamId);
     if (!token) {
@@ -237,7 +238,8 @@ async function fetchFromDb(
   pool: ReturnType<typeof getPool>,
   properties: { id: string; site_url: string; gsc_site_url: string | null; bing_site_url: string | null }[],
   params: OverviewParams,
-  trackedKeywordStatsByProperty: Map<string, TrackedKeywordStats>
+  trackedKeywordStatsByProperty: Map<string, TrackedKeywordStats>,
+  teamAccessToken?: string | null
 ): Promise<SiteOverviewMetrics[]> {
   const { teamId, startDate, endDate, priorStartDate, priorEndDate } = params;
   const result: SiteOverviewMetrics[] = [];
@@ -292,6 +294,60 @@ async function fetchFromDb(
         position: imp > 0 ? posSum / imp : undefined,
       };
     });
+
+    // Per-property fallback: if DB has no rows in-range yet, fetch live to avoid
+    // showing a newly connected property as zero-data.
+    if (daily.length === 0 && teamAccessToken) {
+      const gscUrl = prop.gsc_site_url || `https://${prop.site_url.replace(/^https?:\/\//, "")}`;
+      try {
+        const [liveCurrent, livePrior, liveDaily] = await Promise.all([
+          querySearchAnalytics(gscUrl, startDate, endDate, [], undefined, teamAccessToken),
+          querySearchAnalytics(gscUrl, priorStartDate, priorEndDate, [], undefined, teamAccessToken),
+          querySearchAnalytics(gscUrl, startDate, endDate, ["date"], undefined, teamAccessToken),
+        ]);
+        const liveCur = liveCurrent.rows[0];
+        const livePrev = livePrior.rows[0];
+        const liveClicks = liveCur?.clicks ?? 0;
+        const liveImpressions = liveCur?.impressions ?? 0;
+        const livePosition = liveCur?.position ?? undefined;
+        const livePriorClicks = livePrev?.clicks ?? 0;
+        const livePriorImpressions = livePrev?.impressions ?? 0;
+        const livePriorPosition = livePrev?.position ?? undefined;
+        const liveDailySeries = (liveDaily.rows ?? [])
+          .map((r) => ({
+            date: r.keys[0] ?? "",
+            clicks: r.clicks,
+            impressions: r.impressions,
+            position: r.position,
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date));
+
+        result.push({
+          siteUrl: prop.site_url,
+          clicks: liveClicks,
+          impressions: liveImpressions,
+          clicksChangePercent:
+            livePriorClicks > 0 ? Math.round(((liveClicks - livePriorClicks) / livePriorClicks) * 100) : 0,
+          impressionsChangePercent:
+            livePriorImpressions > 0
+              ? Math.round(((liveImpressions - livePriorImpressions) / livePriorImpressions) * 100)
+              : 0,
+          position: livePosition,
+          positionChangePercent:
+            livePosition != null && livePriorPosition != null && livePriorPosition > 0
+              ? Math.round(((livePosition - livePriorPosition) / livePriorPosition) * 100)
+              : undefined,
+          trackedKeywordCount: trackedKeywordStatsByProperty.get(prop.id)?.trackedKeywordCount ?? 0,
+          avgTrackedRank: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRank,
+          avgTrackedRankDelta: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRankDelta,
+          bingConnected: !!prop.bing_site_url,
+          daily: liveDailySeries,
+        });
+        continue;
+      } catch {
+        // Keep DB-derived fallback row if live pull fails.
+      }
+    }
 
     result.push({
       siteUrl: prop.site_url,

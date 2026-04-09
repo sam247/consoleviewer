@@ -18,6 +18,7 @@ interface HeaderProps {
   showSearch?: boolean;
   sortSelect?: React.ReactNode;
   filterSelect?: React.ReactNode;
+  showDateRangeSelect?: boolean;
   /** When set, show Share button. scopeId required when scope is "project". */
   shareScope?: "dashboard" | "project";
   shareScopeId?: string;
@@ -33,6 +34,7 @@ export function Header({
   showSearch = false,
   sortSelect,
   filterSelect,
+  showDateRangeSelect = true,
   shareScope,
   shareScopeId,
   shareParams,
@@ -84,7 +86,7 @@ export function Header({
                 )}
                 <ThemeToggle />
               </div>
-              <DateRangeSelect />
+              {showDateRangeSelect && <DateRangeSelect />}
               <ProfileMenu />
             </div>
           </div>
@@ -98,7 +100,7 @@ export function Header({
                 Consoleview
               </Link>
               <div className="shrink-0 flex items-center gap-2">
-                <DateRangeSelect variant="compact" align="right" />
+                {showDateRangeSelect && <DateRangeSelect variant="compact" align="right" />}
                 <MobileOverflowMenu
                   buttonLabel="Dashboard controls"
                   panelClassName="right-0"

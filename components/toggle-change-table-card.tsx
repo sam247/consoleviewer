@@ -20,15 +20,23 @@ export type ToggleChangeRow = {
   label: string;
   title?: string;
   clicks: number;
+  impressions: number;
   changePercent?: number;
+  impressionsChangePercent?: number;
   url?: string;
 };
 
-function formatSignedPercent(value?: number): string {
-  if (value == null || Number.isNaN(value)) return "—";
+function formatNum(n: number): string {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + "k";
+  return String(n);
+}
+
+function formatDelta(value?: number): { text: string; tone: "positive" | "negative" | "neutral" } {
+  if (value == null || Number.isNaN(value)) return { text: "—", tone: "neutral" };
   const v = Math.round(value);
-  const arrow = v > 0 ? "↑" : v < 0 ? "↓" : "→";
-  return `${arrow} ${v >= 0 ? "+" : ""}${v}%`;
+  if (v === 0) return { text: "±0%", tone: "neutral" };
+  return { text: `${v > 0 ? "+" : ""}${v}%`, tone: v > 0 ? "positive" : "negative" };
 }
 
 function storageKey(scope: "queries" | "pages", propertyId: string) {
@@ -242,7 +250,7 @@ export function ToggleChangeTableCard({
             <tr>
               <th className={cn("px-5 font-semibold text-left w-[60%]", TABLE_CELL_Y)}>{title === "Queries" ? "Query" : "URL"}</th>
               <th className={cn("px-5 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Clicks</th>
-              <th className={cn("px-5 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Chg</th>
+              <th className={cn("px-5 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Impr.</th>
               <th className={cn("px-3 font-semibold text-right w-[1%]", TABLE_CELL_Y)} aria-label="Actions" />
             </tr>
           </thead>
@@ -250,8 +258,6 @@ export function ToggleChangeTableCard({
             {Array.from({ length: maxRows }).map((_, i) => {
               const r = limited[i];
               const rowKey = r?.key ?? `placeholder-${i}`;
-              const percent = r?.changePercent;
-              const color = percent == null ? "text-muted-foreground" : percent >= 0 ? "text-positive" : "text-negative";
               const showActions = Boolean(r);
               const queryText = r?.key ?? "";
               const href =
@@ -264,11 +270,49 @@ export function ToggleChangeTableCard({
                   <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r?.title ?? r?.label}>
                     {r ? r.label : <span className="invisible">—</span>}
                   </td>
-                  <td className={cn("px-5 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
-                    {r ? r.clicks.toLocaleString() : <span className="invisible">0</span>}
+                  <td className={cn("px-5 text-right tabular-nums", TABLE_CELL_Y)}>
+                    {r ? (
+                      <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
+                        <span className="text-foreground">{formatNum(r.clicks)}</span>
+                        {(() => {
+                          const d = formatDelta(r.changePercent);
+                          return (
+                            <span
+                              className={cn(
+                                "text-xs",
+                                d.tone === "positive" ? "text-positive" : d.tone === "negative" ? "text-negative" : "text-muted-foreground"
+                              )}
+                            >
+                              ({d.text})
+                            </span>
+                          );
+                        })()}
+                      </span>
+                    ) : (
+                      <span className="invisible">0</span>
+                    )}
                   </td>
                   <td className={cn("px-5 text-right tabular-nums", TABLE_CELL_Y)}>
-                    {r ? <span className={cn(color)}>{formatSignedPercent(percent)}</span> : <span className="invisible">—</span>}
+                    {r ? (
+                      <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
+                        <span className="text-foreground">{formatNum(r.impressions)}</span>
+                        {(() => {
+                          const d = formatDelta(r.impressionsChangePercent);
+                          return (
+                            <span
+                              className={cn(
+                                "text-xs",
+                                d.tone === "positive" ? "text-positive" : d.tone === "negative" ? "text-negative" : "text-muted-foreground"
+                              )}
+                            >
+                              ({d.text})
+                            </span>
+                          );
+                        })()}
+                      </span>
+                    ) : (
+                      <span className="invisible">0</span>
+                    )}
                   </td>
                   <td className={cn("px-3", TABLE_CELL_Y)}>
                     {showActions ? (

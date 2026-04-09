@@ -62,6 +62,7 @@ export interface SiteDetailDimensionRow {
   clicks: number;
   impressions: number;
   changePercent: number;
+  impressionsChangePercent?: number;
   position?: number;
 }
 

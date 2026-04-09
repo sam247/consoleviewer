@@ -14,6 +14,8 @@
 - Standardize clicks/impressions chart styling across charts and sparklines.
 - Add lightweight signals strip and “Customise dashboard” metric launcher.
 - Restore metric toggles and add keyword flow on Project Overview.
+- Make Project Overview change tables toggle-based with row actions.
+- Move project date/compare controls into graph header and add impressions deltas.
 
 ## Next
 

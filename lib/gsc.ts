@@ -288,13 +288,17 @@ function mockDimensionRowsWithPosition(
     const clicks = Math.floor(baseClicks / keys.length + (Math.random() - 0.3) * 200);
     const impressions = Math.floor(baseImpressions / keys.length + (Math.random() - 0.3) * 2000);
     const priorClicks = Math.floor(clicks * (0.4 + Math.random() * 0.6));
+    const priorImpressions = Math.floor(impressions * (0.4 + Math.random() * 0.6));
     const changePercent =
       priorClicks > 0 ? Math.round(((clicks - priorClicks) / priorClicks) * 100) : 0;
+    const impressionsChangePercent =
+      priorImpressions > 0 ? Math.round(((impressions - priorImpressions) / priorImpressions) * 100) : 0;
     return {
       key,
       clicks: Math.max(0, clicks),
       impressions: Math.max(0, impressions),
       changePercent,
+      impressionsChangePercent,
       position: 2 + (i % 15) + Math.random() * 5,
     };
   });
@@ -394,11 +398,16 @@ export async function getSiteDetail(
         const prev = priorMap(priorRows, keyIndex).get(key);
         const changePercent =
           prev && prev.clicks > 0 ? Math.round(((r.clicks - prev.clicks) / prev.clicks) * 100) : 0;
+        const impressionsChangePercent =
+          prev && prev.impressions > 0
+            ? Math.round(((r.impressions - prev.impressions) / prev.impressions) * 100)
+            : 0;
         return {
           key,
           clicks: r.clicks,
           impressions: r.impressions,
           changePercent,
+          impressionsChangePercent,
           position: r.position,
         };
       });

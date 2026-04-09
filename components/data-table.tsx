@@ -22,6 +22,7 @@ export interface DataTableRow {
   clicks: number;
   impressions: number;
   changePercent?: number;
+  impressionsChangePercent?: number;
   position?: number;
   /** SERP feature appearances (e.g. RICH_RESULT, VIDEO) for badge display */
   appearances?: string[];

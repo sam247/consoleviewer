@@ -152,7 +152,7 @@ export function TrackedKeywordsMiniCard({
       className={cn("min-w-0", className)}
     >
       <div className="px-5 pt-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <input
             value={phrase}
             onChange={(e) => setPhrase(e.target.value)}
@@ -163,12 +163,12 @@ export function TrackedKeywordsMiniCard({
               }
             }}
             placeholder="Add keyword"
-            className="min-h-[40px] flex-1 min-w-[160px] rounded-md border border-input bg-background px-3 text-sm"
+            className="min-h-[40px] flex-1 min-w-0 rounded-md border border-input bg-background px-3 text-sm"
           />
           <select
             value={region}
             onChange={(e) => setRegion(e.target.value)}
-            className="min-h-[40px] rounded-md border border-input bg-background px-2 text-sm text-muted-foreground"
+            className="min-h-[40px] w-[72px] rounded-md border border-input bg-background px-2 text-sm text-muted-foreground"
             aria-label="Search region"
           >
             {REGIONS.map((r) => (
@@ -179,7 +179,7 @@ export function TrackedKeywordsMiniCard({
             type="button"
             onClick={onAdd}
             disabled={!phrase.trim() || saving}
-            className="min-h-[40px] rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+            className="min-h-[40px] w-[64px] rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
           >
             Add
           </button>

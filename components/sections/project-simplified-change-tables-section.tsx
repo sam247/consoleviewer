@@ -40,23 +40,45 @@ export function ProjectSimplifiedChangeTablesSection({
     key: r.key,
     label: r.key,
     clicks: r.clicks,
+    impressions: r.impressions,
     changePercent: r.changePercent,
+    impressionsChangePercent: r.impressionsChangePercent,
     title: r.key,
   }));
   const droppingQueries = dropping(queriesRows).map((r) => ({
     key: r.key,
     label: r.key,
     clicks: r.clicks,
+    impressions: r.impressions,
     changePercent: r.changePercent,
+    impressionsChangePercent: r.impressionsChangePercent,
     title: r.key,
   }));
   const risingPages = rising(pagesRows).map((r) => {
     const s = toSlugLabel(r.key);
-    return { key: r.key, label: s.label, clicks: r.clicks, changePercent: r.changePercent, title: s.title, url: r.key };
+    return {
+      key: r.key,
+      label: s.label,
+      clicks: r.clicks,
+      impressions: r.impressions,
+      changePercent: r.changePercent,
+      impressionsChangePercent: r.impressionsChangePercent,
+      title: s.title,
+      url: r.key,
+    };
   });
   const droppingPages = dropping(pagesRows).map((r) => {
     const s = toSlugLabel(r.key);
-    return { key: r.key, label: s.label, clicks: r.clicks, changePercent: r.changePercent, title: s.title, url: r.key };
+    return {
+      key: r.key,
+      label: s.label,
+      clicks: r.clicks,
+      impressions: r.impressions,
+      changePercent: r.changePercent,
+      impressionsChangePercent: r.impressionsChangePercent,
+      title: s.title,
+      url: r.key,
+    };
   });
 
   return (

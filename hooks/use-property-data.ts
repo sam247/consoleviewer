@@ -23,13 +23,13 @@ type SiteDetailResponse = {
   };
   daily: { date: string; clicks: number; impressions: number; ctr?: number; position?: number }[];
   priorDaily?: { date: string; clicks: number; impressions: number; ctr?: number; position?: number }[];
-  queries: { key: string; clicks: number; impressions: number; changePercent: number; position?: number }[];
-  pages: { key: string; clicks: number; impressions: number; changePercent: number; position?: number }[];
+  queries: { key: string; clicks: number; impressions: number; changePercent: number; impressionsChangePercent?: number; position?: number }[];
+  pages: { key: string; clicks: number; impressions: number; changePercent: number; impressionsChangePercent?: number; position?: number }[];
   countries: { key: string; clicks: number; impressions: number; changePercent: number }[];
   devices: { key: string; clicks: number; impressions: number; changePercent: number }[];
-  newQueries: { key: string; clicks: number; impressions: number; changePercent: number; position?: number }[];
+  newQueries: { key: string; clicks: number; impressions: number; changePercent: number; impressionsChangePercent?: number; position?: number }[];
   lostQueries: { key: string; clicks: number; impressions: number }[];
-  newPages: { key: string; clicks: number; impressions: number; changePercent: number; position?: number }[];
+  newPages: { key: string; clicks: number; impressions: number; changePercent: number; impressionsChangePercent?: number; position?: number }[];
   lostPages: { key: string; clicks: number; impressions: number }[];
   branded: {
     brandedClicks: number;
@@ -134,13 +134,14 @@ async function fetchQuerySparklines(
 }
 
 function toDataTableRow(
-  r: { key: string; clicks: number; impressions: number; changePercent?: number; position?: number }
+  r: { key: string; clicks: number; impressions: number; changePercent?: number; impressionsChangePercent?: number; position?: number }
 ): DataTableRow {
   return {
     key: r.key,
     clicks: r.clicks,
     impressions: r.impressions,
     changePercent: r.changePercent,
+    impressionsChangePercent: r.impressionsChangePercent,
     position: r.position,
   };
 }

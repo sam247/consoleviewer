@@ -99,3 +99,50 @@ export function SparkToggles() {
     </div>
   );
 }
+
+export function SparkTogglesMenu() {
+  const { series, toggle, engines, setEngine } = useSparkSeries();
+
+  return (
+    <div className="flex flex-col gap-1" role="group" aria-label="Sparkline metrics and Bing overlay">
+      {SERIES_CONFIG.map(({ key, label, title, icon }) => (
+        <button
+          key={key}
+          type="button"
+          title={title}
+          onClick={() => toggle(key)}
+          className={cn(
+            "flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-sm",
+            series[key] ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+          )}
+          aria-pressed={series[key]}
+          aria-label={`${label}: ${series[key] ? "on" : "off"}`}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="inline-flex size-4 shrink-0 items-center justify-center">{icon}</span>
+            <span className="truncate">{label}</span>
+          </span>
+          <span className="text-xs text-muted-foreground">{series[key] ? "On" : "Off"}</span>
+        </button>
+      ))}
+      <div className="my-1 border-t border-border" />
+      <button
+        type="button"
+        title={engines.bing ? "Hide Bing overlay" : "Show Bing overlay"}
+        onClick={() => setEngine("bing", !engines.bing)}
+        className={cn(
+          "flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-sm",
+          engines.bing ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+        )}
+        aria-pressed={engines.bing}
+        aria-label={`Bing overlay: ${engines.bing ? "on" : "off"}`}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="inline-flex size-4 shrink-0 items-center justify-center">{bingIcon}</span>
+          <span className="truncate">Bing overlay</span>
+        </span>
+        <span className="text-xs text-muted-foreground">{engines.bing ? "On" : "Off"}</span>
+      </button>
+    </div>
+  );
+}

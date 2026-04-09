@@ -6,7 +6,7 @@ import { DateRangeSelect } from "./date-range-select";
 import { OverviewSearch } from "./overview-search";
 import { ProfileMenu } from "./profile-menu";
 import { ShareModal } from "./share-modal";
-import { SparkToggles } from "./spark-toggles";
+import { SparkToggles, SparkTogglesMenu } from "./spark-toggles";
 import { ThemeToggle } from "./theme-toggle";
 import { AiHeaderButton } from "./ai-feature-card";
 import { MobileOverflowMenu } from "@/components/ui/mobile-overflow-menu";
@@ -126,13 +126,24 @@ export function Header({
                 </MobileOverflowMenu>
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
-              <div className="shrink-0">
-                <DateRangeSelect variant="compact" />
-              </div>
-              <div className="shrink-0">
-                <SparkToggles />
-              </div>
+            <div className="mt-3 flex items-center gap-2">
+              <DateRangeSelect variant="compact" />
+              <MobileOverflowMenu
+                buttonLabel="Sparkline toggles"
+                buttonClassName="h-9 w-9"
+                buttonIcon={
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                    <path d="M4 6h10" />
+                    <path d="M4 12h16" />
+                    <path d="M4 18h12" />
+                    <path d="M18 6v6" />
+                    <path d="M10 12v6" />
+                    <path d="M16 18v0" />
+                  </svg>
+                }
+              >
+                <SparkTogglesMenu />
+              </MobileOverflowMenu>
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 interface MobileOverflowMenuProps {
   children: ReactNode;
   buttonLabel?: string;
+  buttonIcon?: ReactNode;
   className?: string;
   buttonClassName?: string;
   panelClassName?: string;
@@ -14,6 +15,7 @@ interface MobileOverflowMenuProps {
 export function MobileOverflowMenu({
   children,
   buttonLabel = "More actions",
+  buttonIcon,
   className,
   buttonClassName,
   panelClassName,
@@ -89,11 +91,13 @@ export function MobileOverflowMenu({
           buttonClassName
         )}
       >
-        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-          <circle cx="12" cy="5" r="1.75" />
-          <circle cx="12" cy="12" r="1.75" />
-          <circle cx="12" cy="19" r="1.75" />
-        </svg>
+        {buttonIcon ?? (
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <circle cx="12" cy="5" r="1.75" />
+            <circle cx="12" cy="12" r="1.75" />
+            <circle cx="12" cy="19" r="1.75" />
+          </svg>
+        )}
       </button>
       {open && (
         <div

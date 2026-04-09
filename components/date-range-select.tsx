@@ -45,9 +45,11 @@ function shortLabel(key: DateRangeKey, fallback: string): string {
 
 export function DateRangeSelect({
   variant = "default",
+  align = "right",
   className,
 }: {
   variant?: "default" | "compact";
+  align?: "left" | "right";
   className?: string;
 } = {}) {
   const { rangeKey, setRangeKey, customStart, customEnd, setCustomDates } = useDateRange();
@@ -115,7 +117,11 @@ export function DateRangeSelect({
       </button>
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-1 min-w-[220px] rounded-md border border-input bg-background shadow-md overflow-hidden"
+          className={cn(
+            "absolute top-full z-50 mt-1 rounded-md border border-input bg-background shadow-md overflow-hidden",
+            variant === "compact" ? "w-[min(320px,calc(100vw-16px))]" : "min-w-[220px]",
+            align === "left" ? "left-0" : "right-0"
+          )}
           role="listbox"
         >
           <div className="max-h-[360px] overflow-y-auto py-1">

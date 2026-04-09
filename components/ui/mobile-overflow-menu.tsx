@@ -7,6 +7,7 @@ interface MobileOverflowMenuProps {
   children: ReactNode;
   buttonLabel?: string;
   buttonIcon?: ReactNode;
+  align?: "left" | "right";
   className?: string;
   buttonClassName?: string;
   panelClassName?: string;
@@ -16,6 +17,7 @@ export function MobileOverflowMenu({
   children,
   buttonLabel = "More actions",
   buttonIcon,
+  align = "right",
   className,
   buttonClassName,
   panelClassName,
@@ -105,7 +107,8 @@ export function MobileOverflowMenu({
           role="menu"
           tabIndex={-1}
           className={cn(
-            "absolute right-0 top-full z-30 mt-1 min-w-[220px] max-w-[80vw] rounded-md border border-border bg-surface p-2 shadow-lg",
+            "absolute top-full z-30 mt-1 w-[min(280px,calc(100vw-16px))] rounded-md border border-border bg-surface p-2 shadow-lg",
+            align === "left" ? "left-0" : "right-0",
             panelClassName
           )}
         >

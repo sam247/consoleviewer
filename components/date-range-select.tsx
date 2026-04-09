@@ -6,7 +6,50 @@ import { DATE_RANGE_GROUPS, DATE_RANGE_OPTIONS } from "@/lib/date-range";
 import type { DateRangeKey } from "@/types/gsc";
 import { cn } from "@/lib/utils";
 
-export function DateRangeSelect() {
+function shortLabel(key: DateRangeKey, fallback: string): string {
+  switch (key) {
+    case "7d":
+      return "7d";
+    case "28d":
+      return "28d";
+    case "30d":
+      return "30d";
+    case "l90d":
+      return "90d";
+    case "3m":
+      return "3m";
+    case "6m":
+      return "6m";
+    case "12m":
+      return "12m";
+    case "16m":
+      return "16m";
+    case "mtd":
+      return "MTD";
+    case "lm":
+      return "LM";
+    case "qtd":
+      return "QTD";
+    case "lq":
+      return "LQ";
+    case "ytd":
+      return "YTD";
+    case "fy":
+      return "FY";
+    case "lfy":
+      return "LFY";
+    default:
+      return fallback;
+  }
+}
+
+export function DateRangeSelect({
+  variant = "default",
+  className,
+}: {
+  variant?: "default" | "compact";
+  className?: string;
+} = {}) {
   const { rangeKey, setRangeKey, customStart, customEnd, setCustomDates } = useDateRange();
   const [open, setOpen] = useState(false);
   const [localStart, setLocalStart] = useState(customStart);
@@ -45,9 +88,11 @@ export function DateRangeSelect() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const label = rangeKey === "custom" && customStart && customEnd
-    ? `${customStart} – ${customEnd}`
-    : DATE_RANGE_OPTIONS.find((o) => o.value === rangeKey)?.label ?? rangeKey;
+  const longLabel =
+    rangeKey === "custom" && customStart && customEnd
+      ? `${customStart} – ${customEnd}`
+      : DATE_RANGE_OPTIONS.find((o) => o.value === rangeKey)?.label ?? rangeKey;
+  const label = variant === "compact" ? shortLabel(rangeKey, longLabel) : longLabel;
 
   return (
     <div className="relative" ref={ref}>
@@ -55,8 +100,12 @@ export function DateRangeSelect() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex h-9 items-center gap-1 rounded-md border border-input bg-background px-3 py-0 text-sm",
+          variant === "compact"
+            ? "flex h-9 items-center gap-1 rounded-md border border-input bg-background px-2.5 py-0 text-xs"
+            : "flex h-9 items-center gap-1 rounded-md border border-input bg-background px-3 py-0 text-sm",
           "hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+        ,
+          className
         )}
       >
         {label}

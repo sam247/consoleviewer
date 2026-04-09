@@ -75,10 +75,10 @@ export const CHART_MARGIN_SECONDARY = {
 } as const;
 
 export const CHART_MARGIN_SPARK = {
-  top: 6,
+  top: 8,
   right: 6,
   left: 0,
-  bottom: 4,
+  bottom: 6,
 } as const;
 
 export const CHART_Y_AXIS_WIDTH_PRIMARY = 30;

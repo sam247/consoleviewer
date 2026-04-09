@@ -113,9 +113,6 @@ export function Header({
                         />
                       </div>
                     )}
-                    <div className="p-1">
-                      <DateRangeSelect />
-                    </div>
                     {sortSelect && <div data-menu-close="true">{sortSelect}</div>}
                     {filterSelect && <div data-menu-close="true">{filterSelect}</div>}
                     {shareButton}
@@ -129,8 +126,11 @@ export function Header({
                 </MobileOverflowMenu>
               </div>
             </div>
-            <div className="mt-3 flex justify-center overflow-x-auto pb-1">
-              <div className="min-w-0 shrink-0">
+            <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+              <div className="shrink-0">
+                <DateRangeSelect variant="compact" />
+              </div>
+              <div className="shrink-0">
                 <SparkToggles />
               </div>
             </div>

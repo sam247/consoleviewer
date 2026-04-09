@@ -112,6 +112,8 @@ function normalizeSeries(values: number[]): number[] {
   return values.map((v) => (v - min) / range);
 }
 
+const NORMALIZED_DOMAIN: [number, number] = [-0.06, 1.06];
+
 /** Light 3-point moving average to soften spikey sparse series (e.g. Bing zero-filled days) without changing shape much for dense data. */
 export function smoothSeries(values: number[], window = 3): number[] {
   if (values.length < window) return values;
@@ -692,7 +694,7 @@ export function TrendChart({
           ) : (
             <YAxis
               width={yAxisWidth}
-              domain={useNormalized ? [0, 1] : yDomain ?? ["auto", "auto"]}
+              domain={useNormalized ? NORMALIZED_DOMAIN : yDomain ?? ["auto", "auto"]}
               tick={CHART_AXIS_TICK}
               tickCount={5}
               tickFormatter={(value) => (useNormalized ? `${Math.round(Number(value) * 100)}%` : compactNumber(Number(value)))}
@@ -1016,6 +1018,44 @@ export function Sparkline({
     });
   }, [data, bingOverlayData, useDualAxis, visible]);
 
+  const sparkClicksDomain = useMemo((): [number, number] | undefined => {
+    if (!useDualAxis || !chartData.length) return undefined;
+    const clickKeys = visible.filter((s) => s.metric === "clicks").map((s) => s.dataKey);
+    let min = Infinity;
+    let max = -Infinity;
+    chartData.forEach((row) => {
+      clickKeys.forEach((k) => {
+        const v = (row as Record<string, unknown>)[k];
+        if (typeof v === "number" && Number.isFinite(v)) {
+          min = Math.min(min, v);
+          max = Math.max(max, v);
+        }
+      });
+    });
+    if (min === Infinity || max === -Infinity) return undefined;
+    const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
+    return [Math.max(0, min - pad), max + pad];
+  }, [chartData, useDualAxis, visible]);
+
+  const sparkImprDomain = useMemo((): [number, number] | undefined => {
+    if (!useDualAxis || !chartData.length) return undefined;
+    const imprKeys = visible.filter((s) => s.metric === "impressions").map((s) => s.dataKey);
+    let min = Infinity;
+    let max = -Infinity;
+    chartData.forEach((row) => {
+      imprKeys.forEach((k) => {
+        const v = (row as Record<string, unknown>)[k];
+        if (typeof v === "number" && Number.isFinite(v)) {
+          min = Math.min(min, v);
+          max = Math.max(max, v);
+        }
+      });
+    });
+    if (min === Infinity || max === -Infinity) return undefined;
+    const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
+    return [Math.max(0, min - pad), max + pad];
+  }, [chartData, useDualAxis, visible]);
+
   const xTicks = useMemo(() => {
     const first = chartData[0]?.date;
     const last = chartData[chartData.length - 1]?.date;
@@ -1043,11 +1083,25 @@ export function Sparkline({
           />
           {useDualAxis ? (
             <>
-              <YAxis yAxisId={SPARK_CLICKS_AXIS} orientation="left" hide width={0} allowDataOverflow />
-              <YAxis yAxisId={SPARK_IMPR_AXIS} orientation="right" hide width={0} allowDataOverflow />
+              <YAxis
+                yAxisId={SPARK_CLICKS_AXIS}
+                orientation="left"
+                hide
+                width={0}
+                allowDataOverflow
+                domain={sparkClicksDomain ?? ["auto", "auto"]}
+              />
+              <YAxis
+                yAxisId={SPARK_IMPR_AXIS}
+                orientation="right"
+                hide
+                width={0}
+                allowDataOverflow
+                domain={sparkImprDomain ?? ["auto", "auto"]}
+              />
             </>
           ) : (
-            <YAxis hide width={0} domain={[0, 1]} allowDataOverflow />
+            <YAxis hide width={0} domain={NORMALIZED_DOMAIN} allowDataOverflow />
           )}
           <Tooltip
             cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}

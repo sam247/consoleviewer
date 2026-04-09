@@ -86,14 +86,6 @@ export function TrackedKeywordsMiniCard({
       .slice(0, maxRows);
   }, [data?.configured, data?.keywords, maxRows]);
 
-  const paddedRows = useMemo(() => {
-    const out = [...rows];
-    while (out.length < maxRows) {
-      out.push({ keyword: "", position: null, delta1d: 0, delta7d: 0 } as KeywordRow);
-    }
-    return out;
-  }, [rows, maxRows]);
-
   const onAdd = async () => {
     const next = phrase.trim();
     if (!next || saving) return;
@@ -203,42 +195,35 @@ export function TrackedKeywordsMiniCard({
                 </td>
               </tr>
             ) : (
-              paddedRows.map((r, idx) => {
-                const isPlaceholder = !r.keyword;
-                return (
-                  <tr key={r.id ?? r.keyword ?? `placeholder-${idx}`} className={TABLE_ROW_CLASS}>
-                    <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.keyword || undefined}>
-                      {isPlaceholder ? <span className="invisible">—</span> : r.keyword}
-                    </td>
-                    <td className={cn("px-5 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
-                      {isPlaceholder ? (
-                        <span className="invisible">—</span>
-                      ) : r.status === "checking" ? (
-                        <span className="inline-flex items-center justify-end gap-1.5 text-muted-foreground">
-                          <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
-                            <circle cx="12" cy="12" r="9" className="stroke-current opacity-25" strokeWidth="3" />
-                            <path className="fill-current opacity-90" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3Z" />
-                          </svg>
-                          <span className="text-xs">Checking…</span>
-                        </span>
-                      ) : r.position != null ? (
-                        r.position.toFixed(1)
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className={cn("px-5 text-right tabular-nums", TABLE_CELL_Y)}>
-                      {isPlaceholder ? (
-                        <span className="invisible">—</span>
-                      ) : r.delta7d ? (
-                        <span className={r.delta7d < 0 ? "text-positive" : "text-negative"}>{changeLabel(r.delta7d)}</span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
+              rows.map((r) => (
+                <tr key={r.id ?? r.keyword} className={TABLE_ROW_CLASS}>
+                  <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.keyword}>
+                    {r.keyword}
+                  </td>
+                  <td className={cn("px-5 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
+                    {r.status === "checking" ? (
+                      <span className="inline-flex items-center justify-end gap-1.5 text-muted-foreground">
+                        <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+                          <circle cx="12" cy="12" r="9" className="stroke-current opacity-25" strokeWidth="3" />
+                          <path className="fill-current opacity-90" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3Z" />
+                        </svg>
+                        <span className="text-xs">Checking…</span>
+                      </span>
+                    ) : r.position != null ? (
+                      r.position.toFixed(1)
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className={cn("px-5 text-right tabular-nums", TABLE_CELL_Y)}>
+                    {r.delta7d ? (
+                      <span className={r.delta7d < 0 ? "text-positive" : "text-negative"}>{changeLabel(r.delta7d)}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>

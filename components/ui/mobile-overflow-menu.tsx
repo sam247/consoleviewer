@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 interface MobileOverflowMenuProps {
@@ -27,6 +27,7 @@ export function MobileOverflowMenu({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const wasOpenRef = useRef(false);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties | undefined>(undefined);
 
   useEffect(() => {
     if (!open) return;
@@ -64,6 +65,24 @@ export function MobileOverflowMenu({
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setPanelStyle(undefined);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    if (window.innerWidth >= 768) {
+      setPanelStyle(undefined);
+      return;
+    }
+    const btn = buttonRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const top = Math.min(rect.bottom + 6, window.innerHeight - 8);
+    const maxHeight = Math.max(200, window.innerHeight - top - 8);
+    setPanelStyle({ position: "fixed", left: 8, right: 8, top, maxHeight });
   }, [open]);
 
   useEffect(() => {
@@ -107,10 +126,13 @@ export function MobileOverflowMenu({
           role="menu"
           tabIndex={-1}
           className={cn(
-            "absolute top-full z-30 mt-1 w-[min(280px,calc(100vw-16px))] rounded-md border border-border bg-surface p-2 shadow-lg",
-            align === "left" ? "left-0" : "right-0",
+            panelStyle
+              ? "fixed z-30 rounded-md border border-border bg-surface p-2 shadow-lg overflow-auto"
+              : "absolute top-full z-30 mt-1 w-[min(280px,calc(100vw-16px))] rounded-md border border-border bg-surface p-2 shadow-lg",
+            panelStyle ? undefined : align === "left" ? "left-0" : "right-0",
             panelClassName
           )}
+          style={panelStyle}
         >
           {children}
         </div>

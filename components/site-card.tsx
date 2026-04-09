@@ -254,6 +254,7 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
   const blurClass = blurEnabled ? "blur-sm opacity-60 select-none" : undefined;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -375,10 +376,8 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
         </div>
       </div>
 
-      {/* Footer: 3-line structure (daily summary, GSC avg rank, tracked keyword rank or Add keywords +) */}
-      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
+      <div className="hidden md:flex items-center justify-between gap-2 pt-2 border-t border-border">
         <div className="min-w-0 flex-1">
-          {/* Line 1: Daily performance summary */}
           <p className="text-xs text-muted-foreground min-w-0 break-words">
             {recent ? (
               <>
@@ -404,14 +403,11 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
               "Overview: —"
             )}
           </p>
-          {/* Line 2 + Line 3 grouped */}
           <div className="mt-1">
-            {/* Line 2: GSC average position */}
             <p className="text-xs text-muted-foreground">
               <span className="text-muted-foreground/70">Avg Rank:</span>{" "}
               <span className="text-foreground">{metrics.position != null ? metrics.position.toFixed(1) : "—"}</span>
             </p>
-            {/* Line 3: tracked keyword rank or Add keywords + */}
             <p className="text-xs text-muted-foreground/80 min-w-0 break-words mt-1">
               {hasKeywords && metrics.avgTrackedRank != null ? (
                 <>
@@ -450,6 +446,110 @@ export function SiteCard({ metrics, hasKeywords = true }: SiteCardProps) {
           </div>
         </div>
         <StarButton siteUrl={metrics.siteUrl} />
+      </div>
+
+      <div className="md:hidden pt-2 border-t border-border">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDetailsOpen((v) => !v);
+            }}
+            className="flex min-h-[44px] items-center gap-2 rounded-md px-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            aria-expanded={detailsOpen}
+            aria-label={detailsOpen ? "Hide details" : "View details"}
+          >
+            <span>{detailsOpen ? "Hide details" : "View details"}</span>
+            <svg
+              className={cn("size-4 transition-transform duration-200", detailsOpen ? "rotate-180" : "rotate-0")}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          <StarButton siteUrl={metrics.siteUrl} />
+        </div>
+
+        <div
+          className={cn(
+            "overflow-hidden transition-[max-height,opacity] duration-200",
+            detailsOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+          )}
+        >
+          <div className="pt-2 space-y-1">
+            <p className="text-xs text-muted-foreground min-w-0">
+              {recent && (recent.clickDelta != null || recent.impressionDelta != null) ? (
+                <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="text-muted-foreground/70">Today:</span>
+                  {recent.clickDelta != null && (
+                    <span className={recent.clickDelta < 0 ? "text-negative" : "text-positive"}>
+                      {recent.clickDelta >= 0 ? "+" : ""}{recent.clickDelta} clicks
+                    </span>
+                  )}
+                  {recent.impressionDelta != null && (
+                    <>
+                      <span className="text-muted-foreground/50">•</span>
+                      <span className={recent.impressionDelta < 0 ? "text-negative" : "text-positive"}>
+                        {recent.impressionDelta >= 0 ? "+" : ""}{recent.impressionDelta} impressions
+                      </span>
+                    </>
+                  )}
+                </span>
+              ) : (
+                <span>
+                  <span className="text-muted-foreground/70">Today:</span> —
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-muted-foreground/70">Avg Rank:</span>{" "}
+              <span className="text-foreground">{metrics.position != null ? metrics.position.toFixed(1) : "—"}</span>
+            </p>
+            <div className="pt-1">
+              {hasKeywords && metrics.avgTrackedRank != null ? (
+                <p className="text-xs text-muted-foreground/80 min-w-0">
+                  <span className="text-muted-foreground/70">Avg Tracked Rank:</span>{" "}
+                  <span className="text-foreground">{metrics.avgTrackedRank.toFixed(1)}</span>
+                  {metrics.avgTrackedRankDelta != null && (
+                    <span
+                      className={
+                        metrics.avgTrackedRankDelta < 0
+                          ? " text-positive"
+                          : metrics.avgTrackedRankDelta > 0
+                            ? " text-negative"
+                            : ""
+                      }
+                    >
+                      {" "}
+                      ({metrics.avgTrackedRankDelta >= 0 ? "▲" : "▼"}
+                      {Math.abs(metrics.avgTrackedRankDelta).toFixed(1)})
+                    </span>
+                  )}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(`${href}#tracked-keywords`);
+                  }}
+                  className="min-h-[44px] rounded-md px-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                >
+                  Add Keywords+
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </Link>
   );

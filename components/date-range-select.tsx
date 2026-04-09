@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, type CSSProperties } from "react";
 import { useDateRange } from "@/contexts/date-range-context";
 import { DATE_RANGE_GROUPS, DATE_RANGE_OPTIONS } from "@/lib/date-range";
 import type { DateRangeKey } from "@/types/gsc";
@@ -57,6 +57,8 @@ export function DateRangeSelect({
   const [localStart, setLocalStart] = useState(customStart);
   const [localEnd, setLocalEnd] = useState(customEnd);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties | undefined>(undefined);
 
   useEffect(() => {
     setLocalStart(customStart);
@@ -90,6 +92,23 @@ export function DateRangeSelect({
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, []);
 
+  useEffect(() => {
+    if (!open) {
+      setPanelStyle(undefined);
+      return;
+    }
+    if (variant !== "compact") {
+      setPanelStyle(undefined);
+      return;
+    }
+    const btn = buttonRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const top = Math.min(rect.bottom + 6, window.innerHeight - 8);
+    const maxHeight = Math.max(180, window.innerHeight - top - 8);
+    setPanelStyle({ position: "fixed", left: 8, right: 8, top, maxHeight });
+  }, [open, variant]);
+
   const longLabel =
     rangeKey === "custom" && customStart && customEnd
       ? `${customStart} – ${customEnd}`
@@ -99,11 +118,12 @@ export function DateRangeSelect({
   return (
     <div className="relative" ref={ref}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
           variant === "compact"
-            ? "flex h-9 items-center gap-1 rounded-md border border-input bg-background px-2.5 py-0 text-xs"
+            ? "flex h-11 items-center gap-1 rounded-md border border-input bg-background px-3 py-0 text-xs"
             : "flex h-9 items-center gap-1 rounded-md border border-input bg-background px-3 py-0 text-sm",
           "hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
         ,
@@ -118,10 +138,17 @@ export function DateRangeSelect({
       {open && (
         <div
           className={cn(
-            "absolute top-full z-50 mt-1 rounded-md border border-input bg-background shadow-md overflow-hidden",
-            variant === "compact" ? "w-[min(320px,calc(100vw-16px))]" : "min-w-[220px]",
-            align === "left" ? "left-0" : "right-0"
+            panelStyle
+              ? "fixed z-50 rounded-md border border-input bg-background shadow-md overflow-hidden"
+              : "absolute top-full z-50 mt-1 rounded-md border border-input bg-background shadow-md overflow-hidden",
+            panelStyle
+              ? "left-2 right-2"
+              : variant === "compact"
+                ? "w-[min(320px,calc(100vw-16px))]"
+                : "min-w-[220px]",
+            panelStyle ? undefined : align === "left" ? "left-0" : "right-0"
           )}
+          style={panelStyle}
           role="listbox"
         >
           <div className="max-h-[360px] overflow-y-auto py-1">

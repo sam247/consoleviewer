@@ -24,11 +24,11 @@ export function ProfileMenu() {
   const avatarUrl = authStatus?.avatarUrl ?? null;
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: PointerEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("pointerdown", handleClickOutside);
+    return () => document.removeEventListener("pointerdown", handleClickOutside);
   }, []);
 
   return (
@@ -37,7 +37,7 @@ export function ProfileMenu() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-accent text-sm font-medium text-foreground",
+          "flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-accent text-sm font-medium text-foreground",
           "hover:bg-accent/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
         aria-expanded={open}
@@ -49,8 +49,8 @@ export function ProfileMenu() {
           <img
             src={avatarUrl}
             alt=""
-            width={36}
-            height={36}
+            width={44}
+            height={44}
             className="size-full object-cover"
           />
         ) : (

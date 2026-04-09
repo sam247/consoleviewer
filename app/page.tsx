@@ -205,9 +205,12 @@ export default function OverviewPage() {
               {!isLoading && sorted.length > 0 && (
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-sm font-medium text-foreground">{sorted.length} site{sorted.length !== 1 ? "s" : ""}</h2>
-                  <a href="/onboarding/sites" className="text-sm text-muted-foreground hover:text-foreground underline">
-                    Manage or add sites
-                  </a>
+                  <Link
+                    href="/onboarding/sites"
+                    className="inline-flex min-h-[44px] items-center rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    + Add
+                  </Link>
                 </div>
               )}
               <div className={projectGridClass}>

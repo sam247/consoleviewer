@@ -93,37 +93,26 @@ export function Header({
             <div className="flex items-center gap-2">
               <Link
                 href="/"
-                className="min-w-0 flex-1 text-lg font-semibold text-foreground truncate focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
+                className="min-w-0 flex-1 text-base font-semibold text-foreground truncate focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
               >
                 Consoleview
               </Link>
               <div className="shrink-0 flex items-center gap-2">
                 <DateRangeSelect variant="compact" align="right" />
                 <MobileOverflowMenu
-                  buttonLabel="Sparkline toggles"
-                  align="right"
-                  buttonClassName="h-9 w-9"
+                  buttonLabel="Dashboard controls"
+                  panelClassName="right-0"
+                  buttonClassName="h-11 w-11"
                   buttonIcon={
-                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                      <path d="M4 6h10" />
-                      <path d="M4 12h16" />
-                      <path d="M4 18h12" />
-                      <path d="M18 6v6" />
-                      <path d="M10 12v6" />
-                      <path d="M16 18v0" />
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
                     </svg>
                   }
                 >
-                  <SparkTogglesMenu />
-                </MobileOverflowMenu>
-                <div className="shrink-0">
-                  <ProfileMenu />
-                </div>
-                <MobileOverflowMenu
-                  buttonLabel="Dashboard controls"
-                  panelClassName="right-0"
-                >
                   <div className="flex flex-col gap-2">
+                    <div>
+                      <SparkTogglesMenu />
+                    </div>
                     {showSearch && onSearchChange && (
                       <div className="p-1">
                         <OverviewSearch value={searchValue} onChange={onSearchChange} placeholder="Search" />
@@ -140,6 +129,9 @@ export function Header({
                     <div data-menu-close="true"><ThemeToggle /></div>
                   </div>
                 </MobileOverflowMenu>
+                <div className="shrink-0">
+                  <ProfileMenu />
+                </div>
               </div>
             </div>
           </div>

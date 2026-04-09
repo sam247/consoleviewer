@@ -16,6 +16,7 @@ import { ProjectSimplifiedChangeTablesSection } from "@/components/sections/proj
 import { ProjectAnalysisTab } from "@/components/sections/project-analysis-tab";
 import { LightSignalsStrip } from "@/components/light-signals-strip";
 import { CustomizeDashboardCard } from "@/components/customize-dashboard-card";
+import { SiteIdentity } from "@/components/site-identity";
 
 export default function SiteDetailPage({
   params,
@@ -88,9 +89,14 @@ export default function SiteDetailPage({
             >
               ← Overview
             </Link>
-            <h1 className="mt-1 text-lg font-medium text-foreground truncate">
-              {siteUrl}
-            </h1>
+            <div className="mt-1">
+              <SiteIdentity siteUrl={siteUrl} textClassName="text-lg font-medium text-foreground" faviconSize={22} />
+            </div>
+            {tab !== "analysis" && !isLoading && (
+              <div className="mt-2">
+                <LightSignalsStrip summary={data.summary} newQueries={data.newQueries} lostQueries={data.lostQueries} pagesRows={pagesRows} />
+              </div>
+            )}
             <div className="mt-3">
               <ProjectViewTabs />
             </div>
@@ -136,13 +142,6 @@ export default function SiteDetailPage({
               ) : (
                 <>
                   <ProjectSimplifiedTrendSection data={data} propertyId={propertyId} />
-                  <LightSignalsStrip
-                    summary={data.summary}
-                    newQueries={data.newQueries}
-                    lostQueries={data.lostQueries}
-                    pagesRows={pagesRows}
-                    className="-mt-2"
-                  />
                   <ProjectSimplifiedTrackersSection propertyId={propertyId} queriesRows={queriesRows} siteUrl={siteUrl} />
                   <ProjectSimplifiedChangeTablesSection propertyId={propertyId} queriesRows={queriesRows} pagesRows={pagesRows} />
                   <CustomizeDashboardCard propertyId={propertyId} />

@@ -38,10 +38,8 @@ export function ProjectSimplifiedTrendSection({
 }) {
   const [compareToPrior, setCompareToPrior] = useState(false);
   const [compareMode, setCompareMode] = useState<CompareMode>("previous_period");
-  const { series } = useSparkSeries();
+  useSparkSeries();
   const { startDate, endDate } = useDateRange();
-  const showClicks = series?.clicks !== false;
-  const showImpressions = series?.impressions !== false;
 
   useEffect(() => {
     try {
@@ -95,17 +93,20 @@ export function ProjectSimplifiedTrendSection({
             />
             Compare
           </label>
-          <div className={compareToPrior ? "block" : "invisible"}>
-            <select
-              value={compareMode}
-              onChange={(e) => setCompareMode(e.target.value as CompareMode)}
-              className="min-h-[40px] rounded-md border border-input bg-background px-2 text-sm text-muted-foreground"
-              aria-label="Compare period"
-            >
-              <option value="previous_period">vs previous period</option>
-              <option value="previous_year">vs previous year</option>
-            </select>
-          </div>
+          <select
+            value={compareMode}
+            onChange={(e) => setCompareMode(e.target.value as CompareMode)}
+            disabled={!compareToPrior}
+            className={
+              compareToPrior
+                ? "min-h-[40px] rounded-md border border-input bg-background px-2 text-sm text-muted-foreground"
+                : "min-h-[40px] rounded-md border border-input bg-background px-2 text-sm text-muted-foreground opacity-50"
+            }
+            aria-label="Compare period"
+          >
+            <option value="previous_period">vs previous period</option>
+            <option value="previous_year">vs previous year</option>
+          </select>
         </div>
       }
       className="w-full"
@@ -115,9 +116,7 @@ export function ProjectSimplifiedTrendSection({
         data={data.daily}
         priorData={prior}
         height={CHART_PLOT_H.primary}
-        showClicks={showClicks}
-        showImpressions={showImpressions}
-        useSeriesContext={false}
+        useSeriesContext={true}
         compareToPrior={compareToPrior}
         normalizeWhenMultiSeries={false}
       />

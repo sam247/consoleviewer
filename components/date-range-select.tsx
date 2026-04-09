@@ -101,6 +101,10 @@ export function DateRangeSelect({
       setPanelStyle(undefined);
       return;
     }
+    if (typeof window !== "undefined" && window.matchMedia && !window.matchMedia("(max-width: 639px)").matches) {
+      setPanelStyle(undefined);
+      return;
+    }
     const btn = buttonRef.current;
     if (!btn) return;
     const rect = btn.getBoundingClientRect();

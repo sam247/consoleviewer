@@ -140,7 +140,7 @@ function ActionButton({
       aria-label={title}
       onClick={onClick}
       className={cn(
-        "inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground",
+        "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground",
         className
       )}
     >
@@ -151,7 +151,7 @@ function ActionButton({
 
 function ExternalLinkIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
       <path d="M14 3h7v7" />
       <path d="M10 14L21 3" />
       <path d="M21 14v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
@@ -169,7 +169,7 @@ function normalizeExternalUrl(value: string): string {
 
 function StarIcon({ filled }: { filled: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" aria-hidden>
       <path d="M12 17.3l-6.18 3.25 1.18-6.88L2 8.97l6.91-1L12 1.8l3.09 6.17 6.91 1-5 4.7 1.18 6.88z" />
     </svg>
   );
@@ -177,7 +177,7 @@ function StarIcon({ filled }: { filled: boolean }) {
 
 function PlusIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
       <path d="M12 5v14" />
       <path d="M5 12h14" />
     </svg>
@@ -304,14 +304,12 @@ export function ToggleChangeTableCard({
                 onSort={onSort}
                 className="w-[20%]"
               />
-              <th className={cn("px-3 font-semibold text-right w-[1%]", TABLE_CELL_Y)} aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: maxRows }).map((_, i) => {
               const r = limited[i];
               const rowKey = r?.key ?? `placeholder-${i}`;
-              const showActions = Boolean(r);
               const queryText = r?.key ?? "";
               const href =
                 title === "Queries"
@@ -320,8 +318,83 @@ export function ToggleChangeTableCard({
 
               return (
                 <tr key={rowKey} className={cn(TABLE_ROW_CLASS, "group")}> 
-                  <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r?.title ?? r?.label}>
-                    {r ? r.label : <span className="invisible">—</span>}
+                  <td className={cn("px-5 min-w-0 text-foreground", TABLE_CELL_Y)} title={r?.title ?? r?.label}>
+                    {r ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="truncate min-w-0">{r.label}</span>
+                        <div className="ml-auto flex items-center">
+                          <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {title === "Queries" && (
+                              <ActionButton
+                                title={tracked[queryText] ? "Tracked" : tracking[queryText] ? "Tracking…" : "Track keyword"}
+                                onClick={() => onTrack(queryText)}
+                                className={cn(tracked[queryText] ? "text-positive" : undefined)}
+                              >
+                                <PlusIcon />
+                              </ActionButton>
+                            )}
+                            {href ? (
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                                aria-label={title === "Queries" ? "Open Google search" : "Open page"}
+                                title={title === "Queries" ? "Open Google search" : "Open page"}
+                              >
+                                <ExternalLinkIcon />
+                              </a>
+                            ) : null}
+                            <ActionButton title={saved.has(rowKey) ? "Saved" : "Save"} onClick={() => onToggleSaved(rowKey)}>
+                              <StarIcon filled={saved.has(rowKey)} />
+                            </ActionButton>
+                          </div>
+                          <div className="md:hidden">
+                            <MobileOverflowMenu
+                              buttonLabel="Row actions"
+                              align="right"
+                              buttonClassName="h-9 w-9"
+                              panelClassName="p-1"
+                            >
+                              <div className="flex flex-col">
+                                {title === "Queries" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onTrack(queryText)}
+                                    className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
+                                    disabled={tracking[queryText] || tracked[queryText]}
+                                  >
+                                    <span>{tracked[queryText] ? "Tracked" : "Track keyword"}</span>
+                                    <span className="text-xs text-muted-foreground">{tracking[queryText] ? "…" : ""}</span>
+                                  </button>
+                                )}
+                                {href ? (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
+                                  >
+                                    <span>{title === "Queries" ? "Open Google" : "Open page"}</span>
+                                    <ExternalLinkIcon />
+                                  </a>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() => onToggleSaved(rowKey)}
+                                  className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
+                                >
+                                  <span>{saved.has(rowKey) ? "Saved" : "Save"}</span>
+                                  <StarIcon filled={saved.has(rowKey)} />
+                                </button>
+                              </div>
+                            </MobileOverflowMenu>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="invisible">—</span>
+                    )}
                   </td>
                   <td className={cn("px-5 text-right tabular-nums", TABLE_CELL_Y)}>
                     {r ? (
@@ -365,81 +438,6 @@ export function ToggleChangeTableCard({
                       </span>
                     ) : (
                       <span className="invisible">0</span>
-                    )}
-                  </td>
-                  <td className={cn("px-3", TABLE_CELL_Y)}>
-                    {showActions ? (
-                      <div className="flex items-center justify-end">
-                        <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {title === "Queries" && (
-                            <ActionButton
-                              title={tracked[queryText] ? "Tracked" : tracking[queryText] ? "Tracking…" : "Track keyword"}
-                              onClick={() => onTrack(queryText)}
-                              className={cn(tracked[queryText] ? "text-positive" : undefined)}
-                            >
-                              <PlusIcon />
-                            </ActionButton>
-                          )}
-                          {href ? (
-                            <a
-                              href={href}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-                              aria-label={title === "Queries" ? "Open Google search" : "Open page"}
-                              title={title === "Queries" ? "Open Google search" : "Open page"}
-                            >
-                              <ExternalLinkIcon />
-                            </a>
-                          ) : null}
-                          <ActionButton title={saved.has(rowKey) ? "Saved" : "Save"} onClick={() => onToggleSaved(rowKey)}>
-                            <StarIcon filled={saved.has(rowKey)} />
-                          </ActionButton>
-                        </div>
-                        <div className="md:hidden">
-                          <MobileOverflowMenu
-                            buttonLabel="Row actions"
-                            align="right"
-                            buttonClassName="h-9 w-9"
-                            panelClassName="p-1"
-                          >
-                            <div className="flex flex-col">
-                              {title === "Queries" && (
-                                <button
-                                  type="button"
-                                  onClick={() => onTrack(queryText)}
-                                  className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
-                                  disabled={tracking[queryText] || tracked[queryText]}
-                                >
-                                  <span>{tracked[queryText] ? "Tracked" : "Track keyword"}</span>
-                                  <span className="text-xs text-muted-foreground">{tracking[queryText] ? "…" : ""}</span>
-                                </button>
-                              )}
-                              {href ? (
-                                <a
-                                  href={href}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
-                                >
-                                  <span>{title === "Queries" ? "Open Google" : "Open page"}</span>
-                                  <ExternalLinkIcon />
-                                </a>
-                              ) : null}
-                              <button
-                                type="button"
-                                onClick={() => onToggleSaved(rowKey)}
-                                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent"
-                              >
-                                <span>{saved.has(rowKey) ? "Saved" : "Save"}</span>
-                                <StarIcon filled={saved.has(rowKey)} />
-                              </button>
-                            </div>
-                          </MobileOverflowMenu>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="invisible">—</span>
                     )}
                   </td>
                 </tr>

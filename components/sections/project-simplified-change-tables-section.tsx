@@ -1,5 +1,5 @@
 import type { DataTableRow } from "@/components/data-table";
-import { ChangeTableCard } from "@/components/change-table-card";
+import { ToggleChangeTableCard } from "@/components/toggle-change-table-card";
 
 function toSlugLabel(url: string): { label: string; title: string } {
   try {
@@ -36,28 +36,51 @@ export function ProjectSimplifiedChangeTablesSection({
 }) {
   const analysisHref = `/sites/${encodeURIComponent(propertyId)}?tab=analysis`;
 
-  const risingQueries = rising(queriesRows).map((r) => ({ label: r.key, clicks: r.clicks, changePercent: r.changePercent, title: r.key }));
-  const droppingQueries = dropping(queriesRows).map((r) => ({ label: r.key, clicks: r.clicks, changePercent: r.changePercent, title: r.key }));
+  const risingQueries = rising(queriesRows).map((r) => ({
+    key: r.key,
+    label: r.key,
+    clicks: r.clicks,
+    changePercent: r.changePercent,
+    title: r.key,
+  }));
+  const droppingQueries = dropping(queriesRows).map((r) => ({
+    key: r.key,
+    label: r.key,
+    clicks: r.clicks,
+    changePercent: r.changePercent,
+    title: r.key,
+  }));
   const risingPages = rising(pagesRows).map((r) => {
     const s = toSlugLabel(r.key);
-    return { label: s.label, clicks: r.clicks, changePercent: r.changePercent, title: s.title };
+    return { key: r.key, label: s.label, clicks: r.clicks, changePercent: r.changePercent, title: s.title, url: r.key };
   });
   const droppingPages = dropping(pagesRows).map((r) => {
     const s = toSlugLabel(r.key);
-    return { label: s.label, clicks: r.clicks, changePercent: r.changePercent, title: s.title };
+    return { key: r.key, label: s.label, clicks: r.clicks, changePercent: r.changePercent, title: s.title, url: r.key };
   });
 
   return (
     <section aria-label="Changes" className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
-        <ChangeTableCard title="Rising queries" variant="rising" rows={risingQueries} viewMoreHref={analysisHref} />
-        <ChangeTableCard title="Dropping queries" variant="dropping" rows={droppingQueries} viewMoreHref={analysisHref} />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
-        <ChangeTableCard title="Rising pages" variant="rising" rows={risingPages} viewMoreHref={analysisHref} />
-        <ChangeTableCard title="Dropping pages" variant="dropping" rows={droppingPages} viewMoreHref={analysisHref} />
+        <ToggleChangeTableCard
+          propertyId={propertyId}
+          title="Queries"
+          scope="queries"
+          risingRows={risingQueries}
+          droppingRows={droppingQueries}
+          viewMoreHref={analysisHref}
+          maxRows={8}
+        />
+        <ToggleChangeTableCard
+          propertyId={propertyId}
+          title="Pages"
+          scope="pages"
+          risingRows={risingPages}
+          droppingRows={droppingPages}
+          viewMoreHref={analysisHref}
+          maxRows={8}
+        />
       </div>
     </section>
   );
 }
-

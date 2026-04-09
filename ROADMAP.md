@@ -9,6 +9,7 @@
 - Wire AI Insights panel to MCP tools for project-scoped queries.
 - Fix chart vertical clipping and compress mobile header controls.
 - Make mobile date range and spark toggles menus reliable (no overflow clipping).
+- Refactor mobile dashboard cards for scanable collapsed details.
 
 ## Next
 

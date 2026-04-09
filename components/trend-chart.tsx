@@ -91,9 +91,9 @@ function getEngineMetricStroke(engine: SearchEngine, metric: SparkSeriesKey): st
 }
 
 /** Metric → line style (strokeDasharray, strokeWidth). */
-const METRIC_STYLE: Record<SparkSeriesKey, { strokeDasharray?: string; strokeWidth: number }> = {
-  clicks: { strokeWidth: 2.5 },
-  impressions: { strokeDasharray: "6 4", strokeWidth: 2 },
+const METRIC_STYLE: Record<SparkSeriesKey, { strokeDasharray?: string; strokeWidth: number; strokeOpacity?: number }> = {
+  clicks: { strokeWidth: 2 },
+  impressions: { strokeWidth: 1.5, strokeOpacity: 0.75 },
   ctr: { strokeDasharray: "2 2", strokeWidth: 1.2 },
   position: { strokeWidth: 1.2 },
 };
@@ -175,6 +175,7 @@ type SparklineSeriesDescriptor = {
   stroke: string;
   strokeDasharray?: string;
   strokeWidth: number;
+  strokeOpacity?: number;
   connectNulls?: boolean;
 };
 
@@ -368,8 +369,6 @@ export function TrendChart({
       for (const s of engineMetrics) {
         const dataKey = `${engine}_${s.dataKey}`;
         const metricStyle = METRIC_STYLE[s.key];
-        const isBingOverlay = engine === "bing";
-        const bingDash = isBingOverlay && s.key === "impressions" ? "6 4" : undefined;
         pairs.push({
           metric: s.key,
           engine,
@@ -377,7 +376,7 @@ export function TrendChart({
           label: `${s.label} (${engine === "google" ? "Google" : "Bing"})`,
           stroke: getEngineMetricStroke(engine, s.key),
           strokeWidth: metricStyle.strokeWidth,
-          strokeDasharray: isBingOverlay ? bingDash : metricStyle.strokeDasharray,
+          strokeDasharray: metricStyle.strokeDasharray,
         });
       }
     }
@@ -818,10 +817,9 @@ export function TrendChart({
                 type="monotone"
                 dataKey="impressions"
                 stroke={CHART_IMPRESSIONS}
-                strokeWidth={2}
-                strokeDasharray={showClicks ? "6 4" : undefined}
+                strokeWidth={1.5}
                 dot={false}
-                strokeOpacity={0.85}
+                strokeOpacity={0.75}
                 name="Impressions"
                 {...(useDualAxis && { yAxisId: "right" })}
               />
@@ -904,6 +902,7 @@ export function Sparkline({
     const out: SparklineSeriesDescriptor[] = [];
     if (!bingOnly) {
       for (const s of googleVisible) {
+        const metricStyle = METRIC_STYLE[s.key];
         out.push({
           id: `google_${s.key}`,
           label: `${s.label} (Google)`,
@@ -911,7 +910,8 @@ export function Sparkline({
           dataKey: `google_${s.key}`,
           rawValueKey: `_raw_google_${s.key}`,
           stroke: s.stroke,
-          strokeWidth: 1.4,
+          strokeWidth: s.key === "clicks" ? 1.6 : s.key === "impressions" ? 1.2 : 1,
+          strokeOpacity: metricStyle.strokeOpacity,
         });
       }
     }
@@ -923,7 +923,7 @@ export function Sparkline({
         dataKey: "bing_clicks",
         rawValueKey: "_raw_bing_clicks",
         stroke: CHART_ENGINE_BING_CLICKS,
-        strokeWidth: 1.4,
+        strokeWidth: 1.6,
         connectNulls: true,
       });
       out.push({
@@ -933,8 +933,8 @@ export function Sparkline({
         dataKey: "bing_impressions",
         rawValueKey: "_raw_bing_impressions",
         stroke: CHART_ENGINE_BING_IMPRESSIONS,
-        strokeWidth: 1.4,
-        strokeDasharray: "6 4",
+        strokeWidth: 1.2,
+        strokeOpacity: 0.75,
         connectNulls: true,
       });
     }
@@ -1132,7 +1132,7 @@ export function Sparkline({
                 connectNulls={s.connectNulls}
                 dot={false}
                 activeDot={{ r: 3, strokeWidth: 1.5, stroke: "var(--surface)", fill: s.stroke }}
-                strokeOpacity={0.9}
+                strokeOpacity={s.strokeOpacity ?? 0.9}
               />
             );
           })}

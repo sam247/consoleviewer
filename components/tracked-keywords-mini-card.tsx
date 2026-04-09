@@ -5,6 +5,10 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { TableCard } from "@/components/ui/table-card";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { SortableHeader } from "@/components/ui/sortable-header";
+import { ReportModal } from "@/components/report-modal";
+import { exportToCsv } from "@/lib/export-csv";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -26,6 +30,8 @@ type TrackedKeywordsResponse = {
   keywords: KeywordRow[];
   error?: string;
 };
+
+type KeywordSortKey = "keyword" | "position" | "delta7d";
 
 async function fetchTrackedKeywords(propertyId: string): Promise<TrackedKeywordsResponse> {
   const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/tracked-keywords`, { cache: "no-store" });
@@ -63,6 +69,9 @@ export function TrackedKeywordsMiniCard({
 }) {
   const queryClient = useQueryClient();
   const queryKey = ["serprobotKeywords", propertyId] as const;
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("");
+  const { sortKey, sortDir, onSort } = useTableSort<KeywordSortKey>("position", "asc");
 
   const { data } = useQuery({
     queryKey,
@@ -78,13 +87,31 @@ export function TrackedKeywordsMiniCard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const rows = useMemo(() => {
+  const sortedAll = useMemo(() => {
     const raw = data?.configured ? (data.keywords ?? []) : [];
+    const dir = sortDir === "asc" ? 1 : -1;
     return [...raw]
       .filter((r) => r.keyword)
-      .sort((a, b) => Math.abs(b.delta7d ?? 0) - Math.abs(a.delta7d ?? 0))
-      .slice(0, maxRows);
-  }, [data?.configured, data?.keywords, maxRows]);
+      .sort((a, b) => {
+        if (sortKey === "keyword") return dir * a.keyword.localeCompare(b.keyword);
+        if (sortKey === "position") {
+          const aV = a.position ?? Infinity;
+          const bV = b.position ?? Infinity;
+          return dir * (aV - bV);
+        }
+        const aV = a.delta7d ?? 0;
+        const bV = b.delta7d ?? 0;
+        return dir * (aV - bV);
+      });
+  }, [data?.configured, data?.keywords, sortDir, sortKey]);
+
+  const rows = useMemo(() => sortedAll.slice(0, maxRows), [maxRows, sortedAll]);
+
+  const filteredAll = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return sortedAll;
+    return sortedAll.filter((r) => r.keyword.toLowerCase().includes(q));
+  }, [filter, sortedAll]);
 
   const onAdd = async () => {
     const next = phrase.trim();
@@ -137,54 +164,63 @@ export function TrackedKeywordsMiniCard({
       title={<span className="text-sm font-semibold text-foreground">Tracked keywords</span>}
       subtitle="Add fast · Track daily"
       action={
-        <Link href={viewAllHref} className="text-xs text-muted-foreground hover:text-foreground underline" aria-label="View all tracked keywords">
-          View all
-        </Link>
-      }
-      className={cn("min-w-0", className)}
-    >
-      <div className="px-5 pt-3">
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          <input
-            value={phrase}
-            onChange={(e) => setPhrase(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                onAdd();
-              }
-            }}
-            placeholder="Add keyword"
-            className="min-h-[40px] flex-1 min-w-0 rounded-md border border-input bg-background px-3 text-sm"
-          />
-          <select
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            className="min-h-[40px] w-[72px] rounded-md border border-input bg-background px-2 text-sm text-muted-foreground"
-            aria-label="Search region"
-          >
-            {REGIONS.map((r) => (
-              <option key={r.value} value={r.value}>{r.label}</option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
-            onClick={onAdd}
-            disabled={!phrase.trim() || saving}
-            className="min-h-[40px] w-[64px] rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+            onClick={() => setOpen(true)}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
           >
-            Add
+            View full report
           </button>
+          <div className="flex items-center gap-2">
+            <input
+              value={phrase}
+              onChange={(e) => setPhrase(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onAdd();
+                }
+              }}
+              placeholder="Add keyword"
+              className="h-9 w-[220px] max-w-[45vw] rounded-md border border-input bg-background px-3 text-sm"
+            />
+            <select
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              className="h-9 w-[72px] rounded-md border border-input bg-background px-2 text-sm text-muted-foreground"
+              aria-label="Search region"
+            >
+              {REGIONS.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={onAdd}
+              disabled={!phrase.trim() || saving}
+              className="h-9 w-[64px] rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+          <Link href={viewAllHref} className="text-xs text-muted-foreground hover:text-foreground underline" aria-label="Open tracked keywords in Analysis">
+            View all
+          </Link>
         </div>
-        {error && <p className="mt-2 text-xs text-negative">{error}</p>}
-      </div>
-      <div className="overflow-x-auto">
+      }
+      className={cn("min-w-0 min-h-[360px]", className)}
+    >
+      {error && <div className="px-5 pt-3"><p className="text-xs text-negative">{error}</p></div>}
+      <div className="max-h-[280px] overflow-auto">
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
-              <th className={cn("px-5 font-semibold text-left w-[60%]", TABLE_CELL_Y)}>Keyword</th>
-              <th className={cn("px-5 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Pos</th>
-              <th className={cn("px-5 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Chg</th>
+              <SortableHeader label="Keyword" column="keyword" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-[60%]" />
+              <SortableHeader label="Pos" column="position" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
+              <SortableHeader label="Chg" column="delta7d" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
             </tr>
           </thead>
           <tbody>
@@ -228,6 +264,78 @@ export function TrackedKeywordsMiniCard({
           </tbody>
         </table>
       </div>
+
+      <ReportModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Tracked keywords"
+        subtitle="Add fast · Track daily"
+        actions={
+          <button
+            type="button"
+            onClick={() => {
+              exportToCsv(
+                filteredAll.map((r) => ({
+                  keyword: r.keyword,
+                  position: r.position ?? undefined,
+                  delta1d: r.delta1d,
+                  delta7d: r.delta7d,
+                  status: r.status,
+                })),
+                "tracked-keywords.csv"
+              );
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Export CSV
+          </button>
+        }
+        search={
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filter keywords"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          />
+        }
+      >
+        <table className={TABLE_BASE_CLASS}>
+          <thead className={TABLE_HEAD_CLASS}>
+            <tr>
+              <SortableHeader label="Keyword" column="keyword" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-[60%]" />
+              <SortableHeader label="Pos" column="position" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
+              <SortableHeader label="Chg" column="delta7d" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
+            </tr>
+          </thead>
+          <tbody>
+            {filteredAll.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="px-4 py-6 text-center text-xs text-muted-foreground">
+                  No rows to display.
+                </td>
+              </tr>
+            ) : (
+              filteredAll.map((r) => (
+                <tr key={r.id ?? r.keyword} className={TABLE_ROW_CLASS}>
+                  <td className={cn("px-4 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.keyword}>
+                    {r.keyword}
+                  </td>
+                  <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
+                    {r.position != null ? r.position.toFixed(1) : "—"}
+                  </td>
+                  <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
+                    {r.delta7d ? (
+                      <span className={r.delta7d < 0 ? "text-positive" : "text-negative"}>{changeLabel(r.delta7d)}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </ReportModal>
     </TableCard>
   );
 }

@@ -12,8 +12,29 @@ import {
   TABLE_ROW_CLASS,
 } from "@/components/ui/table-styles";
 import { MobileOverflowMenu } from "@/components/ui/mobile-overflow-menu";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { SortableHeader } from "@/components/ui/sortable-header";
+import { ReportModal } from "@/components/report-modal";
+import { exportToCsv } from "@/lib/export-csv";
 
 type Variant = "rising" | "dropping";
+
+type ChangeSortKey = "label" | "clicks" | "impressions" | "changePercent" | "impressionsChangePercent";
+
+function getSortValue(row: ToggleChangeRow, key: ChangeSortKey): string | number {
+  switch (key) {
+    case "label":
+      return row.label;
+    case "clicks":
+      return row.clicks;
+    case "impressions":
+      return row.impressions;
+    case "changePercent":
+      return row.changePercent ?? -Infinity;
+    case "impressionsChangePercent":
+      return row.impressionsChangePercent ?? -Infinity;
+  }
+}
 
 export type ToggleChangeRow = {
   key: string;
@@ -184,12 +205,22 @@ export function ToggleChangeTableCard({
 }) {
   const queryClient = useQueryClient();
   const [variant, setVariant] = useState<Variant>("rising");
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("");
+  const { sortKey, sortDir, onSort } = useTableSort<ChangeSortKey>("clicks");
   const [tracking, setTracking] = useState<Record<string, boolean>>({});
   const [tracked, setTracked] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState<Set<string>>(() => readSaved(scope, propertyId));
 
   const activeRows = variant === "rising" ? risingRows : droppingRows;
-  const limited = useMemo(() => activeRows.slice(0, maxRows), [activeRows, maxRows]);
+  const sortedActive = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...activeRows].sort((a, b) => {
+      if (sortKey === "label") return dir * String(getSortValue(a, sortKey)).localeCompare(String(getSortValue(b, sortKey)));
+      return dir * (Number(getSortValue(a, sortKey)) - Number(getSortValue(b, sortKey)));
+    });
+  }, [activeRows, sortDir, sortKey]);
+  const limited = useMemo(() => sortedActive.slice(0, maxRows), [maxRows, sortedActive]);
   const risingCount = risingRows.length;
   const droppingCount = droppingRows.length;
 
@@ -211,6 +242,13 @@ export function ToggleChangeTableCard({
           Dropping
         </TogglePill>
       </div>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-xs text-muted-foreground hover:text-foreground underline"
+      >
+        View full report
+      </button>
       <Link href={viewMoreHref} className="text-xs text-muted-foreground hover:text-foreground underline" aria-label={`View more for ${title}`}>
         View more
       </Link>
@@ -242,15 +280,30 @@ export function ToggleChangeTableCard({
       title={<span className="text-sm font-semibold text-foreground">{title}</span>}
       subtitle={subtitle}
       action={toggleAction}
-      className={cn("min-w-0", className)}
+      className={cn("min-w-0 min-h-[360px]", className)}
     >
-      <div className="overflow-x-auto">
+      <div className="max-h-[280px] overflow-auto">
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
-              <th className={cn("px-5 font-semibold text-left w-[60%]", TABLE_CELL_Y)}>{title === "Queries" ? "Query" : "URL"}</th>
-              <th className={cn("px-5 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Clicks</th>
-              <th className={cn("px-5 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Impr.</th>
+              <SortableHeader
+                label={title === "Queries" ? "Query" : "URL"}
+                column="label"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={onSort}
+                align="left"
+                className="w-[60%]"
+              />
+              <SortableHeader label="Clicks" column="clicks" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
+              <SortableHeader
+                label="Impr."
+                column="impressions"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={onSort}
+                className="w-[20%]"
+              />
               <th className={cn("px-3 font-semibold text-right w-[1%]", TABLE_CELL_Y)} aria-label="Actions" />
             </tr>
           </thead>
@@ -398,6 +451,115 @@ export function ToggleChangeTableCard({
       {limited.length === 0 && (
         <div className="px-5 pb-4 pt-2 text-xs text-muted-foreground">No {variant} items in this period.</div>
       )}
+
+      <ReportModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={title}
+        subtitle={variant === "rising" ? "Rising" : "Dropping"}
+        actions={
+          <button
+            type="button"
+            onClick={() => {
+              const rowsToExport = (variant === "rising" ? risingRows : droppingRows).map((r) => ({
+                label: r.label,
+                clicks: r.clicks,
+                clicksDeltaPercent: r.changePercent,
+                impressions: r.impressions,
+                impressionsDeltaPercent: r.impressionsChangePercent,
+              }));
+              exportToCsv(rowsToExport, `${title.toLowerCase()}-${variant}.csv`);
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Export CSV
+          </button>
+        }
+        search={
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder={`Filter ${title.toLowerCase()}`}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          />
+        }
+      >
+        <div className="px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1 rounded-md border border-input bg-background p-0.5">
+            <TogglePill active={variant === "rising"} onClick={() => setVariant("rising")}>
+              Rising
+            </TogglePill>
+            <TogglePill active={variant === "dropping"} onClick={() => setVariant("dropping")}>
+              Dropping
+            </TogglePill>
+          </div>
+          <span className="text-xs text-muted-foreground">Rising: +{risingCount} • Dropping: -{droppingCount}</span>
+        </div>
+        <table className={TABLE_BASE_CLASS}>
+          <thead className={TABLE_HEAD_CLASS}>
+            <tr>
+              <SortableHeader
+                label={title === "Queries" ? "Query" : "URL"}
+                column="label"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={onSort}
+                align="left"
+                className="w-[55%]"
+              />
+              <SortableHeader label="Clicks" column="clicks" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[22%]" />
+              <SortableHeader label="Impr." column="impressions" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[23%]" />
+            </tr>
+          </thead>
+          <tbody>
+            {(() => {
+              const base = variant === "rising" ? risingRows : droppingRows;
+              const q = filter.trim().toLowerCase();
+              const filteredRows = q ? base.filter((r) => r.label.toLowerCase().includes(q)) : base;
+              const dir = sortDir === "asc" ? 1 : -1;
+              const sortedRows = [...filteredRows].sort((a, b) => {
+                if (sortKey === "label") return dir * String(getSortValue(a, sortKey)).localeCompare(String(getSortValue(b, sortKey)));
+                return dir * (Number(getSortValue(a, sortKey)) - Number(getSortValue(b, sortKey)));
+              });
+              return sortedRows.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-6 text-center text-xs text-muted-foreground">
+                    No rows to display.
+                  </td>
+                </tr>
+              ) : (
+                sortedRows.map((r) => {
+                  const clicksDelta = formatDelta(r.changePercent);
+                  const imprDelta = formatDelta(r.impressionsChangePercent);
+                  return (
+                    <tr key={r.key} className={TABLE_ROW_CLASS}>
+                      <td className={cn("px-4 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.title ?? r.label}>
+                        {r.label}
+                      </td>
+                      <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
+                        <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
+                          <span className="text-foreground">{formatNum(r.clicks)}</span>
+                          <span className={cn("text-xs", clicksDelta.tone === "positive" ? "text-positive" : clicksDelta.tone === "negative" ? "text-negative" : "text-muted-foreground")}>
+                            ({clicksDelta.text})
+                          </span>
+                        </span>
+                      </td>
+                      <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
+                        <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
+                          <span className="text-foreground">{formatNum(r.impressions)}</span>
+                          <span className={cn("text-xs", imprDelta.tone === "positive" ? "text-positive" : imprDelta.tone === "negative" ? "text-negative" : "text-muted-foreground")}>
+                            ({imprDelta.text})
+                          </span>
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              );
+            })()}
+          </tbody>
+        </table>
+      </ReportModal>
     </TableCard>
   );
 }

@@ -1,11 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { DataTableRow } from "@/components/data-table";
 import { isConversational, isLongForm } from "@/lib/ai-query-detection";
 import { cn } from "@/lib/utils";
 import { TableCard } from "@/components/ui/table-card";
+import { useTableSort } from "@/hooks/use-table-sort";
+import { SortableHeader } from "@/components/ui/sortable-header";
+import { ReportModal } from "@/components/report-modal";
+import { exportToCsv } from "@/lib/export-csv";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -66,20 +69,24 @@ function formatSignedPercent(value?: number): string {
   return `${arrow} ${v >= 0 ? "+" : ""}${v}%`;
 }
 
+type TrendsSortKey = "label" | "impressions" | "changePercent";
+
 export function AiQueriesTrackerCard({
   queries,
-  viewAllHref,
   siteUrl,
   maxRows = 8,
   className,
 }: {
   queries: DataTableRow[];
-  viewAllHref: string;
   siteUrl?: string;
   maxRows?: number;
   className?: string;
 }) {
-  const rows = useMemo(() => {
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("");
+  const { sortKey, sortDir, onSort } = useTableSort<TrendsSortKey>("impressions");
+
+  const allRows = useMemo(() => {
     const brandTokens = (() => {
       if (!siteUrl) return [] as string[];
       try {
@@ -108,29 +115,51 @@ export function AiQueriesTrackerCard({
       const avg = totalW > 0 ? agg.change.reduce((s, x) => s + x.w * x.v, 0) / totalW : undefined;
       return { label, clicks: agg.clicks, impressions: agg.impressions, changePercent: avg, count: agg.count };
     });
-    return out
-      .sort((a, b) => b.impressions - a.impressions)
-      .slice(0, maxRows);
-  }, [maxRows, queries, siteUrl]);
+    return out;
+  }, [queries, siteUrl]);
+
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return allRows;
+    return allRows.filter((r) => r.label.toLowerCase().includes(q));
+  }, [allRows, filter]);
+
+  const sorted = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      if (sortKey === "label") return dir * a.label.localeCompare(b.label);
+      const aVal = a[sortKey] ?? 0;
+      const bVal = b[sortKey] ?? 0;
+      return dir * (Number(aVal) - Number(bVal));
+    });
+  }, [filtered, sortDir, sortKey]);
+
+  const rows = useMemo(() => sorted.slice(0, maxRows), [maxRows, sorted]);
 
   return (
     <TableCard
-      title={<span className="text-sm font-semibold text-foreground">Search signals</span>}
-      subtitle="Intent clusters"
+      title={<span className="text-sm font-semibold text-foreground">Search trends</span>}
+      subtitle="Search intent trends based on query patterns"
       action={
-        <Link href={viewAllHref} className="text-xs text-muted-foreground hover:text-foreground underline" aria-label="View all AI query clusters">
-          View all
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            View full report
+          </button>
+        </div>
       }
-      className={cn("min-w-0", className)}
+      className={cn("min-w-0 min-h-[360px]", className)}
     >
-      <div className="overflow-x-auto">
+      <div className="max-h-[280px] overflow-auto">
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
-              <th className={cn("px-5 font-semibold text-left w-[60%]", TABLE_CELL_Y)}>Signal</th>
-              <th className={cn("px-5 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Impr.</th>
-              <th className={cn("px-5 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Chg</th>
+              <SortableHeader label="Segment" column="label" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-[60%]" />
+              <SortableHeader label="Impr." column="impressions" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
+              <SortableHeader label="Change" column="changePercent" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
             </tr>
           </thead>
           <tbody>
@@ -138,10 +167,7 @@ export function AiQueriesTrackerCard({
               rows.map((r) => (
                 <tr key={r.label} className={TABLE_ROW_CLASS}>
                   <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.label}>
-                    <span className="flex items-center justify-between gap-2 min-w-0">
-                      <span className="truncate">{r.label}</span>
-                      <span className="shrink-0 text-[10px] text-muted-foreground">{r.count}</span>
-                    </span>
+                    <span className="truncate">{r.label}</span>
                   </td>
                   <td className={cn("px-5 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                     {r.impressions.toLocaleString()}
@@ -160,13 +186,90 @@ export function AiQueriesTrackerCard({
             ) : (
               <tr>
                 <td colSpan={3} className="px-5 py-6 text-center text-sm text-muted-foreground">
-                  No AI-style query clusters.
+                  No search trends in this period.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <ReportModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Search trends"
+        subtitle="Search intent trends based on query patterns"
+        actions={
+          <button
+            type="button"
+            onClick={() => {
+              exportToCsv(
+                sorted.map((r) => ({
+                  segment: r.label,
+                  impressions: r.impressions,
+                  changePercent: r.changePercent,
+                  queryCount: r.count,
+                })),
+                "search-trends.csv"
+              );
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Export CSV
+          </button>
+        }
+        search={
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filter segments"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          />
+        }
+      >
+        <table className={TABLE_BASE_CLASS}>
+          <thead className={TABLE_HEAD_CLASS}>
+            <tr>
+              <SortableHeader label="Segment" column="label" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-[55%]" />
+              <SortableHeader label="Impr." column="impressions" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
+              <SortableHeader label="Change" column="changePercent" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[15%]" />
+              <th className={cn("px-4 font-semibold text-right w-[10%]", TABLE_CELL_Y)}>Queries</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-xs text-muted-foreground">
+                  No rows to display.
+                </td>
+              </tr>
+            ) : (
+              sorted.map((r) => (
+                <tr key={r.label} className={TABLE_ROW_CLASS}>
+                  <td className={cn("px-4 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.label}>
+                    {r.label}
+                  </td>
+                  <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
+                    {r.impressions.toLocaleString()}
+                  </td>
+                  <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
+                    {r.changePercent != null ? (
+                      <span className={r.changePercent >= 0 ? "text-positive" : "text-negative"}>
+                        {formatSignedPercent(r.changePercent)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
+                    {r.count}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </ReportModal>
     </TableCard>
   );
 }

@@ -15,6 +15,8 @@
 - Add lightweight signals strip and “Customise dashboard” metric launcher.
 - Restore metric toggles and add keyword flow on Project Overview.
 - Make Project Overview change tables toggle-based with row actions.
+- Improve Project header identity and graph toggle/compare UX.
+- Make Project Overview cards sortable with full-report modals.
 - Move project date/compare controls into graph header and add impressions deltas.
 
 ## Next

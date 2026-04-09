@@ -14,6 +14,8 @@ import { ProjectSimplifiedTrendSection } from "@/components/sections/project-sim
 import { ProjectSimplifiedTrackersSection } from "@/components/sections/project-simplified-trackers-section";
 import { ProjectSimplifiedChangeTablesSection } from "@/components/sections/project-simplified-change-tables-section";
 import { ProjectAnalysisTab } from "@/components/sections/project-analysis-tab";
+import { LightSignalsStrip } from "@/components/light-signals-strip";
+import { CustomizeDashboardCard } from "@/components/customize-dashboard-card";
 
 export default function SiteDetailPage({
   params,
@@ -132,9 +134,17 @@ export default function SiteDetailPage({
                 />
               ) : (
                 <>
-                  <ProjectSimplifiedTrendSection data={data} />
-                  <ProjectSimplifiedTrackersSection propertyId={propertyId} queriesRows={queriesRows} />
+                  <ProjectSimplifiedTrendSection data={data} propertyId={propertyId} />
+                  <LightSignalsStrip
+                    summary={data.summary}
+                    newQueries={data.newQueries}
+                    lostQueries={data.lostQueries}
+                    pagesRows={pagesRows}
+                    className="-mt-2"
+                  />
+                  <ProjectSimplifiedTrackersSection propertyId={propertyId} queriesRows={queriesRows} siteUrl={siteUrl} />
                   <ProjectSimplifiedChangeTablesSection propertyId={propertyId} queriesRows={queriesRows} pagesRows={pagesRows} />
+                  <CustomizeDashboardCard propertyId={propertyId} />
                 </>
               )}
             </div>

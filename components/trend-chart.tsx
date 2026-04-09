@@ -56,6 +56,7 @@ interface TrendChartProps {
   dataByEngine?: { google: DataPoint[]; bing?: DataPoint[] };
   selectedEngines?: SearchEngine[];
   height?: number;
+  showClicks?: boolean;
   showImpressions?: boolean;
   useSeriesContext?: boolean;
   compareToPrior?: boolean;
@@ -307,6 +308,7 @@ export function TrendChart({
   dataByEngine,
   selectedEngines = ["google"],
   height = CHART_PLOT_H.secondary,
+  showClicks: showClicksProp = true,
   showImpressions = true,
   useSeriesContext = false,
   compareToPrior = false,
@@ -339,7 +341,7 @@ export function TrendChart({
   );
   const yAxisWidth = height >= CHART_PLOT_H.primary ? CHART_Y_AXIS_WIDTH_PRIMARY : CHART_Y_AXIS_WIDTH_SECONDARY;
 
-  const showClicks = useSeriesContext ? series?.clicks !== false : true;
+  const showClicks = useSeriesContext ? series?.clicks !== false : showClicksProp !== false;
   const showImpr = useSeriesContext ? series?.impressions !== false : showImpressions;
   const showCtr = useSeriesContext ? series?.ctr === true : false;
   const showPosition = useSeriesContext ? series?.position === true : false;
@@ -600,7 +602,7 @@ export function TrendChart({
     ? perEngineSeriesToShow.length > 0
     : useSeriesContext
       ? visibleSeries.length > 0
-      : true;
+      : showClicks || showImpr;
 
   if (!hasSelectedSeries) {
     return (
@@ -637,7 +639,7 @@ export function TrendChart({
         <LineChart data={chartData} margin={marginWithDualAxis}>
           <defs>
             <linearGradient id="trend-fill-clicks" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={CHART_CLICKS} stopOpacity={0.2} />
+              <stop offset="0%" stopColor={CHART_CLICKS} stopOpacity={0.24} />
               <stop offset="100%" stopColor={CHART_CLICKS} stopOpacity={0} />
             </linearGradient>
           </defs>
@@ -789,7 +791,7 @@ export function TrendChart({
                 type="monotone"
                 dataKey="clicks"
                 stroke={CHART_CLICKS}
-                strokeWidth={2.5}
+                strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 3, strokeWidth: 1.5, fill: CHART_CLICKS, stroke: "var(--surface)" }}
                 name="Clicks"

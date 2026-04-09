@@ -10,9 +10,13 @@
 - Fix chart vertical clipping and compress mobile header controls.
 - Make mobile date range and spark toggles menus reliable (no overflow clipping).
 - Refactor mobile dashboard cards for scanable collapsed details.
+- Simplify Project View layout (overview tab) with trackers + change tables.
+- Standardize clicks/impressions chart styling across charts and sparklines.
+- Add lightweight signals strip and “Customise dashboard” metric launcher.
+- Restore metric toggles and add keyword flow on Project Overview.
 
 ## Next
 
-- Unify chart styling tokens across all cards/sections (grid, axes, tooltips).
+- Move remaining charts onto the unified styling contract (position/branded).
 - Add optional compact y-scale hints for sparklines (e.g. min/max labels).
 - Review other mini-charts (tracked keywords, table sparklines) for consistency.

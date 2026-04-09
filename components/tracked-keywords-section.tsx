@@ -72,9 +72,9 @@ function MiniSparkline({ data }: { data: number[] }) {
           <Line
             type="monotone"
             dataKey="value"
-            stroke="var(--muted-foreground)"
-            strokeOpacity={0.7}
-            strokeWidth={1}
+            stroke="var(--chart-clicks)"
+            strokeOpacity={0.85}
+            strokeWidth={1.2}
             dot={false}
             isAnimationActive={false}
           />

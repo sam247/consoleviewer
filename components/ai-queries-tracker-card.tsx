@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import type { DataTableRow } from "@/components/data-table";
-import { classifyQuery, isConversational, isLongForm } from "@/lib/ai-query-detection";
+import { isConversational, isLongForm } from "@/lib/ai-query-detection";
 import { cn } from "@/lib/utils";
 import { TableCard } from "@/components/ui/table-card";
 import {
@@ -14,23 +14,48 @@ import {
 } from "@/components/ui/table-styles";
 
 type ClusterRow = {
-  pattern: string;
+  label: string;
   clicks: number;
   impressions: number;
   changePercent?: number;
   count: number;
 };
 
-function clusterKey(query: string): string | null {
+function normalizeHost(host: string): string[] {
+  return host
+    .toLowerCase()
+    .replace(/^www\./, "")
+    .split(/[\.-]/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 4 && !["shop", "store", "online"].includes(t));
+}
+
+function isComparison(q: string): boolean {
+  return /\b(vs|versus|compare|comparison|difference between)\b/i.test(q);
+}
+
+function isCommercial(q: string): boolean {
+  return /\b(buy|price|cost|deal|discount|coupon|cheap|best|top|review|reviews|sale)\b/i.test(q);
+}
+
+function isProblem(q: string): boolean {
+  return /\b(fix|error|issue|problem|not working|broken|doesn't|won't|troubleshoot)\b/i.test(q);
+}
+
+function isQuestion(q: string): boolean {
+  const start = /^(how|what|why|when|where|who|can|should|is|are|does|do|which)\b/i;
+  return start.test(q) || isConversational(q);
+}
+
+function clusterKey(query: string, brandTokens: string[]): string | null {
   const q = query.trim();
   if (!q) return null;
-  if (isConversational(q)) {
-    const first = q.split(/\s+/)[0]?.toLowerCase();
-    if (!first) return null;
-    return `${first}*`;
-  }
   if (isLongForm(q)) return "long-form";
-  if (classifyQuery(q) !== "none") return "ai-style";
+  if (isQuestion(q)) return "Questions";
+  if (isComparison(q)) return "Comparisons";
+  if (isCommercial(q)) return "Commercial";
+  if (isProblem(q)) return "Problem-based";
+  if (brandTokens.length > 0 && brandTokens.some((t) => q.toLowerCase().includes(t))) return "Brand / product";
   return null;
 }
 
@@ -44,18 +69,29 @@ function formatSignedPercent(value?: number): string {
 export function AiQueriesTrackerCard({
   queries,
   viewAllHref,
+  siteUrl,
   maxRows = 8,
   className,
 }: {
   queries: DataTableRow[];
   viewAllHref: string;
+  siteUrl?: string;
   maxRows?: number;
   className?: string;
 }) {
   const rows = useMemo(() => {
+    const brandTokens = (() => {
+      if (!siteUrl) return [] as string[];
+      try {
+        const u = new URL(siteUrl);
+        return normalizeHost(u.hostname);
+      } catch {
+        return [] as string[];
+      }
+    })();
     const clusters = new Map<string, { clicks: number; impressions: number; count: number; change: Array<{ w: number; v: number }> }>();
     for (const q of queries) {
-      const key = clusterKey(q.key);
+      const key = clusterKey(q.key, brandTokens);
       if (!key) continue;
       const cur = clusters.get(key) ?? { clicks: 0, impressions: 0, count: 0, change: [] };
       cur.clicks += q.clicks;
@@ -67,20 +103,20 @@ export function AiQueriesTrackerCard({
       }
       clusters.set(key, cur);
     }
-    const out: ClusterRow[] = Array.from(clusters.entries()).map(([pattern, agg]) => {
+    const out: ClusterRow[] = Array.from(clusters.entries()).map(([label, agg]) => {
       const totalW = agg.change.reduce((s, x) => s + x.w, 0);
       const avg = totalW > 0 ? agg.change.reduce((s, x) => s + x.w * x.v, 0) / totalW : undefined;
-      return { pattern, clicks: agg.clicks, impressions: agg.impressions, changePercent: avg, count: agg.count };
+      return { label, clicks: agg.clicks, impressions: agg.impressions, changePercent: avg, count: agg.count };
     });
     return out
       .sort((a, b) => b.impressions - a.impressions)
       .slice(0, maxRows);
-  }, [maxRows, queries]);
+  }, [maxRows, queries, siteUrl]);
 
   return (
     <TableCard
-      title={<span className="text-sm font-semibold text-foreground">AI queries</span>}
-      subtitle="Question-style clusters"
+      title={<span className="text-sm font-semibold text-foreground">Search signals</span>}
+      subtitle="Intent clusters"
       action={
         <Link href={viewAllHref} className="text-xs text-muted-foreground hover:text-foreground underline" aria-label="View all AI query clusters">
           View all
@@ -92,7 +128,7 @@ export function AiQueriesTrackerCard({
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
-              <th className={cn("px-5 font-semibold text-left w-[60%]", TABLE_CELL_Y)}>Query / pattern</th>
+              <th className={cn("px-5 font-semibold text-left w-[60%]", TABLE_CELL_Y)}>Signal</th>
               <th className={cn("px-5 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Impr.</th>
               <th className={cn("px-5 font-semibold text-right w-[20%]", TABLE_CELL_Y)}>Chg</th>
             </tr>
@@ -100,10 +136,10 @@ export function AiQueriesTrackerCard({
           <tbody>
             {rows.length > 0 ? (
               rows.map((r) => (
-                <tr key={r.pattern} className={TABLE_ROW_CLASS}>
-                  <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.pattern}>
+                <tr key={r.label} className={TABLE_ROW_CLASS}>
+                  <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.label}>
                     <span className="flex items-center justify-between gap-2 min-w-0">
-                      <span className="truncate">{r.pattern}</span>
+                      <span className="truncate">{r.label}</span>
                       <span className="shrink-0 text-[10px] text-muted-foreground">{r.count}</span>
                     </span>
                   </td>

@@ -87,7 +87,7 @@ export const CHART_Y_AXIS_WIDTH_SECONDARY = 30;
 export const CHART_GRID_PROPS = {
   stroke: "var(--border)",
   strokeDasharray: "3 4",
-  strokeOpacity: 0.4,
+  strokeOpacity: 0.28,
   vertical: false,
 } as const;
 

@@ -70,60 +70,71 @@ export function ProjectAnalysisTab({
       />
 
       {queriesRows.length > 0 && (
-        <QueryFootprint
-          queries={queriesRows}
-          onBandSelect={onBandSelect}
-          selectedBand={bandFilter}
-          compareToPrior={false}
-        />
+        <div id="query-footprint">
+          <QueryFootprint
+            queries={queriesRows}
+            onBandSelect={onBandSelect}
+            selectedBand={bandFilter}
+            compareToPrior={false}
+          />
+        </div>
       )}
 
       {data.daily.length > 0 && (
-        <VolatilityBrandedSection data={data} daily={data.daily} propertyId={propertyId} />
+        <div id="branded">
+          <VolatilityBrandedSection data={data} daily={data.daily} propertyId={propertyId} />
+        </div>
       )}
 
-      <OpportunitySection
-        queriesRows={queriesRows}
-        pagesRows={pagesRows}
-        siteSlug={siteSlug}
-        siteName={data.siteUrl}
-        startDate={startDate}
-        endDate={endDate}
-        propertyId={propertyId}
-        querySparklines={querySparklines}
-        newQueriesRows={data.newQueries}
-      />
+      <div id="opportunities">
+        <OpportunitySection
+          queriesRows={queriesRows}
+          pagesRows={pagesRows}
+          siteSlug={siteSlug}
+          siteName={data.siteUrl}
+          startDate={startDate}
+          endDate={endDate}
+          propertyId={propertyId}
+          querySparklines={querySparklines}
+          newQueriesRows={data.newQueries}
+        />
+      </div>
 
-      <IndexCannibalisationSection
-        propertyId={propertyId}
-        pagesRows={pagesRows}
-        cannibalisationData={cannibalisationData}
-        cannibalisationLoading={cannibalisationLoading}
-        cannibalisationError={cannibalisationError ?? null}
-      />
+      <div id="cannibalisation">
+        <IndexCannibalisationSection
+          propertyId={propertyId}
+          pagesRows={pagesRows}
+          cannibalisationData={cannibalisationData}
+          cannibalisationLoading={cannibalisationLoading}
+          cannibalisationError={cannibalisationError ?? null}
+        />
+      </div>
 
-      <PerformanceTablesSection
-        data={data}
-        queriesRows={queriesRows}
-        pagesRows={pagesRows}
-        bandFilter={bandFilter}
-        onClearBandFilter={onClearBandFilter}
-        siteSlug={siteSlug}
-        startDate={startDate}
-        endDate={endDate}
-        propertyId={propertyId}
-        querySparklines={querySparklines}
-        queryAppearances={queryAppearances}
-      />
+      <div id="content-groups">
+        <PerformanceTablesSection
+          data={data}
+          queriesRows={queriesRows}
+          pagesRows={pagesRows}
+          bandFilter={bandFilter}
+          onClearBandFilter={onClearBandFilter}
+          siteSlug={siteSlug}
+          startDate={startDate}
+          endDate={endDate}
+          propertyId={propertyId}
+          querySparklines={querySparklines}
+          queryAppearances={queryAppearances}
+        />
+      </div>
 
-      <AddMetricSection
-        countriesRows={data.countries}
-        devicesRows={data.devices}
-        siteSlug={siteSlug}
-        startDate={startDate}
-        endDate={endDate}
-      />
+      <div id="segments">
+        <AddMetricSection
+          countriesRows={data.countries}
+          devicesRows={data.devices}
+          siteSlug={siteSlug}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      </div>
     </div>
   );
 }
-

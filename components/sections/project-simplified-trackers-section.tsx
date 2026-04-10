@@ -11,12 +11,10 @@ export function ProjectSimplifiedTrackersSection({
   queriesRows: DataTableRow[];
   siteUrl?: string;
 }) {
-  const analysisHref = `/sites/${encodeURIComponent(propertyId)}?tab=analysis`;
-
   return (
     <section aria-label="Trackers" className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
-      <AiQueriesTrackerCard queries={queriesRows} siteUrl={siteUrl} className="min-h-[360px]" />
-      <TrackedKeywordsMiniCard propertyId={propertyId} viewAllHref={analysisHref} className="min-h-[360px]" />
+      <AiQueriesTrackerCard queries={queriesRows} siteUrl={siteUrl} className="min-h-[480px]" />
+      <TrackedKeywordsMiniCard propertyId={propertyId} className="min-h-[480px]" />
     </section>
   );
 }

@@ -74,7 +74,7 @@ type TrendsSortKey = "label" | "impressions" | "changePercent";
 export function AiQueriesTrackerCard({
   queries,
   siteUrl,
-  maxRows = 8,
+  maxRows = 10,
   className,
 }: {
   queries: DataTableRow[];
@@ -140,20 +140,9 @@ export function AiQueriesTrackerCard({
     <TableCard
       title={<span className="text-sm font-semibold text-foreground">Search trends</span>}
       subtitle="Search intent trends based on query patterns"
-      action={
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="text-xs text-muted-foreground hover:text-foreground underline"
-          >
-            View full report
-          </button>
-        </div>
-      }
-      className={cn("min-w-0 min-h-[360px]", className)}
+      className={cn("min-w-0 min-h-[480px]", className)}
     >
-      <div className="max-h-[280px] overflow-auto">
+      <div className="max-h-[400px] overflow-auto">
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
@@ -192,6 +181,12 @@ export function AiQueriesTrackerCard({
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-auto flex items-center justify-end border-t border-border px-5 py-2 text-xs text-muted-foreground">
+        <button type="button" onClick={() => setOpen(true)} className="hover:text-foreground underline">
+          View full report
+        </button>
       </div>
 
       <ReportModal

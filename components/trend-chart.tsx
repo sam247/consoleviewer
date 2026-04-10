@@ -61,6 +61,7 @@ interface TrendChartProps {
   useSeriesContext?: boolean;
   compareToPrior?: boolean;
   normalizeWhenMultiSeries?: boolean;
+  autoNormalizeMixedScales?: boolean;
   margin?: { top?: number; right?: number; left?: number; bottom?: number };
   className?: string;
   annotations?: ChartAnnotation[];
@@ -313,6 +314,7 @@ export function TrendChart({
   useSeriesContext = false,
   compareToPrior = false,
   normalizeWhenMultiSeries = false,
+  autoNormalizeMixedScales = true,
   margin: marginOverride,
   className,
   annotations = [],
@@ -388,11 +390,10 @@ export function TrendChart({
   const useNormalized =
     (
       normalizeWhenMultiSeries ||
-      (
+      (autoNormalizeMixedScales &&
         useSeriesContext &&
         visibleSeries.some((s) => s.key === "ctr" || s.key === "position") &&
-        visibleSeries.some((s) => s.key === "clicks" || s.key === "impressions")
-      )
+        visibleSeries.some((s) => s.key === "clicks" || s.key === "impressions"))
     ) &&
     useSeriesContext &&
     visibleSeries.length > 0 &&
@@ -453,6 +454,13 @@ export function TrendChart({
     showImpr &&
     !showCtr &&
     !showPosition &&
+    (data?.length ?? 0) > 0;
+
+  const useMultiAxisMixed =
+    !usePerEngine &&
+    !useNormalized &&
+    (showCtr || showPosition) &&
+    (showClicks || showImpr) &&
     (data?.length ?? 0) > 0;
 
   const useDualAxisPerEngine =
@@ -666,7 +674,7 @@ export function TrendChart({
             padding={{ left: 2, right: 2 }}
           />
 
-          {useDualAxis || useDualAxisPerEngine || useDualAxisBySource ? (
+          {useDualAxis || useDualAxisPerEngine || useDualAxisBySource || useMultiAxisMixed ? (
             <>
               <YAxis
                 yAxisId="left"
@@ -678,6 +686,7 @@ export function TrendChart({
                 tickLine={false}
                 axisLine={false}
                 tickMargin={6}
+                hide={!showClicks && useMultiAxisMixed}
               />
               <YAxis
                 yAxisId="right"
@@ -690,7 +699,26 @@ export function TrendChart({
                 tickLine={false}
                 axisLine={false}
                 tickMargin={6}
+                hide={!showImpr && useMultiAxisMixed}
               />
+              {useMultiAxisMixed && showCtr && (
+                <YAxis
+                  yAxisId="ctr"
+                  hide
+                  width={0}
+                  domain={["auto", "auto"]}
+                  allowDataOverflow
+                />
+              )}
+              {useMultiAxisMixed && showPosition && (
+                <YAxis
+                  yAxisId="position"
+                  hide
+                  width={0}
+                  domain={["auto", "auto"]}
+                  allowDataOverflow
+                />
+              )}
             </>
           ) : (
             <YAxis
@@ -785,7 +813,7 @@ export function TrendChart({
                 dataKey="clicks"
                 fill="url(#trend-fill-clicks)"
                 stroke="none"
-                {...(useDualAxis && { yAxisId: "left" })}
+                {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "left" })}
               />
               <Line
                 type="monotone"
@@ -795,7 +823,7 @@ export function TrendChart({
                 dot={false}
                 activeDot={{ r: 3, strokeWidth: 1.5, fill: CHART_CLICKS, stroke: "var(--surface)" }}
                 name="Clicks"
-                {...(useDualAxis && { yAxisId: "left" })}
+                {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "left" })}
               />
               {compareToPrior && priorData?.length && (
                 <Line
@@ -807,7 +835,7 @@ export function TrendChart({
                   strokeDasharray="2 2"
                   strokeOpacity={0.5}
                   name="Clicks (prior)"
-                  {...(useDualAxis && { yAxisId: "left" })}
+                  {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "left" })}
                 />
               )}
             </>
@@ -823,7 +851,7 @@ export function TrendChart({
                 dot={false}
                 strokeOpacity={0.75}
                 name="Impressions"
-                {...(useDualAxis && { yAxisId: "right" })}
+                {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "right" })}
               />
               {compareToPrior && priorData?.length && (
                 <Line
@@ -835,7 +863,7 @@ export function TrendChart({
                   strokeDasharray="2 2"
                   strokeOpacity={0.45}
                   name="Impressions (prior)"
-                  {...(useDualAxis && { yAxisId: "right" })}
+                  {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "right" })}
                 />
               )}
             </>
@@ -849,6 +877,7 @@ export function TrendChart({
               strokeWidth={1.2}
               dot={false}
               name="CTR"
+              {...(useMultiAxisMixed ? { yAxisId: "ctr" } : {})}
             />
           )}
 
@@ -860,6 +889,7 @@ export function TrendChart({
               strokeWidth={1.2}
               dot={false}
               name="Avg position"
+              {...(useMultiAxisMixed ? { yAxisId: "position" } : {})}
             />
           )}
         </LineChart>

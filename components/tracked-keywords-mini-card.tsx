@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -58,12 +57,10 @@ function changeLabel(delta: number) {
 
 export function TrackedKeywordsMiniCard({
   propertyId,
-  viewAllHref,
-  maxRows = 8,
+  maxRows = 10,
   className,
 }: {
   propertyId: string;
-  viewAllHref: string;
   maxRows?: number;
   className?: string;
 }) {
@@ -164,57 +161,45 @@ export function TrackedKeywordsMiniCard({
       title={<span className="text-sm font-semibold text-foreground">Tracked keywords</span>}
       subtitle="Add fast · Track daily"
       action={
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
+          <input
+            value={phrase}
+            onChange={(e) => setPhrase(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onAdd();
+              }
+            }}
+            placeholder="Add keyword"
+            className="h-9 w-[180px] max-w-[36vw] min-w-[140px] rounded-md border border-input bg-background px-3 text-sm"
+          />
+          <select
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            className="h-9 w-[72px] rounded-md border border-input bg-background px-2 text-sm text-muted-foreground"
+            aria-label="Search region"
+          >
+            {REGIONS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
-            onClick={() => setOpen(true)}
-            className="text-xs text-muted-foreground hover:text-foreground underline"
+            onClick={onAdd}
+            disabled={!phrase.trim() || saving}
+            className="h-9 w-[64px] rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
           >
-            View full report
+            Add
           </button>
-          <div className="flex items-center gap-2">
-            <input
-              value={phrase}
-              onChange={(e) => setPhrase(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  onAdd();
-                }
-              }}
-              placeholder="Add keyword"
-              className="h-9 w-[220px] max-w-[45vw] rounded-md border border-input bg-background px-3 text-sm"
-            />
-            <select
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              className="h-9 w-[72px] rounded-md border border-input bg-background px-2 text-sm text-muted-foreground"
-              aria-label="Search region"
-            >
-              {REGIONS.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={onAdd}
-              disabled={!phrase.trim() || saving}
-              className="h-9 w-[64px] rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-            >
-              Add
-            </button>
-          </div>
-          <Link href={viewAllHref} className="text-xs text-muted-foreground hover:text-foreground underline" aria-label="Open tracked keywords in Analysis">
-            View all
-          </Link>
         </div>
       }
-      className={cn("min-w-0 min-h-[360px]", className)}
+      className={cn("min-w-0 min-h-[480px]", className)}
     >
       {error && <div className="px-5 pt-3"><p className="text-xs text-negative">{error}</p></div>}
-      <div className="max-h-[280px] overflow-auto">
+      <div className="max-h-[400px] overflow-auto">
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
@@ -231,13 +216,14 @@ export function TrackedKeywordsMiniCard({
                 </td>
               </tr>
             ) : (
-              rows.map((r) => (
-                <tr key={r.id ?? r.keyword} className={TABLE_ROW_CLASS}>
-                  <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.keyword}>
-                    {r.keyword}
+              [...rows, ...Array.from({ length: Math.max(0, maxRows - rows.length) }).map(() => null)].map((r, idx) => (
+                <tr key={(r && (r.id ?? r.keyword)) ?? `placeholder-${idx}`} className={TABLE_ROW_CLASS} aria-hidden={!r}>
+                  <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r ? r.keyword : undefined}>
+                    {r ? r.keyword : <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className={cn("px-5 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
-                    {r.status === "checking" ? (
+                    {r ? (
+                      r.status === "checking" ? (
                       <span className="inline-flex items-center justify-end gap-1.5 text-muted-foreground">
                         <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
                           <circle cx="12" cy="12" r="9" className="stroke-current opacity-25" strokeWidth="3" />
@@ -249,11 +235,18 @@ export function TrackedKeywordsMiniCard({
                       r.position.toFixed(1)
                     ) : (
                       "—"
+                    )
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </td>
                   <td className={cn("px-5 text-right tabular-nums", TABLE_CELL_Y)}>
-                    {r.delta7d ? (
+                    {r ? (
+                      r.delta7d ? (
                       <span className={r.delta7d < 0 ? "text-positive" : "text-negative"}>{changeLabel(r.delta7d)}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
@@ -263,6 +256,12 @@ export function TrackedKeywordsMiniCard({
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-auto flex items-center justify-end border-t border-border px-5 py-2 text-xs text-muted-foreground">
+        <button type="button" onClick={() => setOpen(true)} className="hover:text-foreground underline">
+          View full report
+        </button>
       </div>
 
       <ReportModal

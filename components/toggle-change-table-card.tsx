@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -190,7 +189,6 @@ export function ToggleChangeTableCard({
   scope,
   risingRows,
   droppingRows,
-  viewMoreHref,
   maxRows = 8,
   className,
 }: {
@@ -199,7 +197,6 @@ export function ToggleChangeTableCard({
   scope: "queries" | "pages";
   risingRows: ToggleChangeRow[];
   droppingRows: ToggleChangeRow[];
-  viewMoreHref: string;
   maxRows?: number;
   className?: string;
 }) {
@@ -242,16 +239,6 @@ export function ToggleChangeTableCard({
           Dropping
         </TogglePill>
       </div>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="text-xs text-muted-foreground hover:text-foreground underline"
-      >
-        View full report
-      </button>
-      <Link href={viewMoreHref} className="text-xs text-muted-foreground hover:text-foreground underline" aria-label={`View more for ${title}`}>
-        View more
-      </Link>
     </div>
   );
 
@@ -280,9 +267,9 @@ export function ToggleChangeTableCard({
       title={<span className="text-sm font-semibold text-foreground">{title}</span>}
       subtitle={subtitle}
       action={toggleAction}
-      className={cn("min-w-0 min-h-[360px]", className)}
+      className={cn("min-w-0 min-h-[480px]", className)}
     >
-      <div className="max-h-[280px] overflow-auto">
+      <div className="max-h-[400px] overflow-auto">
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
@@ -449,6 +436,12 @@ export function ToggleChangeTableCard({
       {limited.length === 0 && (
         <div className="px-5 pb-4 pt-2 text-xs text-muted-foreground">No {variant} items in this period.</div>
       )}
+
+      <div className="mt-auto flex items-center justify-end border-t border-border px-5 py-2 text-xs text-muted-foreground">
+        <button type="button" onClick={() => setOpen(true)} className="hover:text-foreground underline">
+          View full report
+        </button>
+      </div>
 
       <ReportModal
         open={open}

@@ -34,8 +34,6 @@ export function ProjectSimplifiedChangeTablesSection({
   queriesRows: DataTableRow[];
   pagesRows: DataTableRow[];
 }) {
-  const analysisHref = `/sites/${encodeURIComponent(propertyId)}?tab=analysis`;
-
   const risingQueries = rising(queriesRows).map((r) => ({
     key: r.key,
     label: r.key,
@@ -90,8 +88,7 @@ export function ProjectSimplifiedChangeTablesSection({
           scope="queries"
           risingRows={risingQueries}
           droppingRows={droppingQueries}
-          viewMoreHref={analysisHref}
-          maxRows={8}
+          maxRows={10}
         />
         <ToggleChangeTableCard
           propertyId={propertyId}
@@ -99,8 +96,7 @@ export function ProjectSimplifiedChangeTablesSection({
           scope="pages"
           risingRows={risingPages}
           droppingRows={droppingPages}
-          viewMoreHref={analysisHref}
-          maxRows={8}
+          maxRows={10}
         />
       </div>
     </section>

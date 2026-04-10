@@ -119,6 +119,7 @@ export function ProjectSimplifiedTrendSection({
         useSeriesContext={true}
         compareToPrior={compareToPrior}
         normalizeWhenMultiSeries={false}
+        autoNormalizeMixedScales={false}
       />
     </ChartFrame>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { TableCard } from "@/components/ui/table-card";
@@ -34,6 +34,8 @@ type ContentPerformanceResponse = {
   endDate: string;
   priorStartDate: string;
   priorEndDate: string;
+  suggestedPatterns?: { pattern: string; label: string }[];
+  active?: { include: string[]; exclude: string[] };
   groups: GroupRow[];
 };
 
@@ -72,17 +74,39 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
   const { startDate, endDate } = useDateRange();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
+  const [patternInput, setPatternInput] = useState("");
+  const [includePatterns, setIncludePatterns] = useState<string[]>([]);
+  const [excludePatterns, setExcludePatterns] = useState<string[]>([]);
   const { sortKey, sortDir, onSort } = useTableSort<SortKey>("share");
 
+  const storageKey = `consoleview_content_segments_${propertyId}`;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { include?: string[]; exclude?: string[] };
+      if (Array.isArray(parsed.include)) setIncludePatterns(parsed.include);
+      if (Array.isArray(parsed.exclude)) setExcludePatterns(parsed.exclude);
+    } catch {}
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify({ include: includePatterns, exclude: excludePatterns }));
+    } catch {}
+  }, [excludePatterns, includePatterns, storageKey]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ["contentPerformance", propertyId, startDate, endDate],
+    queryKey: ["contentPerformance", propertyId, startDate, endDate, includePatterns, excludePatterns],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/properties/${encodeURIComponent(propertyId)}/content-performance?startDate=${encodeURIComponent(
-          startDate
-        )}&endDate=${encodeURIComponent(endDate)}`,
-        { cache: "no-store" }
-      );
+      const sp = new URLSearchParams();
+      sp.set("startDate", startDate);
+      sp.set("endDate", endDate);
+      includePatterns.forEach((p) => sp.append("include", p));
+      excludePatterns.forEach((p) => sp.append("exclude", p));
+      const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/content-performance?${sp.toString()}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load content performance");
       return (await res.json()) as ContentPerformanceResponse;
     },
@@ -90,7 +114,21 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
   });
 
   const all = useMemo(() => data?.groups ?? [], [data?.groups]);
+  const suggested = useMemo(() => data?.suggestedPatterns ?? [], [data?.suggestedPatterns]);
   const insight = useMemo(() => buildInsight(all), [all]);
+
+  const addInclude = (pattern: string) => {
+    const p = pattern.trim();
+    if (!p) return;
+    setIncludePatterns((prev) => (prev.includes(p) ? prev : [...prev, p]));
+  };
+  const addExclude = (pattern: string) => {
+    const p = pattern.trim();
+    if (!p) return;
+    setExcludePatterns((prev) => (prev.includes(p) ? prev : [...prev, p]));
+  };
+  const removeInclude = (pattern: string) => setIncludePatterns((prev) => prev.filter((x) => x !== pattern));
+  const removeExclude = (pattern: string) => setExcludePatterns((prev) => prev.filter((x) => x !== pattern));
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -116,6 +154,84 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
       subtitle="How different parts of your site are performing"
       className={cn("min-w-0 min-h-[480px]", className)}
     >
+      <div className="px-5 pt-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={patternInput}
+            onChange={(e) => setPatternInput(e.target.value)}
+            placeholder="Enter URL pattern or regex…"
+            className="h-9 flex-1 min-w-[220px] rounded-md border border-input bg-background px-3 text-sm"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              addInclude(patternInput);
+              setPatternInput("");
+            }}
+            disabled={!patternInput.trim()}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+          >
+            Include
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              addExclude(patternInput);
+              setPatternInput("");
+            }}
+            disabled={!patternInput.trim()}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+          >
+            Exclude
+          </button>
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {includePatterns.map((p) => (
+            <button
+              key={`inc-${p}`}
+              type="button"
+              onClick={() => removeInclude(p)}
+              className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-foreground hover:bg-accent"
+              aria-label={`Remove include ${p}`}
+              title={`Include: ${p}`}
+            >
+              {p}
+              <span className="ml-2 text-muted-foreground">×</span>
+            </button>
+          ))}
+          {excludePatterns.map((p) => (
+            <button
+              key={`exc-${p}`}
+              type="button"
+              onClick={() => removeExclude(p)}
+              className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+              aria-label={`Remove exclude ${p}`}
+              title={`Exclude: ${p}`}
+            >
+              - {p}
+              <span className="ml-2">×</span>
+            </button>
+          ))}
+        </div>
+
+        {suggested.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {suggested.map((s) => (
+              <button
+                key={s.pattern}
+                type="button"
+                onClick={() => addInclude(s.pattern)}
+                className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                title={`Add segment: ${s.pattern}`}
+              >
+                {s.pattern}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="px-5 pt-2 text-xs text-muted-foreground">{insight}</div>
 
       <div className="mt-2 max-h-[400px] overflow-auto">

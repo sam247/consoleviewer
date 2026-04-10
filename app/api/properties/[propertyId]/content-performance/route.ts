@@ -10,6 +10,12 @@ type PageAgg = {
   impressions: number;
 };
 
+type Pattern = {
+  raw: string;
+  label: string;
+  test: (path: string, full: string) => boolean;
+};
+
 function parseYmd(value: string): Date {
   const [y, m, d] = value.split("-").map((x) => Number(x));
   return new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1));
@@ -75,6 +81,42 @@ function computeChange(current: number, prior: number): number | undefined {
   return ((current - prior) / prior) * 100;
 }
 
+function labelFromPattern(pattern: string): string {
+  const p = pattern.trim();
+  const match = p.match(/\/[a-z0-9_-]{2,}/i);
+  const seg = match?.[0]?.replace(/^\//, "") ?? "Custom";
+  return humanizeSegment(seg);
+}
+
+function compilePattern(raw: string): Pattern | null {
+  const pattern = raw.trim();
+  if (!pattern) return null;
+  const label = labelFromPattern(pattern);
+
+  const regexChars = /[\^$.*+?()[\]{}|\\]/;
+  const looksRegex = regexChars.test(pattern);
+  if (looksRegex) {
+    try {
+      const re = new RegExp(pattern, "i");
+      return {
+        raw: pattern,
+        label,
+        test: (path, full) => re.test(path) || re.test(full),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  const cleaned = pattern.startsWith("/") ? pattern : `/${pattern}`;
+  const needle = cleaned.endsWith("/") ? cleaned : `${cleaned}/`;
+  return {
+    raw: pattern,
+    label: labelFromPattern(needle),
+    test: (path, full) => path.startsWith(needle) || path.startsWith(cleaned) || full.includes(cleaned),
+  };
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ propertyId: string }> }
@@ -89,6 +131,8 @@ export async function GET(
   const sp = request.nextUrl.searchParams;
   const startDate = sp.get("startDate")?.trim();
   const endDate = sp.get("endDate")?.trim();
+  const includeRaw = sp.getAll("include").map((s) => s.trim()).filter(Boolean).slice(0, 24);
+  const excludeRaw = sp.getAll("exclude").map((s) => s.trim()).filter(Boolean).slice(0, 24);
   if (!startDate || !endDate) {
     return NextResponse.json({ error: "startDate and endDate required" }, { status: 400 });
   }
@@ -137,20 +181,69 @@ export async function GET(
     priorById.set(r.page_id, { clicks: r.clicks, impressions: r.impressions });
   }
 
-  const totalImpressions = currentRes.rows.reduce((s, r) => s + (r.impressions ?? 0), 0) || 1;
+  const includePatterns = includeRaw.map(compilePattern).filter(Boolean) as Pattern[];
+  const excludePatterns = excludeRaw.map(compilePattern).filter(Boolean) as Pattern[];
 
-  const rawGroups = new Map<string, { label: string; pageIds: number[]; pages: number; clicks: number; impressions: number; priorClicks: number; priorImpr: number }>();
-
+  const filteredPages: PageAgg[] = [];
   for (const r of currentRes.rows) {
+    const full = r.page;
+    const path = extractPath(full);
+    const isExcluded = excludePatterns.some((p) => p.test(path, full));
+    if (isExcluded) continue;
+    filteredPages.push(r);
+  }
+
+  const totalImpressions = filteredPages.reduce((s, r) => s + (r.impressions ?? 0), 0) || 1;
+
+  const autoGroups = new Map<string, { label: string; pages: number; impressions: number }>();
+  for (const r of filteredPages) {
     const path = extractPath(r.page);
     const seg1 = path.split("/").filter(Boolean)[0];
     const key = seg1 ? `/${seg1}/` : "(root)";
     const label = seg1 ? humanizeSegment(seg1) : "Homepage";
+    const g = autoGroups.get(key) ?? { label, pages: 0, impressions: 0 };
+    g.pages += 1;
+    g.impressions += r.impressions;
+    autoGroups.set(key, g);
+  }
+  const suggestedPatterns = Array.from(autoGroups.entries())
+    .filter(([k]) => k !== "(root)" && k !== "(other)")
+    .sort((a, b) => b[1].impressions - a[1].impressions)
+    .slice(0, 6)
+    .map(([k, g]) => ({ pattern: k, label: g.label }));
+
+  const rawGroups = new Map<string, { label: string; pageIds: number[]; pages: number; clicks: number; impressions: number; priorClicks: number; priorImpr: number }>();
+
+  const segmentationMode = includePatterns.length > 0 || excludePatterns.length > 0;
+
+  for (const r of filteredPages) {
+    const full = r.page;
+    const path = extractPath(full);
+
+    let key: string;
+    let label: string;
+
+    if (includePatterns.length > 0) {
+      const match = includePatterns.find((p) => p.test(path, full));
+      if (match) {
+        key = `inc:${match.raw}`;
+        label = match.label;
+      } else {
+        key = "(other)";
+        label = "Other";
+      }
+    } else {
+      const seg1 = path.split("/").filter(Boolean)[0];
+      key = seg1 ? `/${seg1}/` : "(root)";
+      label = seg1 ? humanizeSegment(seg1) : "Homepage";
+    }
+
     let g = rawGroups.get(key);
     if (!g) {
       g = { label, pageIds: [], pages: 0, clicks: 0, impressions: 0, priorClicks: 0, priorImpr: 0 };
       rawGroups.set(key, g);
     }
+
     g.pageIds.push(r.page_id);
     g.pages += 1;
     g.clicks += r.clicks;
@@ -166,58 +259,90 @@ export async function GET(
     .map(([key, g]) => ({ key, ...g }))
     .sort((a, b) => b.impressions - a.impressions);
 
-  const keep: string[] = [];
-  for (const g of groupsSorted) {
-    const share = g.impressions / totalImpressions;
-    const enoughPages = g.pages >= 5;
-    const enoughShare = share >= 0.03;
-    if ((enoughPages || enoughShare) && keep.length < 6 && g.key !== "(root)") {
-      keep.push(g.key);
-    }
-  }
-  if (!keep.includes("(root)") && rawGroups.has("(root)") && keep.length < 6) {
-    keep.push("(root)");
-  }
-
-  const topSet = new Set(keep);
-  const other: Group = {
-    key: "(other)",
-    label: "Other",
-    pageIds: [],
-    pages: 0,
-    clicks: 0,
-    impressions: 0,
-    share: 0,
-    trend: [],
-  };
-
   const selected: Group[] = [];
-  for (const g of groupsSorted) {
-    const base: Group = {
-      key: g.key,
-      label: g.label,
-      pageIds: g.pageIds,
-      pages: g.pages,
-      clicks: g.clicks,
-      impressions: g.impressions,
-      clicksChangePercent: computeChange(g.clicks, g.priorClicks),
-      impressionsChangePercent: computeChange(g.impressions, g.priorImpr),
-      share: g.impressions / totalImpressions,
+  if (segmentationMode && includePatterns.length > 0) {
+    for (const p of includePatterns) {
+      const k = `inc:${p.raw}`;
+      const g = rawGroups.get(k);
+      if (!g) continue;
+      selected.push({
+        key: k,
+        label: g.label,
+        pageIds: g.pageIds,
+        pages: g.pages,
+        clicks: g.clicks,
+        impressions: g.impressions,
+        clicksChangePercent: computeChange(g.clicks, g.priorClicks),
+        impressionsChangePercent: computeChange(g.impressions, g.priorImpr),
+        share: g.impressions / totalImpressions,
+        trend: [],
+      });
+    }
+    const otherBucket = rawGroups.get("(other)");
+    if (otherBucket && otherBucket.impressions > 0) {
+      selected.push({
+        key: "(other)",
+        label: "Other",
+        pageIds: otherBucket.pageIds,
+        pages: otherBucket.pages,
+        clicks: otherBucket.clicks,
+        impressions: otherBucket.impressions,
+        clicksChangePercent: computeChange(otherBucket.clicks, otherBucket.priorClicks),
+        impressionsChangePercent: computeChange(otherBucket.impressions, otherBucket.priorImpr),
+        share: otherBucket.impressions / totalImpressions,
+        trend: [],
+      });
+    }
+  } else {
+    const keep: string[] = [];
+    for (const g of groupsSorted) {
+      const share = g.impressions / totalImpressions;
+      const enoughPages = g.pages >= 5;
+      const enoughShare = share >= 0.03;
+      if ((enoughPages || enoughShare) && keep.length < 6 && g.key !== "(root)") {
+        keep.push(g.key);
+      }
+    }
+    if (!keep.includes("(root)") && rawGroups.has("(root)") && keep.length < 6) {
+      keep.push("(root)");
+    }
+    const topSet = new Set(keep);
+    const other: Group = {
+      key: "(other)",
+      label: "Other",
+      pageIds: [],
+      pages: 0,
+      clicks: 0,
+      impressions: 0,
+      share: 0,
       trend: [],
     };
-    if (topSet.has(g.key)) {
-      selected.push(base);
-    } else {
-      other.pageIds.push(...g.pageIds);
-      other.pages += g.pages;
-      other.clicks += g.clicks;
-      other.impressions += g.impressions;
+    for (const g of groupsSorted) {
+      const base: Group = {
+        key: g.key,
+        label: g.label,
+        pageIds: g.pageIds,
+        pages: g.pages,
+        clicks: g.clicks,
+        impressions: g.impressions,
+        clicksChangePercent: computeChange(g.clicks, g.priorClicks),
+        impressionsChangePercent: computeChange(g.impressions, g.priorImpr),
+        share: g.impressions / totalImpressions,
+        trend: [],
+      };
+      if (topSet.has(g.key)) {
+        selected.push(base);
+      } else {
+        other.pageIds.push(...g.pageIds);
+        other.pages += g.pages;
+        other.clicks += g.clicks;
+        other.impressions += g.impressions;
+      }
     }
-  }
-
-  if (other.impressions > 0) {
-    other.share = other.impressions / totalImpressions;
-    selected.push(other);
+    if (other.impressions > 0) {
+      other.share = other.impressions / totalImpressions;
+      selected.push(other);
+    }
   }
 
   const dateList: string[] = [];
@@ -263,6 +388,8 @@ export async function GET(
     endDate,
     priorStartDate: formatYmd(priorStart),
     priorEndDate: formatYmd(priorEnd),
+    suggestedPatterns,
+    active: { include: includeRaw, exclude: excludeRaw },
     groups: selected.map((g) => ({
       key: g.key,
       label: g.label,
@@ -276,4 +403,3 @@ export async function GET(
     })),
   });
 }
-

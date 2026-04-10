@@ -13,6 +13,7 @@ import { ProjectViewTabs, type ProjectViewTab } from "@/components/project-view-
 import { ProjectSimplifiedTrendSection } from "@/components/sections/project-simplified-trend-section";
 import { ProjectSimplifiedTrackersSection } from "@/components/sections/project-simplified-trackers-section";
 import { ProjectSimplifiedChangeTablesSection } from "@/components/sections/project-simplified-change-tables-section";
+import { ContentPerformanceCard } from "@/components/content-performance-card";
 import { ProjectAnalysisTab } from "@/components/sections/project-analysis-tab";
 import { LightSignalsStrip } from "@/components/light-signals-strip";
 import { CustomizeDashboardCard } from "@/components/customize-dashboard-card";
@@ -143,6 +144,7 @@ export default function SiteDetailPage({
                 <>
                   <ProjectSimplifiedTrendSection data={data} propertyId={propertyId} />
                   <ProjectSimplifiedTrackersSection propertyId={propertyId} queriesRows={queriesRows} siteUrl={siteUrl} />
+                  <ContentPerformanceCard propertyId={propertyId} />
                   <ProjectSimplifiedChangeTablesSection propertyId={propertyId} queriesRows={queriesRows} pagesRows={pagesRows} />
                   <CustomizeDashboardCard propertyId={propertyId} />
                 </>

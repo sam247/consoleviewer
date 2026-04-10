@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   Area,
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ReferenceLine,
@@ -14,6 +15,7 @@ import {
 } from "recharts";
 import { useSparkSeries, type SparkSeriesKey } from "@/contexts/spark-series-context";
 import type { AnalyticsSeries } from "@/lib/analytics-series-normalize";
+import { cn } from "@/lib/utils";
 import { ChartPlot } from "@/components/ui/chart-plot";
 import {
   CHART_AXIS_TICK,
@@ -320,6 +322,8 @@ export function TrendChart({
   annotations = [],
 }: TrendChartProps) {
   const { series } = useSparkSeries();
+  const [lockedFocus, setLockedFocus] = useState<SparkSeriesKey | null>(null);
+  const [hoverFocus, setHoverFocus] = useState<SparkSeriesKey | null>(null);
   const chartMargin = buildChartMargin(height, marginOverride);
   const effectiveEngines = selectedEngines;
   const usePerEngine = (analyticsSeries != null || dataByEngine != null) && effectiveEngines.length > 0;
@@ -361,6 +365,72 @@ export function TrendChart({
         : [],
     [showClicks, showCtr, showImpr, showPosition, useSeriesContext]
   );
+
+  useEffect(() => {
+    if (!lockedFocus) return;
+    if (!visibleSeries.some((s) => s.key === lockedFocus)) {
+      setLockedFocus(null);
+    }
+  }, [lockedFocus, visibleSeries]);
+
+  const focusKey = hoverFocus ?? lockedFocus;
+  const showLegendFocus = !usePerEngine && useSeriesContext && visibleSeries.length > 1;
+
+  const isFocused = useCallback((key: SparkSeriesKey) => focusKey === key, [focusKey]);
+
+  const metricOpacity = useCallback((key: SparkSeriesKey, isPrior = false) => {
+    const base = isPrior ? 0.45 : 1;
+    if (!focusKey) return base * 0.7;
+    if (isFocused(key)) return base * (isPrior ? 0.35 : 1);
+    return base * 0.25;
+  }, [focusKey, isFocused]);
+
+  const metricStrokeWidth = useCallback((base: number, key: SparkSeriesKey) => {
+    if (!focusKey) return base * 0.95;
+    if (isFocused(key)) return base;
+    return Math.max(1, base * 0.8);
+  }, [focusKey, isFocused]);
+
+  const legendItems = useMemo(
+    () =>
+      visibleSeries.map((s) => ({
+        key: s.key,
+        label: s.label,
+        stroke: s.stroke,
+      })),
+    [visibleSeries]
+  );
+
+  function FocusLegendContent() {
+    return (
+      <div className="flex flex-wrap items-center gap-3 px-1 py-1">
+        {legendItems.map((it) => {
+          const active = isFocused(it.key);
+          const locked = lockedFocus === it.key;
+          return (
+            <button
+              key={it.key}
+              type="button"
+              onMouseEnter={() => setHoverFocus(it.key)}
+              onMouseLeave={() => setHoverFocus(null)}
+              onClick={() => setLockedFocus((prev) => (prev === it.key ? null : it.key))}
+              className={
+                active || locked
+                  ? "flex items-center gap-2 rounded-md px-2 py-1 text-xs text-foreground bg-accent"
+                  : "flex items-center gap-2 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+              }
+              aria-pressed={locked}
+            >
+              <span className="h-0.5 w-4 rounded" style={{ background: it.stroke, opacity: active || locked ? 1 : 0.6 }} />
+              <span className={active || locked ? "font-semibold" : undefined}>{it.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const tooltipStyle = useMemo(() => ({ ...CHART_TOOLTIP_STYLE }) as CSSProperties, []);
 
   const perEngineSeriesToShow = useMemo(() => {
     if (!usePerEngine || effectiveEngines.length === 0) return [];
@@ -652,7 +722,7 @@ export function TrendChart({
             </linearGradient>
           </defs>
 
-          <CartesianGrid {...CHART_GRID_PROPS} />
+          <CartesianGrid {...CHART_GRID_PROPS} strokeOpacity={0.2} />
           <ReferenceLine y={0} stroke="var(--border)" strokeOpacity={0.55} />
           {annotations.map((a) => (
             <ReferenceLine
@@ -734,26 +804,93 @@ export function TrendChart({
           )}
 
           <Tooltip
-            cursor={{ stroke: "var(--border)", strokeWidth: 1, strokeDasharray: "3 3" }}
-            contentStyle={CHART_TOOLTIP_STYLE}
-            labelFormatter={(v) =>
-              new Date(v).toLocaleDateString(undefined, {
+            cursor={{ stroke: "var(--border)", strokeWidth: 1, strokeOpacity: 0.35 }}
+            content={({ active, label, payload }) => {
+              if (!active || !payload || !payload.length) return null;
+              const dateLabel = new Date(label as string).toLocaleDateString(undefined, {
                 weekday: "short",
                 month: "short",
                 day: "numeric",
-              })
-            }
-            formatter={(value: number | string | undefined, name) => {
-              const n = typeof value === "number" ? value : Number(value ?? 0);
-              const key = String(name).toLowerCase();
-              if (useNormalized || key.includes("_norm_")) {
-                return [`${(n * 100).toFixed(1)}%`, String(name).replace(/^_norm_/, "")];
-              }
-              if (key.includes("ctr")) return [`${n.toFixed(2)}%`, "CTR"];
-              if (key.includes("position")) return [n.toFixed(1), "Avg position"];
-              return [compactNumber(n), String(name)];
+              });
+
+              const rows = payload
+                .filter((p) => p.value != null && p.name != null)
+                .map((p) => {
+                  const rawName = String(p.name);
+                  const nameLower = rawName.toLowerCase();
+                  const key: SparkSeriesKey | null = nameLower.includes("click")
+                    ? "clicks"
+                    : nameLower.includes("impr")
+                      ? "impressions"
+                      : nameLower.includes("ctr")
+                        ? "ctr"
+                        : nameLower.includes("position")
+                          ? "position"
+                          : null;
+                  const isPrior = nameLower.includes("prior");
+                  const n = typeof p.value === "number" ? p.value : Number(p.value ?? 0);
+                  const formatted =
+                    useNormalized || nameLower.includes("_norm_")
+                      ? `${(n * 100).toFixed(1)}%`
+                      : key === "ctr"
+                        ? `${n.toFixed(2)}%`
+                        : key === "position"
+                          ? n.toFixed(1)
+                          : compactNumber(n);
+                  const labelText =
+                    useNormalized && rawName.startsWith("_norm_")
+                      ? rawName.replace(/^_norm_/, "")
+                      : rawName;
+                  return {
+                    key,
+                    label: isPrior ? `${labelText} (prior)` : labelText,
+                    color: (p.color as string) || "var(--muted-foreground)",
+                    value: formatted,
+                    isPrior,
+                  };
+                });
+
+              const order: Record<string, number> = { clicks: 1, impressions: 2, ctr: 3, position: 4 };
+              rows.sort((a, b) => {
+                const aO = a.key ? order[a.key] ?? 9 : 9;
+                const bO = b.key ? order[b.key] ?? 9 : 9;
+                if (aO !== bO) return aO - bO;
+                if (a.isPrior !== b.isPrior) return a.isPrior ? 1 : -1;
+                return a.label.localeCompare(b.label);
+              });
+
+              return (
+                <div style={tooltipStyle}>
+                  <div className="text-foreground font-medium">{dateLabel}</div>
+                  <div className="mt-2 space-y-1">
+                    {rows.map((r) => {
+                      const focused = r.key ? isFocused(r.key) : false;
+                      const shouldBold = focusKey ? focused && !r.isPrior : false;
+                      return (
+                        <div key={`${r.label}-${r.value}`} className={cn("flex items-center justify-between gap-3", shouldBold ? "font-semibold" : "")}> 
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="h-2 w-2 rounded" style={{ background: r.color, opacity: r.isPrior ? 0.5 : 1 }} />
+                            <span className="truncate text-muted-foreground">{r.label}</span>
+                          </div>
+                          <div className="tabular-nums text-foreground">{r.value}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
             }}
           />
+
+          {showLegendFocus ? (
+            <Legend
+              verticalAlign="top"
+              align="left"
+              height={34}
+              wrapperStyle={{ top: 0, left: 0, right: 0 }}
+              content={<FocusLegendContent />}
+            />
+          ) : null}
 
           {usePerEngine
             ? perEngineSeriesToShow.map((s) => (
@@ -783,8 +920,8 @@ export function TrendChart({
                   type="monotone"
                   dataKey={`_norm_${s.key}`}
                   stroke={s.stroke}
-                  strokeWidth={s.key === "clicks" ? 2 : 1.3}
-                  strokeOpacity={s.key === "impressions" ? 0.9 : 1}
+                  strokeWidth={metricStrokeWidth(s.key === "clicks" ? 2 : 1.3, s.key)}
+                  strokeOpacity={metricOpacity(s.key)}
                   dot={false}
                   name={s.label}
                 />
@@ -797,9 +934,9 @@ export function TrendChart({
                   type="monotone"
                   dataKey={`_norm_${s.key}Prior`}
                   stroke={s.stroke}
-                  strokeWidth={1}
+                  strokeWidth={metricStrokeWidth(1, s.key)}
                   strokeDasharray="2 2"
-                  strokeOpacity={0.45}
+                  strokeOpacity={metricOpacity(s.key, true)}
                   dot={false}
                   name={`${s.label} (prior)`}
                 />
@@ -813,13 +950,15 @@ export function TrendChart({
                 dataKey="clicks"
                 fill="url(#trend-fill-clicks)"
                 stroke="none"
+                fillOpacity={metricOpacity("clicks")}
                 {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "left" })}
               />
               <Line
                 type="monotone"
                 dataKey="clicks"
                 stroke={CHART_CLICKS}
-                strokeWidth={2}
+                strokeWidth={metricStrokeWidth(2, "clicks")}
+                strokeOpacity={metricOpacity("clicks")}
                 dot={false}
                 activeDot={{ r: 3, strokeWidth: 1.5, fill: CHART_CLICKS, stroke: "var(--surface)" }}
                 name="Clicks"
@@ -830,10 +969,10 @@ export function TrendChart({
                   type="monotone"
                   dataKey="clicksPrior"
                   stroke={CHART_CLICKS}
-                  strokeWidth={1}
+                  strokeWidth={metricStrokeWidth(1, "clicks")}
                   dot={false}
                   strokeDasharray="2 2"
-                  strokeOpacity={0.5}
+                  strokeOpacity={metricOpacity("clicks", true)}
                   name="Clicks (prior)"
                   {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "left" })}
                 />
@@ -847,9 +986,9 @@ export function TrendChart({
                 type="monotone"
                 dataKey="impressions"
                 stroke={CHART_IMPRESSIONS}
-                strokeWidth={1.5}
+                strokeWidth={metricStrokeWidth(1.5, "impressions")}
                 dot={false}
-                strokeOpacity={0.75}
+                strokeOpacity={metricOpacity("impressions")}
                 name="Impressions"
                 {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "right" })}
               />
@@ -858,10 +997,10 @@ export function TrendChart({
                   type="monotone"
                   dataKey="impressionsPrior"
                   stroke={CHART_IMPRESSIONS}
-                  strokeWidth={1}
+                  strokeWidth={metricStrokeWidth(1, "impressions")}
                   dot={false}
                   strokeDasharray="2 2"
-                  strokeOpacity={0.45}
+                  strokeOpacity={metricOpacity("impressions", true)}
                   name="Impressions (prior)"
                   {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "right" })}
                 />
@@ -874,7 +1013,8 @@ export function TrendChart({
               type="monotone"
               dataKey="ctr"
               stroke={CHART_CTR}
-              strokeWidth={1.2}
+              strokeWidth={metricStrokeWidth(1.2, "ctr")}
+              strokeOpacity={metricOpacity("ctr")}
               dot={false}
               name="CTR"
               {...(useMultiAxisMixed ? { yAxisId: "ctr" } : {})}
@@ -886,7 +1026,8 @@ export function TrendChart({
               type="monotone"
               dataKey="position"
               stroke={CHART_POSITION}
-              strokeWidth={1.2}
+              strokeWidth={metricStrokeWidth(1.2, "position")}
+              strokeOpacity={metricOpacity("position")}
               dot={false}
               name="Avg position"
               {...(useMultiAxisMixed ? { yAxisId: "position" } : {})}

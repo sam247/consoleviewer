@@ -1,0 +1,318 @@
+"use client";
+
+import { useCallback, useMemo, useState } from "react";
+import type { DataTableRow } from "@/components/data-table";
+import { ReportModal } from "@/components/report-modal";
+import { cn } from "@/lib/utils";
+import type { Summary } from "@/hooks/use-property-data";
+
+type EmailContext = {
+  domain: string;
+  date_range: string;
+
+  clicks: number;
+  clicks_change: string;
+
+  impressions: number;
+  impressions_change: string;
+
+  ctr: string;
+  ctr_change: string;
+
+  position: number;
+  position_change: string;
+
+  signals: string[];
+  opportunities: string[];
+};
+
+function formatSignedPercent(value?: number): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  const v = Math.round(value);
+  return `${v > 0 ? "+" : ""}${v}%`;
+}
+
+function extractPath(value: string): string {
+  const v = value.trim();
+  if (!v) return "/";
+  try {
+    if (v.startsWith("http://") || v.startsWith("https://")) return new URL(v).pathname || "/";
+  } catch {}
+  if (v.startsWith("/")) return v;
+  return "/";
+}
+
+function contentSignalFromPages(pagesRows: DataTableRow[]): string | null {
+  const groups = new Map<string, { w: number; v: number }>();
+  for (const p of pagesRows) {
+    const path = extractPath(p.key);
+    const seg = path.split("/").filter(Boolean)[0] ?? "(root)";
+    if (!seg || seg === "cdn") continue;
+    if (p.impressionsChangePercent == null) continue;
+    const w = Math.max(1, p.impressions || p.clicks || 1);
+    const cur = groups.get(seg) ?? { w: 0, v: 0 };
+    cur.w += w;
+    cur.v += w * p.impressionsChangePercent;
+    groups.set(seg, cur);
+  }
+  const ranked = Array.from(groups.entries())
+    .map(([k, agg]) => ({ k, avg: agg.w > 0 ? agg.v / agg.w : 0 }))
+    .filter((x) => Number.isFinite(x.avg))
+    .sort((a, b) => Math.abs(b.avg) - Math.abs(a.avg));
+  const top = ranked[0];
+  if (!top) return null;
+  const dir = top.avg >= 0 ? "↑" : "↓";
+  return `Content: ${top.k} ${dir} ${formatSignedPercent(top.avg)}`;
+}
+
+function expectedCtrForPosition(pos: number): number {
+  if (pos <= 3) return 6.0;
+  if (pos <= 5) return 3.5;
+  if (pos <= 8) return 2.2;
+  if (pos <= 12) return 1.4;
+  if (pos <= 15) return 1.0;
+  return 0.8;
+}
+
+function buildOpportunities(queriesRows: DataTableRow[]): string[] {
+  const threshold = 1000;
+  const filtered = queriesRows
+    .map((q) => {
+      const pos = q.position ?? null;
+      const impr = q.impressions ?? 0;
+      const clicks = q.clicks ?? 0;
+      if (pos == null || !Number.isFinite(pos)) return null;
+      if (pos < 4 || pos > 15) return null;
+      if (impr < threshold) return null;
+      const ctr = impr > 0 ? (clicks / impr) * 100 : 0;
+      const expected = expectedCtrForPosition(pos);
+      const gap = Math.max(0, expected - ctr);
+      if (gap < 0.2) return null;
+      const score = impr * gap;
+      return { query: q.key, pos, impr, ctr, expected, score };
+    })
+    .filter((x): x is NonNullable<typeof x> => x != null)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  return filtered.map((o) => `${o.query} — ranking ${o.pos.toFixed(1)} with high impressions but low CTR`);
+}
+
+function buildSignals(summary: Summary | null, newQueries: DataTableRow[], lostQueries: DataTableRow[], pagesRows: DataTableRow[]): string[] {
+  const out: string[] = [];
+  if (summary?.clicksChangePercent != null) {
+    out.push(`${formatSignedPercent(summary.clicksChangePercent)} clicks`);
+  }
+  const newQ = [...newQueries].sort((a, b) => b.clicks - a.clicks)[0];
+  if (newQ) out.push(`New ranking: ${newQ.key}`);
+  const lostQ = [...lostQueries].sort((a, b) => b.clicks - a.clicks)[0];
+  if (lostQ) out.push(`Lost traffic: ${lostQ.key}`);
+  const content = contentSignalFromPages(pagesRows);
+  if (content) out.push(content);
+  return out.slice(0, 5);
+}
+
+function buildEmailPrompt(ctx: EmailContext): string {
+  return `Generate a concise SEO performance email update.
+
+Context:
+- Website: ${ctx.domain}
+- Time period: ${ctx.date_range}
+
+Metrics:
+- Clicks: ${ctx.clicks} (${ctx.clicks_change})
+- Impressions: ${ctx.impressions} (${ctx.impressions_change})
+- CTR: ${ctx.ctr} (${ctx.ctr_change})
+- Avg position: ${ctx.position} (${ctx.position_change})
+
+Key signals:
+${ctx.signals.map((s) => `- ${s}`).join("\n")}
+
+Opportunities:
+${ctx.opportunities.map((o) => `- ${o}`).join("\n")}
+
+Rules:
+- Write like an experienced SEO, not a tool
+- Keep it natural and human (no generic phrasing)
+- Max ~120–150 words
+- No emojis
+- No fluff or filler
+- No hard recommendations (avoid “you should…”)
+
+Structure:
+1. Opening line (what changed overall)
+2. What’s driving it
+3. Where the opportunities are
+4. Short closing summary
+
+Output:
+Plain text email, ready to send`;
+}
+
+export function EmailSummaryGenerator({
+  domain,
+  startDate,
+  endDate,
+  summary,
+  newQueries,
+  lostQueries,
+  pagesRows,
+  queriesRows,
+  className,
+}: {
+  domain: string;
+  startDate?: string;
+  endDate?: string;
+  summary: Summary | null;
+  newQueries: DataTableRow[];
+  lostQueries: DataTableRow[];
+  pagesRows: DataTableRow[];
+  queriesRows: DataTableRow[];
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [text, setText] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const normalizedDomain = useMemo(() => {
+    const d = domain.trim();
+    if (!d) return "";
+    try {
+      if (d.startsWith("http://") || d.startsWith("https://")) return new URL(d).host;
+    } catch {}
+    return d.replace(/^www\./, "");
+  }, [domain]);
+
+  const ctx = useMemo<EmailContext | null>(() => {
+    if (!summary) return null;
+    const date_range = startDate && endDate ? `${startDate} to ${endDate}` : "Current period";
+    const signals = buildSignals(summary, newQueries, lostQueries, pagesRows);
+    const opportunities = buildOpportunities(queriesRows);
+    return {
+      domain: normalizedDomain,
+      date_range,
+      clicks: Math.round(summary.clicks),
+      clicks_change: formatSignedPercent(summary.clicksChangePercent),
+      impressions: Math.round(summary.impressions),
+      impressions_change: formatSignedPercent(summary.impressionsChangePercent),
+      ctr: summary.ctr != null ? `${summary.ctr.toFixed(2)}%` : "—",
+      ctr_change: formatSignedPercent(summary.ctrChangePercent),
+      position: summary.position != null ? Number(summary.position.toFixed(1)) : 0,
+      position_change: formatSignedPercent(summary.positionChangePercent),
+      signals: signals.length ? signals : ["No major signals detected"],
+      opportunities: opportunities.length ? opportunities : ["No clear opportunities detected"],
+    };
+  }, [endDate, lostQueries, newQueries, normalizedDomain, pagesRows, queriesRows, startDate, summary]);
+
+  const generate = useCallback(async () => {
+    if (!ctx) return;
+    setLoading(true);
+    setError(null);
+    setCopied(false);
+    try {
+      const prompt = buildEmailPrompt(ctx);
+      const res = await fetch("/api/ai/email-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      if (!res.ok) {
+        const msg = (await res.json().catch(() => null)) as unknown;
+        const errorText =
+          msg && typeof msg === "object" && "error" in msg && typeof (msg as { error?: unknown }).error === "string"
+            ? (msg as { error: string }).error
+            : "Could not generate update";
+        throw new Error(errorText);
+      }
+      const data = (await res.json()) as { text: string };
+      setText(data.text ?? "Could not generate update");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not generate update");
+      setText("Could not generate update");
+    } finally {
+      setLoading(false);
+    }
+  }, [ctx]);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+          if (!text) generate();
+        }}
+        data-menu-close="true"
+        className={cn(
+          "flex h-10 items-center rounded-md border border-border px-3 py-0 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
+          className
+        )}
+      >
+        Generate update
+      </button>
+
+      <ReportModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="SEO Email Update"
+        subtitle={domain}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(text);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1200);
+                } catch {
+                  setCopied(false);
+                }
+              }}
+              disabled={!text || loading}
+              className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-50"
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+            <button
+              type="button"
+              onClick={generate}
+              disabled={!ctx || loading}
+              className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-50"
+            >
+              Regenerate
+            </button>
+          </div>
+        }
+      >
+        <div className="p-4">
+          {error ? <div className="mb-3 text-xs text-negative">{error}</div> : null}
+          <div className="relative">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              className="w-full min-h-[360px] max-h-[60vh] resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed"
+              spellCheck={false}
+            />
+            {loading ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" aria-label="Loading" />
+              </div>
+            ) : null}
+          </div>
+          {ctx ? (
+            <div className="mt-3 text-xs text-muted-foreground">
+              Signals: {ctx.signals.slice(0, 3).join(" • ")}
+              <span className="mx-2">•</span>
+              Opportunities: {ctx.opportunities.length}
+            </div>
+          ) : (
+            <div className="mt-3 text-xs text-muted-foreground">No data available yet.</div>
+          )}
+        </div>
+      </ReportModal>
+    </>
+  );
+}

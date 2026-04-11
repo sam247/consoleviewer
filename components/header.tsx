@@ -26,6 +26,7 @@ interface HeaderProps {
   aiScope?: AiPanelScope;
   aiPropertyId?: string;
   aiSiteUrl?: string;
+  extraActions?: React.ReactNode;
 }
 
 export function Header({
@@ -41,6 +42,7 @@ export function Header({
   aiScope,
   aiPropertyId,
   aiSiteUrl,
+  extraActions,
 }: HeaderProps) {
   const [shareOpen, setShareOpen] = useState(false);
   const showShare = shareScope != null;
@@ -80,6 +82,7 @@ export function Header({
                 {sortSelect}
                 {filterSelect}
                 {shareButton}
+                {extraActions}
                 <SparkToggles />
                 {aiScope && (
                   <AiHeaderButton scope={aiScope} propertyId={aiPropertyId} siteUrl={aiSiteUrl} />
@@ -123,6 +126,7 @@ export function Header({
                     {sortSelect && <div data-menu-close="true">{sortSelect}</div>}
                     {filterSelect && <div data-menu-close="true">{filterSelect}</div>}
                     {shareButton}
+                    {extraActions}
                     {aiScope && (
                       <div data-menu-close="true">
                         <AiHeaderButton scope={aiScope} propertyId={aiPropertyId} siteUrl={aiSiteUrl} />

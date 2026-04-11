@@ -17,6 +17,7 @@ import { LightSignalsStrip } from "@/components/light-signals-strip";
 import { CustomizeDashboardCard } from "@/components/customize-dashboard-card";
 import { SiteIdentity } from "@/components/site-identity";
 import { PerformanceSnapshotStrip, PerformanceSnapshotSummary } from "@/components/performance-snapshot-strip";
+import { EmailSummaryGenerator } from "@/components/email-summary-generator";
 
 function formatHeaderDate(value?: string) {
   if (!value) return null;
@@ -51,6 +52,7 @@ export default function SiteDetailPage({
     isLoading,
     error,
     endDate,
+    startDate,
   } = usePropertyData(propertyId);
 
   const [contentMounted, setContentMounted] = useState(false);
@@ -86,6 +88,18 @@ export default function SiteDetailPage({
           aiScope="project"
           aiPropertyId={propertyId}
           aiSiteUrl={siteUrl}
+          extraActions={
+            <EmailSummaryGenerator
+              domain={siteUrl ?? ""}
+              startDate={startDate}
+              endDate={endDate}
+              summary={data?.summary ?? null}
+              newQueries={data?.newQueries ?? []}
+              lostQueries={data?.lostQueries ?? []}
+              pagesRows={pagesRows}
+              queriesRows={queriesRows}
+            />
+          }
         />
         <main className="flex-1 p-3 md:p-6">
           <div className="mx-auto max-w-[86rem]">

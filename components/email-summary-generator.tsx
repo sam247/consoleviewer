@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DataTableRow } from "@/components/data-table";
 import { ReportModal } from "@/components/report-modal";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import type { Summary } from "@/hooks/use-property-data";
 type EmailContext = {
   domain: string;
   date_range: string;
+  sender_name: string;
 
   clicks: number;
   clicks_change: string;
@@ -113,53 +114,55 @@ function buildSignals(summary: Summary | null, newQueries: DataTableRow[], lostQ
   return out.slice(0, 5);
 }
 
-function buildEmailPrompt(ctx: EmailContext): string {
+function buildEmailPrompt(ctx: EmailContext, variant: "default" | "long"): string {
+  const lengthRule = variant === "long" ? "Aim for 200–300 words." : "Keep under 150 words.";
+  const summaryTarget = variant === "long" ? "200–300" : "120–150";
+
   return `Generate a concise SEO performance email update.
 
 Context:
 - Website: ${ctx.domain}
 - Time period: ${ctx.date_range}
+- Metrics:
+  - Clicks: ${ctx.clicks} (${ctx.clicks_change})
+  - Impressions: ${ctx.impressions} (${ctx.impressions_change})
+  - CTR: ${ctx.ctr} (${ctx.ctr_change})
+  - Avg position: ${ctx.position} (${ctx.position_change})
 
-Metrics:
-- Clicks: ${ctx.clicks} (${ctx.clicks_change})
-- Impressions: ${ctx.impressions} (${ctx.impressions_change})
-- CTR: ${ctx.ctr} (${ctx.ctr_change})
-- Avg position: ${ctx.position} (${ctx.position_change})
+Summary paragraph (${summaryTarget} words)
 
-Key signals:
-${ctx.signals.join("\n")}
+- Notable signals:
+${ctx.signals.slice(0, 4).map((s) => `  - ${s}`).join("\n")}
 
-Opportunities:
-${ctx.opportunities.join("\n")}
+- Opportunities:
+${ctx.opportunities.slice(0, 4).map((o) => `  - ${o}`).join("\n")}
 
 Rules:
-- Write like an experienced SEO, not a tool
-- Keep it natural and human (no generic phrasing)
- - Avoid repeating raw metrics without explanation
- - Focus on the most likely cause of change (CTR, rankings, or demand)
- - Use at least one specific example (query, page, or signal) to support the summary
- - Prefer specificity over completeness (don’t try to explain everything)
-- Max ~120–150 words
+- Write in natural, human tone (not AI-like)
+- Avoid generic phrases
+- Avoid repeating raw metrics without explanation
+- Focus on the most likely cause of change (CTR, rankings, or demand)
+- Use at least one specific example from the signals or opportunities
 - No emojis
-- No fluff or filler
+- No fluff
 - No hard recommendations (avoid “you should…”)
+- No bullet overload (max 3–4 bullets per section)
+- ${lengthRule}
 
 Structure:
-1. Opening line (what changed overall)
-2. What’s driving it
-3. Where the opportunities are
+1. Performance summary
+2. Key drivers
+3. Opportunities
 4. Short closing summary
 
- Length:
- - Aim for ~120–150 words
- - If too short, expand slightly by adding one supporting detail (not more metrics)
-
- Tone:
- - Clear, direct, slightly conversational
- - Client-safe but not dumbed down
-
 Output:
- Plain text email, ready to copy and send`;
+Plain text email ready to send.
+
+Format:
+- Start with: Subject: SEO Update: ${ctx.date_range}
+- Then a short greeting
+- Then the 4-part structure above
+- End with a sign-off: Thanks,\n${ctx.sender_name}`;
 }
 
 export function EmailSummaryGenerator({
@@ -188,6 +191,33 @@ export function EmailSummaryGenerator({
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [copied, setCopied] = useState(false);
+  const [variant, setVariant] = useState<"default" | "long">("default");
+  const [senderName, setSenderName] = useState<string>("");
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [pendingGenerate, setPendingGenerate] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let canceled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/user/profile", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { displayName?: string; email?: string };
+        const displayName = (data.displayName ?? "").trim();
+        const email = (data.email ?? "").trim();
+        const fallback = email ? email.split("@")[0] ?? email : "";
+        const name = displayName || fallback || "Consoleview";
+        if (!canceled) setSenderName(name);
+      } catch {}
+      finally {
+        if (!canceled) setProfileLoaded(true);
+      }
+    })();
+    return () => {
+      canceled = true;
+    };
+  }, [open]);
 
   const normalizedDomain = useMemo(() => {
     const d = domain.trim();
@@ -206,6 +236,7 @@ export function EmailSummaryGenerator({
     return {
       domain: normalizedDomain,
       date_range,
+      sender_name: senderName || "Consoleview",
       clicks: Math.round(summary.clicks),
       clicks_change: formatSignedPercent(summary.clicksChangePercent),
       impressions: Math.round(summary.impressions),
@@ -217,21 +248,19 @@ export function EmailSummaryGenerator({
       signals: signals.length ? signals : ["No major signals detected"],
       opportunities: opportunities.length ? opportunities : ["No clear opportunities detected"],
     };
-  }, [endDate, lostQueries, newQueries, normalizedDomain, pagesRows, queriesRows, startDate, summary]);
+  }, [endDate, lostQueries, newQueries, normalizedDomain, pagesRows, queriesRows, senderName, startDate, summary]);
 
-  const generate = useCallback(async ({ longer = false }: { longer?: boolean } = {}) => {
+  const generate = useCallback(async (nextVariant: "default" | "long") => {
     if (!ctx) return;
     setLoading(true);
     setError(null);
     setCopied(false);
     try {
-      const prompt = longer
-        ? `${buildEmailPrompt(ctx)}\n\nExpand slightly with one additional supporting detail.`
-        : buildEmailPrompt(ctx);
+      const prompt = buildEmailPrompt(ctx, nextVariant);
       const res = await fetch("/api/ai/email-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, maxTokens: nextVariant === "long" ? 520 : 260 }),
       });
       if (!res.ok) {
         const msg = (await res.json().catch(() => null)) as unknown;
@@ -251,13 +280,27 @@ export function EmailSummaryGenerator({
     }
   }, [ctx]);
 
+  useEffect(() => {
+    if (!open) return;
+    if (!pendingGenerate) return;
+    if (!ctx) return;
+    if (loading) return;
+    if (!profileLoaded) return;
+    setVariant("default");
+    setPendingGenerate(false);
+    generate("default");
+  }, [ctx, generate, loading, open, pendingGenerate, profileLoaded]);
+
   return (
     <>
       <button
         type="button"
         onClick={() => {
           setOpen(true);
-          if (!text) generate();
+          if (!text) {
+            setProfileLoaded(false);
+            setPendingGenerate(true);
+          }
         }}
         data-menu-close="true"
         className={cn(
@@ -278,10 +321,8 @@ export function EmailSummaryGenerator({
           strokeLinejoin="round"
           aria-hidden
         >
-          <path d="M4 4h16v16H4z" opacity="0" />
-          <path d="M4 6h16" />
-          <path d="M4 6l8 7 8-7" />
-          <path d="M4 18h16" />
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="M3 7l9 6 9-6" />
         </svg>
       </button>
 
@@ -310,7 +351,7 @@ export function EmailSummaryGenerator({
             </button>
             <button
               type="button"
-              onClick={() => generate()}
+              onClick={() => generate(variant)}
               disabled={!ctx || loading}
               className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-50"
             >
@@ -318,7 +359,10 @@ export function EmailSummaryGenerator({
             </button>
             <button
               type="button"
-              onClick={() => generate({ longer: true })}
+              onClick={() => {
+                setVariant("long");
+                generate("long");
+              }}
               disabled={!ctx || loading}
               className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-50"
             >

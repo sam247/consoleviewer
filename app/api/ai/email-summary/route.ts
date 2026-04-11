@@ -15,10 +15,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { prompt } = (await request.json()) as { prompt?: string };
+    const { prompt, maxTokens } = (await request.json()) as { prompt?: string; maxTokens?: number };
     if (!prompt || typeof prompt !== "string") {
       return NextResponse.json({ error: "Missing prompt" }, { status: 400 });
     }
+    const cappedMaxTokens =
+      typeof maxTokens === "number" && Number.isFinite(maxTokens)
+        ? Math.max(100, Math.min(700, Math.floor(maxTokens)))
+        : 250;
 
     const res = await fetch(DEEPSEEK_URL, {
       method: "POST",
@@ -37,7 +41,7 @@ export async function POST(request: NextRequest) {
           { role: "user", content: prompt },
         ],
         temperature: 0.5,
-        max_tokens: 250,
+        max_tokens: cappedMaxTokens,
       }),
     });
 
@@ -59,4 +63,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Could not generate update" }, { status: 500 });
   }
 }
-

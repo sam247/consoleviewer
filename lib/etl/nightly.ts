@@ -671,8 +671,7 @@ export async function runNightlyEtl(options: EtlOptions = {}) {
   }
 
   let totalRows = 0;
-  let failed = false;
-  let errorMessage = "";
+  const propertyErrors: { propertyId: string; message: string }[] = [];
 
   const limit = Math.max(1, Math.min(25, Number(options.propertyLimit ?? 3)));
   const cursor = options.cursor?.trim() || null;
@@ -702,25 +701,34 @@ export async function runNightlyEtl(options: EtlOptions = {}) {
       }
       await ingestKeywordsForProperty(property, options);
     } catch (err) {
-      failed = true;
-      errorMessage = err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : String(err);
+      propertyErrors.push({ propertyId: property.id, message });
     }
   }
+
+  const partialFailure = propertyErrors.length > 0;
+  const errorSummary =
+    propertyErrors.length > 0
+      ? propertyErrors.map((e) => `${e.propertyId}: ${e.message}`).join(" | ")
+      : null;
 
   await getPool().query(
     `UPDATE etl_runs
      SET status = $1, finished_at = now(), rows_processed = $2, error = $3
      WHERE id = $4`,
-    [failed ? "failed" : "success", totalRows, failed ? errorMessage : null, runId]
+    [partialFailure ? "failed" : "success", totalRows, errorSummary, runId]
   );
 
   const lastRow = propsRes.rows[propsRes.rows.length - 1] as { id?: string } | undefined;
   const nextCursor = propsRes.rows.length === limit ? (lastRow?.id ?? null) : null;
+  // ok: batch finished (scheduler should advance cursor). Per-property issues use partialFailure.
   return {
-    ok: !failed,
+    ok: true,
     runId,
     processedProperties: totalRows,
-    failed,
+    partialFailure,
+    failed: partialFailure,
+    propertyErrors: partialFailure ? propertyErrors : undefined,
     nextCursor,
     done: nextCursor == null,
   };

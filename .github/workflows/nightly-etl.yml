@@ -48,6 +48,10 @@ jobs:
               exit 1
             fi
 
+            if [ "$(printf "%s" "$BODY" | jq -r '.partialFailure // false')" = "true" ]; then
+              echo "::warning::ETL batch had one or more property-level failures (see JSON propertyErrors)"
+            fi
+
             CURSOR=$(printf "%s" "$BODY" | jq -r '.nextCursor // empty')
             DONE=$(printf "%s" "$BODY" | jq -r '.done // false')
 

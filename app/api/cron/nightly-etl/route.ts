@@ -36,7 +36,9 @@ export async function GET(request: NextRequest) {
       cursor: cursorParam ?? undefined,
       propertyLimit: limitParam ? Number(limitParam) : undefined,
     });
-    return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+    // Per-property failures are reported as partialFailure; still HTTP 200 so batch
+    // schedulers (e.g. GitHub Actions) continue through all property chunks.
+    return NextResponse.json(result, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "ETL failed";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

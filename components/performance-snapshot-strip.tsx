@@ -52,6 +52,28 @@ function buildContextLine(summary: NonNullable<PropertyData["summary"]>, visible
   return "Mixed movement across core metrics";
 }
 
+export function PerformanceSnapshotSummary({
+  summary,
+  className,
+}: {
+  summary: PropertyData["summary"] | null | undefined;
+  className?: string;
+}) {
+  const { series } = useSparkSeries();
+  const visible = useMemo(() => {
+    const out: MetricKey[] = [];
+    if (series.clicks) out.push("clicks");
+    if (series.impressions) out.push("impressions");
+    if (series.ctr) out.push("ctr");
+    if (series.position) out.push("position");
+    return out;
+  }, [series.clicks, series.ctr, series.impressions, series.position]);
+
+  const context = useMemo(() => (summary ? buildContextLine(summary, visible) : ""), [summary, visible]);
+  if (!summary) return null;
+  return <div className={cn("text-xs text-muted-foreground", className)}>{context}</div>;
+}
+
 function Metric({
   label,
   value,
@@ -94,7 +116,6 @@ export function PerformanceSnapshotStrip({
     return out;
   }, [series.clicks, series.ctr, series.impressions, series.position]);
 
-  const context = useMemo(() => (summary ? buildContextLine(summary, visible) : ""), [summary, visible]);
 
   const clicksDelta = formatSignedPercent(summary?.clicksChangePercent);
   const imprDelta = formatSignedPercent(summary?.impressionsChangePercent);
@@ -135,7 +156,6 @@ export function PerformanceSnapshotStrip({
           />
         )}
       </div>
-      <div className="mt-1 text-[11px] text-muted-foreground text-right truncate">{context}</div>
     </div>
   );
 }

@@ -16,7 +16,9 @@ type QuickWin = {
   impressionsChangePercent?: number;
   clicksChangePercent?: number;
   score: number;
-  reason: string;
+  expectedCtr: number;
+  ctrGap: number;
+  signal: "CTR gap" | "Visibility gap" | "Momentum" | "Near page 1";
 };
 
 function formatCompact(n: number): string {
@@ -25,56 +27,90 @@ function formatCompact(n: number): string {
   return String(n);
 }
 
-function scoreQuickWin({
-  position,
-  impressions,
-}: {
-  position: number;
-  impressions: number;
-}) {
-  const gap = Math.max(0, position - 3);
-  return impressions * gap;
+function positionBand(pos: number): "4-6" | "7-10" | "11-15" | "16-20" {
+  if (pos <= 6) return "4-6";
+  if (pos <= 10) return "7-10";
+  if (pos <= 15) return "11-15";
+  return "16-20";
 }
 
-function deriveReason({
+function expectedCtrByBand(rows: DataTableRow[]): Record<string, number> {
+  const buckets: Record<string, { sum: number; w: number }> = {
+    "4-6": { sum: 0, w: 0 },
+    "7-10": { sum: 0, w: 0 },
+    "11-15": { sum: 0, w: 0 },
+    "16-20": { sum: 0, w: 0 },
+  };
+  for (const r of rows) {
+    const pos = r.position;
+    const impr = r.impressions ?? 0;
+    const clicks = r.clicks ?? 0;
+    if (pos == null || !Number.isFinite(pos)) continue;
+    if (impr <= 0) continue;
+    const band = positionBand(pos);
+    const ctr = (clicks / impr) * 100;
+    buckets[band].sum += ctr * impr;
+    buckets[band].w += impr;
+  }
+  return Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.w > 0 ? v.sum / v.w : 0]));
+}
+
+function impressionThreshold(rows: DataTableRow[], min = 1000, topPercent = 0.3): number {
+  const values = rows
+    .map((r) => r.impressions ?? 0)
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .sort((a, b) => b - a);
+  if (!values.length) return min;
+  const idx = Math.min(values.length - 1, Math.floor(values.length * topPercent));
+  return Math.max(min, values[idx] ?? min);
+}
+
+function signalFor({
   position,
+  ctrGap,
   impressions,
-  ctr,
-  avgCtr,
+  impressionsP90,
   clicksChangePercent,
   impressionsChangePercent,
 }: {
   position: number;
+  ctrGap: number;
   impressions: number;
-  ctr: number;
-  avgCtr: number;
+  impressionsP90: number;
   clicksChangePercent?: number;
   impressionsChangePercent?: number;
-}) {
-  const lowCtr = Number.isFinite(avgCtr) && avgCtr > 0 ? ctr < avgCtr * 0.85 : ctr < 1;
-  const improving = (clicksChangePercent ?? 0) > 0 || (impressionsChangePercent ?? 0) > 0;
-
-  if (lowCtr && impressions >= 1500) return "Improve CTR (title/meta)";
-  if (position <= 8 && improving) return "Push into top 3";
-  if (position >= 10 && impressions >= 3000) return "Expand content depth";
-  return "Internal link boost";
+}): QuickWin["signal"] {
+  const momentum = (clicksChangePercent ?? 0) > 0 && (impressionsChangePercent ?? 0) > 0;
+  if (ctrGap >= 0.5) return "CTR gap";
+  if (position <= 6) return "Near page 1";
+  if (momentum) return "Momentum";
+  if (impressions >= impressionsP90) return "Visibility gap";
+  return "CTR gap";
 }
 
 export function QuickWinsCard({
   queries,
-  avgCtr,
   className,
   maxRows = 5,
 }: {
   queries: DataTableRow[];
-  avgCtr: number;
   className?: string;
   maxRows?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
+  const [mode, setMode] = useState<"ctr" | "4-10" | "10-20">("ctr");
 
   const wins = useMemo(() => {
+    const expected = expectedCtrByBand(queries);
+    const baseMin = 1000;
+    const thr = impressionThreshold(queries, baseMin, 0.3);
+    const imprValues = queries
+      .map((r) => r.impressions ?? 0)
+      .filter((n) => Number.isFinite(n) && n > 0)
+      .sort((a, b) => a - b);
+    const p90 = imprValues.length ? imprValues[Math.floor(imprValues.length * 0.9)] ?? baseMin : baseMin;
+
     return queries
       .map<QuickWin | null>((q) => {
         const position = Number(q.position ?? NaN);
@@ -82,23 +118,24 @@ export function QuickWinsCard({
         const clicks = Number(q.clicks ?? 0);
         const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
         if (!Number.isFinite(position)) return null;
-        if (position < 4 || position > 15) return null;
-        if (impressions < 1000) return null;
+        const inBand = position >= 4 && position <= 15;
+        if (!inBand) return null;
+        if (impressions < thr) return null;
 
-        const reason = deriveReason({
+        const band = positionBand(position);
+        const expectedCtr = expected[band] ?? 0;
+        const ctrGap = Math.max(0, expectedCtr - ctr);
+        if (ctrGap < 0.2) return null;
+
+        const score = impressions * ctrGap;
+        const signal = signalFor({
           position,
+          ctrGap,
           impressions,
-          ctr,
-          avgCtr,
+          impressionsP90: p90,
           clicksChangePercent: q.changePercent,
           impressionsChangePercent: q.impressionsChangePercent,
         });
-
-        const lowCtr = Number.isFinite(avgCtr) && avgCtr > 0 ? ctr < avgCtr * 0.85 : ctr < 1;
-        const improving = (q.changePercent ?? 0) > 0 || (q.impressionsChangePercent ?? 0) > 0;
-        if (!lowCtr && !improving) return null;
-
-        const score = scoreQuickWin({ position, impressions });
         return {
           query: q.key,
           position,
@@ -108,12 +145,14 @@ export function QuickWinsCard({
           impressionsChangePercent: q.impressionsChangePercent,
           clicksChangePercent: q.changePercent,
           score,
-          reason,
+          expectedCtr,
+          ctrGap,
+          signal,
         };
       })
       .filter((x): x is QuickWin => x !== null)
       .sort((a, b) => b.score - a.score);
-  }, [avgCtr, queries]);
+  }, [queries]);
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -121,12 +160,18 @@ export function QuickWinsCard({
     return wins.filter((w) => w.query.toLowerCase().includes(q));
   }, [filter, wins]);
 
-  const top = filtered.slice(0, maxRows);
+  const modeFiltered = useMemo(() => {
+    if (mode === "4-10") return filtered.filter((w) => w.position >= 4 && w.position <= 10);
+    if (mode === "10-20") return filtered.filter((w) => w.position >= 10 && w.position <= 20);
+    return filtered;
+  }, [filtered, mode]);
+
+  const top = modeFiltered.slice(0, maxRows);
 
   return (
     <TableCard
-      title={<span className="text-sm font-semibold text-foreground">Quick wins</span>}
-      subtitle="High-impact opportunities based on position + impressions"
+      title={<span className="text-sm font-semibold text-foreground">Low hanging fruit</span>}
+      subtitle="Queries with strong visibility but underperforming clicks"
       className={cn("min-w-0 min-h-[480px]", className)}
     >
       <div className="mt-2 max-h-[400px] overflow-auto">
@@ -151,11 +196,13 @@ export function QuickWinsCard({
                       {w.query}
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground truncate">
-                      Pos {w.position.toFixed(1)} • {formatCompact(w.impressions)} impressions • → {w.reason}
+                      {formatCompact(w.impressions)} impr • Pos {w.position.toFixed(1)} • CTR {w.ctr.toFixed(1)}% ↓
                     </div>
                   </div>
-                  <div className="shrink-0 text-xs text-muted-foreground hover:text-foreground underline">
-                    View
+                  <div className="shrink-0">
+                    <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
+                      {w.signal}
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -168,30 +215,32 @@ export function QuickWinsCard({
 
       <div className="mt-auto flex items-center justify-end border-t border-border px-5 py-2 text-xs text-muted-foreground">
         <button type="button" onClick={() => setOpen(true)} className="hover:text-foreground underline" disabled={!wins.length}>
-          View all opportunities
+          View full report
         </button>
       </div>
 
       <ReportModal
         open={open}
         onClose={() => setOpen(false)}
-        title="Quick wins"
-        subtitle="High-impact opportunities based on position + impressions"
+        title="Low hanging fruit"
+        subtitle="Queries with strong visibility but underperforming clicks"
         actions={
           <button
             type="button"
             onClick={() => {
               exportToCsv(
-                filtered.map((w) => ({
+                modeFiltered.map((w) => ({
                   query: w.query,
                   position: w.position,
                   impressions: w.impressions,
                   clicks: w.clicks,
                   ctr: w.ctr,
                   score: w.score,
-                  reason: w.reason,
+                  signal: w.signal,
+                  expectedCtr: w.expectedCtr,
+                  ctrGap: w.ctrGap,
                 })),
-                "quick-wins.csv"
+                "low-hanging-fruit.csv"
               );
             }}
             className="text-xs text-muted-foreground hover:text-foreground underline"
@@ -200,25 +249,50 @@ export function QuickWinsCard({
           </button>
         }
         search={
-          <input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search queries"
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-          />
+          <div className="flex flex-col gap-2">
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Search queries"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            />
+            <div className="flex items-center gap-1 rounded-md border border-input bg-background p-0.5 w-fit">
+              <button
+                type="button"
+                onClick={() => setMode("ctr")}
+                className={mode === "ctr" ? "rounded px-2 py-1 text-xs font-medium bg-surface text-foreground border border-border" : "rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"}
+              >
+                CTR gaps
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("4-10")}
+                className={mode === "4-10" ? "rounded px-2 py-1 text-xs font-medium bg-surface text-foreground border border-border" : "rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"}
+              >
+                Pos 4–10
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("10-20")}
+                className={mode === "10-20" ? "rounded px-2 py-1 text-xs font-medium bg-surface text-foreground border border-border" : "rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"}
+              >
+                Pos 10–20
+              </button>
+            </div>
+          </div>
         }
       >
         <div className="divide-y divide-border">
-          {filtered.length === 0 ? (
+          {modeFiltered.length === 0 ? (
             <div className="px-4 py-6 text-center text-xs text-muted-foreground">No opportunities found.</div>
           ) : (
-            filtered.map((w, idx) => (
+            modeFiltered.map((w, idx) => (
               <div key={w.query} className={cn("px-4 py-3", idx === 0 ? "bg-accent/40" : "")}> 
                 <div className={cn("text-sm text-foreground truncate", idx === 0 ? "font-semibold" : "font-medium")}>{w.query}</div>
                 <div className="mt-1 text-xs text-muted-foreground">
                   Pos {w.position.toFixed(1)} • {formatCompact(w.impressions)} impressions • CTR {w.ctr.toFixed(1)}% • Score {Math.round(w.score).toLocaleString()}
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">→ {w.reason}</div>
+                <div className="mt-1 text-xs text-muted-foreground">Signal: {w.signal}</div>
               </div>
             ))
           )}

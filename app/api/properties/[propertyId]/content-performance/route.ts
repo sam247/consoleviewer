@@ -188,6 +188,7 @@ export async function GET(
   for (const r of currentRes.rows) {
     const full = r.page;
     const path = extractPath(full);
+    if (path.startsWith("/cdn/") || path === "/cdn") continue;
     const isExcluded = excludePatterns.some((p) => p.test(path, full));
     if (isExcluded) continue;
     filteredPages.push(r);
@@ -199,6 +200,7 @@ export async function GET(
   for (const r of filteredPages) {
     const path = extractPath(r.page);
     const seg1 = path.split("/").filter(Boolean)[0];
+    if (seg1 === "cdn") continue;
     const key = seg1 ? `/${seg1}/` : "(root)";
     const label = seg1 ? humanizeSegment(seg1) : "Homepage";
     const g = autoGroups.get(key) ?? { label, pages: 0, impressions: 0 };
@@ -234,6 +236,7 @@ export async function GET(
       }
     } else {
       const seg1 = path.split("/").filter(Boolean)[0];
+      if (seg1 === "cdn") continue;
       key = seg1 ? `/${seg1}/` : "(root)";
       label = seg1 ? humanizeSegment(seg1) : "Homepage";
     }

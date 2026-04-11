@@ -111,7 +111,6 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
   });
 
   const all = useMemo(() => data?.groups ?? [], [data?.groups]);
-  const suggested = useMemo(() => data?.suggestedPatterns ?? [], [data?.suggestedPatterns]);
   const insight = useMemo(() => buildInsight(all), [all]);
 
   const addInclude = (pattern: string) => {
@@ -150,14 +149,13 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
       title={<span className="text-sm font-semibold text-foreground">Content performance</span>}
       subtitle="How different parts of your site are performing"
       className={cn("min-w-0 min-h-[480px]", className)}
-    >
-      <div className="px-5 pt-3">
-        <div className="flex flex-wrap items-center gap-2">
+      action={
+        <div className="flex items-center justify-end gap-2">
           <input
             value={patternInput}
             onChange={(e) => setPatternInput(e.target.value)}
             placeholder="Enter URL pattern or regex…"
-            className="h-9 flex-1 min-w-[220px] rounded-md border border-input bg-background px-3 text-sm"
+            className="h-9 w-[220px] max-w-[32vw] rounded-md border border-input bg-background px-3 text-sm"
           />
           <button
             type="button"
@@ -182,8 +180,12 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
             Exclude
           </button>
         </div>
+      }
+    >
+      <div className="px-5 pt-2 text-xs text-muted-foreground">{insight}</div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+      {(includePatterns.length > 0 || excludePatterns.length > 0) && (
+        <div className="px-5 pt-2 flex flex-wrap items-center gap-2">
           {includePatterns.map((p) => (
             <button
               key={`inc-${p}`}
@@ -211,25 +213,7 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
             </button>
           ))}
         </div>
-
-        {suggested.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {suggested.map((s) => (
-              <button
-                key={s.pattern}
-                type="button"
-                onClick={() => addInclude(s.pattern)}
-                className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-                title={`Add segment: ${s.pattern}`}
-              >
-                {s.pattern}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="px-5 pt-2 text-xs text-muted-foreground">{insight}</div>
+      )}
 
       <div className="mt-2 max-h-[400px] overflow-auto">
         <table className={TABLE_BASE_CLASS}>

@@ -101,7 +101,8 @@ function buildOpportunities(queriesRows: DataTableRow[]): string[] {
 function buildSignals(summary: Summary | null, newQueries: DataTableRow[], lostQueries: DataTableRow[], pagesRows: DataTableRow[]): string[] {
   const out: string[] = [];
   if (summary?.clicksChangePercent != null) {
-    out.push(`${formatSignedPercent(summary.clicksChangePercent)} clicks`);
+    const v = Math.round(summary.clicksChangePercent);
+    out.push(`Clicks ${v > 0 ? "up" : "down"} ${Math.abs(v)}%`);
   }
   const newQ = [...newQueries].sort((a, b) => b.clicks - a.clicks)[0];
   if (newQ) out.push(`New ranking: ${newQ.key}`);
@@ -126,14 +127,18 @@ Metrics:
 - Avg position: ${ctx.position} (${ctx.position_change})
 
 Key signals:
-${ctx.signals.map((s) => `- ${s}`).join("\n")}
+${ctx.signals.join("\n")}
 
 Opportunities:
-${ctx.opportunities.map((o) => `- ${o}`).join("\n")}
+${ctx.opportunities.join("\n")}
 
 Rules:
 - Write like an experienced SEO, not a tool
 - Keep it natural and human (no generic phrasing)
+ - Avoid repeating raw metrics without explanation
+ - Focus on the most likely cause of change (CTR, rankings, or demand)
+ - Use at least one specific example (query, page, or signal) to support the summary
+ - Prefer specificity over completeness (don’t try to explain everything)
 - Max ~120–150 words
 - No emojis
 - No fluff or filler
@@ -145,8 +150,16 @@ Structure:
 3. Where the opportunities are
 4. Short closing summary
 
+ Length:
+ - Aim for ~120–150 words
+ - If too short, expand slightly by adding one supporting detail (not more metrics)
+
+ Tone:
+ - Clear, direct, slightly conversational
+ - Client-safe but not dumbed down
+
 Output:
-Plain text email, ready to send`;
+ Plain text email, ready to copy and send`;
 }
 
 export function EmailSummaryGenerator({
@@ -206,13 +219,15 @@ export function EmailSummaryGenerator({
     };
   }, [endDate, lostQueries, newQueries, normalizedDomain, pagesRows, queriesRows, startDate, summary]);
 
-  const generate = useCallback(async () => {
+  const generate = useCallback(async ({ longer = false }: { longer?: boolean } = {}) => {
     if (!ctx) return;
     setLoading(true);
     setError(null);
     setCopied(false);
     try {
-      const prompt = buildEmailPrompt(ctx);
+      const prompt = longer
+        ? `${buildEmailPrompt(ctx)}\n\nExpand slightly with one additional supporting detail.`
+        : buildEmailPrompt(ctx);
       const res = await fetch("/api/ai/email-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -246,11 +261,28 @@ export function EmailSummaryGenerator({
         }}
         data-menu-close="true"
         className={cn(
-          "flex h-10 items-center rounded-md border border-border px-3 py-0 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
+          "flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground",
           className
         )}
+        aria-label="Generate update"
+        title="Generate update"
       >
-        Generate update
+        <span className="sr-only">Generate update</span>
+        <svg
+          className="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M4 4h16v16H4z" opacity="0" />
+          <path d="M4 6h16" />
+          <path d="M4 6l8 7 8-7" />
+          <path d="M4 18h16" />
+        </svg>
       </button>
 
       <ReportModal
@@ -278,11 +310,19 @@ export function EmailSummaryGenerator({
             </button>
             <button
               type="button"
-              onClick={generate}
+              onClick={() => generate()}
               disabled={!ctx || loading}
               className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-50"
             >
               Regenerate
+            </button>
+            <button
+              type="button"
+              onClick={() => generate({ longer: true })}
+              disabled={!ctx || loading}
+              className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-50"
+            >
+              Make longer
             </button>
           </div>
         }

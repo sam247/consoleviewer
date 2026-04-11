@@ -126,7 +126,7 @@ export function PerformanceSnapshotStrip({
 
   return (
     <div className={cn("max-w-[560px]", className)}>
-      <div className="flex flex-wrap items-baseline justify-end gap-x-4 gap-y-1 leading-none">
+      <div className="flex flex-nowrap items-baseline justify-end gap-4 leading-none whitespace-nowrap">
         {visible.includes("clicks") && (
           <Metric
             label="Clicks"

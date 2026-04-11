@@ -71,25 +71,22 @@ export default function SiteDetailPage({
         <main className="flex-1 p-3 md:p-6">
           <div className="mx-auto max-w-[86rem]">
           <div className="mb-4">
-            <div className="flex items-start justify-between gap-6">
-              <div className="min-w-0">
-                <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-                  ← Overview
-                </Link>
-                <div className="mt-1">
-                  <SiteIdentity siteUrl={siteUrl} textClassName="text-lg font-medium text-foreground" faviconSize={22} />
-                </div>
-                {!isLoading && (
-                  <>
-                    <div className="mt-2">
-                      <LightSignalsStrip summary={data.summary} newQueries={data.newQueries} lostQueries={data.lostQueries} pagesRows={pagesRows} />
-                    </div>
-                    <PerformanceSnapshotSummary summary={data.summary} className="mt-2" />
-                  </>
-                )}
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex items-start gap-3">
+                <SiteIdentity siteUrl={siteUrl} textClassName="text-lg font-medium text-foreground" faviconSize={22} />
+                {!isLoading ? (
+                  <LightSignalsStrip
+                    summary={data.summary}
+                    newQueries={data.newQueries}
+                    lostQueries={data.lostQueries}
+                    pagesRows={pagesRows}
+                    className="min-w-0 max-h-[52px] overflow-hidden"
+                  />
+                ) : null}
               </div>
               {!isLoading ? <PerformanceSnapshotStrip summary={data.summary} className="shrink-0 w-[560px]" /> : null}
             </div>
+            {!isLoading ? <PerformanceSnapshotSummary summary={data.summary} className="mt-2" /> : null}
           </div>
 
           {isLoading ? (

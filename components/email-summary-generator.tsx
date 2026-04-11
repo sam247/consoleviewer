@@ -115,7 +115,7 @@ function buildSignals(summary: Summary | null, newQueries: DataTableRow[], lostQ
 }
 
 function buildEmailPrompt(ctx: EmailContext, variant: "default" | "long"): string {
-  const summaryTarget = variant === "long" ? "140–150" : "110–130";
+  const summaryTarget = variant === "long" ? "260–320" : "200–240";
   const structureLine = "Structure (no headings): overall change → drivers → opportunities → close.";
 
   return `Generate a concise SEO performance email update.
@@ -152,7 +152,7 @@ Rules:
 - Do not use phrases like “the data suggests” or “there is a need to”
 - Avoid filler phrases like “interestingly”, “it appears”, “this suggests”
 - Keep sentences tight and direct
-- Keep under 150 words
+- Minimum 200 words (do not go below 200)
 
 ${structureLine}
 
@@ -161,6 +161,7 @@ Formatting rules:
 - Write as a natural flowing email using short paragraphs
 - Use natural paragraph breaks instead of headings
 - After “Hi,” add this exact line on its own: Here’s a quick update on performance.
+- Ensure there is one blank line between “Hi,” and that line
 - If there are 3+ distinct drivers (wins/losses/opportunities), use a short bullet list for drivers only
 - Otherwise keep everything in paragraph form
 
@@ -170,7 +171,8 @@ Plain text email ready to send.
 Format:
 - Start with: Subject: SEO Update: ${ctx.date_range}
 - Then: Hi,
-- Then the required line
+- Then a blank line
+- Then: Here’s a quick update on performance.
 - Then the email body
 - End with a sign-off: Thanks,\n${ctx.sender_name}`;
 }
@@ -270,7 +272,7 @@ export function EmailSummaryGenerator({
       const res = await fetch("/api/ai/email-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, maxTokens: nextVariant === "long" ? 520 : 260 }),
+        body: JSON.stringify({ prompt, maxTokens: nextVariant === "long" ? 700 : 520 }),
       });
       if (!res.ok) {
         const msg = (await res.json().catch(() => null)) as unknown;

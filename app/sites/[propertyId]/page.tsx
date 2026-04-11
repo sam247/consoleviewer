@@ -14,6 +14,7 @@ import { ProjectSimplifiedTrendSection } from "@/components/sections/project-sim
 import { ProjectSimplifiedTrackersSection } from "@/components/sections/project-simplified-trackers-section";
 import { ProjectSimplifiedChangeTablesSection } from "@/components/sections/project-simplified-change-tables-section";
 import { ContentPerformanceCard } from "@/components/content-performance-card";
+import { QuickWinsCard } from "@/components/quick-wins-card";
 import { ProjectAnalysisTab } from "@/components/sections/project-analysis-tab";
 import { LightSignalsStrip } from "@/components/light-signals-strip";
 import { CustomizeDashboardCard } from "@/components/customize-dashboard-card";
@@ -144,7 +145,10 @@ export default function SiteDetailPage({
                 <>
                   <ProjectSimplifiedTrendSection data={data} propertyId={propertyId} />
                   <ProjectSimplifiedTrackersSection propertyId={propertyId} queriesRows={queriesRows} siteUrl={siteUrl} />
-                  <ContentPerformanceCard propertyId={propertyId} />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
+                    <ContentPerformanceCard propertyId={propertyId} />
+                    <QuickWinsCard queries={queriesRows} avgCtr={data.summary?.ctr ?? 0} />
+                  </div>
                   <ProjectSimplifiedChangeTablesSection propertyId={propertyId} queriesRows={queriesRows} pagesRows={pagesRows} />
                   <CustomizeDashboardCard propertyId={propertyId} />
                 </>

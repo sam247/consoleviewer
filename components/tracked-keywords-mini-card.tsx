@@ -201,7 +201,7 @@ export function TrackedKeywordsMiniCard({
             type="button"
             onClick={onAdd}
             disabled={!phrase.trim() || saving}
-            className="h-9 w-[64px] rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+            className="h-9 w-[64px] rounded-md border border-border bg-surface px-3 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-50"
           >
             Add
           </button>
@@ -239,7 +239,13 @@ export function TrackedKeywordsMiniCard({
                   aria-hidden={!r}
                 >
                   <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r ? r.keyword : undefined}>
-                    {r ? r.keyword : <span className="text-muted-foreground">—</span>}
+                    {r ? (
+                      r.keyword
+                    ) : idx === rows.length ? (
+                      <span className="text-muted-foreground">Add keywords to start tracking</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className={cn("px-5 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
                     {r ? (

@@ -380,7 +380,11 @@ export function TrendChart({
 
   const metricOpacity = useCallback((key: SparkSeriesKey, isPrior = false) => {
     const base = isPrior ? 0.45 : 1;
-    if (!focusKey) return base * 0.7;
+    if (!focusKey) {
+      if (key === "clicks") return base * 0.9;
+      if (key === "impressions") return base * 0.7;
+      return base * 0.6;
+    }
     if (isFocused(key)) return base * (isPrior ? 0.35 : 1);
     return base * 0.25;
   }, [focusKey, isFocused]);
@@ -717,7 +721,7 @@ export function TrendChart({
         <LineChart data={chartData} margin={marginWithDualAxis}>
           <defs>
             <linearGradient id="trend-fill-clicks" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={CHART_CLICKS} stopOpacity={0.24} />
+              <stop offset="0%" stopColor={CHART_CLICKS} stopOpacity={0.12} />
               <stop offset="100%" stopColor={CHART_CLICKS} stopOpacity={0} />
             </linearGradient>
           </defs>
@@ -862,7 +866,7 @@ export function TrendChart({
               return (
                 <div style={tooltipStyle}>
                   <div className="text-foreground font-medium">{dateLabel}</div>
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 space-y-0.5">
                     {rows.map((r) => {
                       const focused = r.key ? isFocused(r.key) : false;
                       const shouldBold = focusKey ? focused && !r.isPrior : false;
@@ -953,11 +957,11 @@ export function TrendChart({
                 fillOpacity={metricOpacity("clicks")}
                 {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "left" })}
               />
-              <Line
+                <Line
                 type="monotone"
                 dataKey="clicks"
                 stroke={CHART_CLICKS}
-                strokeWidth={metricStrokeWidth(2, "clicks")}
+                  strokeWidth={metricStrokeWidth(2.4, "clicks")}
                 strokeOpacity={metricOpacity("clicks")}
                 dot={false}
                 activeDot={{ r: 3, strokeWidth: 1.5, fill: CHART_CLICKS, stroke: "var(--surface)" }}
@@ -986,7 +990,7 @@ export function TrendChart({
                 type="monotone"
                 dataKey="impressions"
                 stroke={CHART_IMPRESSIONS}
-                strokeWidth={metricStrokeWidth(1.5, "impressions")}
+                strokeWidth={metricStrokeWidth(1.35, "impressions")}
                 dot={false}
                 strokeOpacity={metricOpacity("impressions")}
                 name="Impressions"
@@ -1013,7 +1017,7 @@ export function TrendChart({
               type="monotone"
               dataKey="ctr"
               stroke={CHART_CTR}
-              strokeWidth={metricStrokeWidth(1.2, "ctr")}
+              strokeWidth={metricStrokeWidth(1.05, "ctr")}
               strokeOpacity={metricOpacity("ctr")}
               dot={false}
               name="CTR"
@@ -1026,7 +1030,7 @@ export function TrendChart({
               type="monotone"
               dataKey="position"
               stroke={CHART_POSITION}
-              strokeWidth={metricStrokeWidth(1.2, "position")}
+              strokeWidth={metricStrokeWidth(1.05, "position")}
               strokeOpacity={metricOpacity("position")}
               dot={false}
               name="Avg position"

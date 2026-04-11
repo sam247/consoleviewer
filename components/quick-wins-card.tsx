@@ -54,10 +54,10 @@ function deriveReason({
   const lowCtr = Number.isFinite(avgCtr) && avgCtr > 0 ? ctr < avgCtr * 0.85 : ctr < 1;
   const improving = (clicksChangePercent ?? 0) > 0 || (impressionsChangePercent ?? 0) > 0;
 
-  if (position <= 7 && impressions >= 3000) return "Close to page 1, strong demand";
-  if (lowCtr && impressions >= 1500) return "High impressions, low CTR";
-  if (improving) return "Momentum building — push into top results";
-  return "Solid demand — optimize for page 1";
+  if (lowCtr && impressions >= 1500) return "Improve CTR (title/meta)";
+  if (position <= 8 && improving) return "Push into top 3";
+  if (position >= 10 && impressions >= 3000) return "Expand content depth";
+  return "Internal link boost";
 }
 
 export function QuickWinsCard({

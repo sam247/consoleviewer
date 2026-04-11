@@ -23,6 +23,16 @@ import {
 
 type SortKey = "query" | "clicks" | "impressions" | "clicksChangePercent" | "impressionsChangePercent" | "score";
 
+function tagsForQuery(query: string, segments: string[]): string[] {
+  const tags = new Set<string>();
+  if (segments.includes("questions") || /^\s*(why|how|what|when|where|who|which)\b/i.test(query)) tags.add("Informational");
+  if (segments.includes("comparisons") || /\b(vs|versus|compare|comparison|best|top)\b/i.test(query)) tags.add("Comparison");
+  if (/\bnear me\b/i.test(query) || /\b(in|near)\s+[a-z]{3,}\b/i.test(query)) tags.add("Local");
+  if (/\b(buy|price|cost|deal|discount|coupon|shop|order)\b/i.test(query)) tags.add("Transactional");
+  if (tags.size === 0 && segments.includes("long_tail")) tags.add("Discovery");
+  return Array.from(tags).slice(0, 2);
+}
+
 function formatCompact(n: number): string {
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
@@ -169,11 +179,31 @@ export function AiLedQueriesCard({
               return (
                 <tr
                   key={r?.query ?? `placeholder-${i}`}
-                  className={cn(TABLE_ROW_CLASS, i === 0 && r ? "bg-accent/40 font-medium" : "opacity-95")}
+                  className={cn(
+                    TABLE_ROW_CLASS,
+                    i === 0 && r ? "bg-accent/40 font-medium" : "opacity-90",
+                    i < 3 && r ? "font-medium" : ""
+                  )}
                   aria-hidden={!r}
                 >
                   <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r?.query}>
-                    {r ? r.query : <span className="text-muted-foreground">—</span>}
+                    {r ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={cn("truncate min-w-0", i < 3 ? "font-semibold" : "")}>{r.query}</span>
+                        <div className="ml-auto flex items-center gap-1.5">
+                          {tagsForQuery(r.query, r.segments).map((t) => (
+                            <span
+                              key={t}
+                              className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className={cn("px-5 text-right tabular-nums", TABLE_CELL_Y)}>
                     {r ? (

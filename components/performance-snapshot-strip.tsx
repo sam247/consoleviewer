@@ -38,18 +38,40 @@ function buildContextLine(summary: NonNullable<PropertyData["summary"]>, visible
   const clicks = classify(summary.clicksChangePercent);
   const impr = classify(summary.impressionsChangePercent);
   const ctr = visible.includes("ctr") ? classify(summary.ctrChangePercent) : "flat";
-  const pos = visible.includes("position") ? classify(summary.positionChangePercent) : "flat";
+  const posChange = visible.includes("position") ? classify(summary.positionChangePercent) : "flat";
 
   const showCtr = visible.includes("ctr") && summary.ctrChangePercent != null;
   const showPos = visible.includes("position") && summary.positionChangePercent != null;
+  const rankings = showPos ? (posChange === "up" ? "slipping" : posChange === "down" ? "improving" : "steady") : null;
 
-  if (clicks === "down" && impr === "down" && showCtr && ctr === "down") return "Clicks & impressions down — CTR softening";
-  if (clicks === "down" && impr !== "down" && showCtr && ctr === "down") return "Clicks down, CTR down — visibility steady";
-  if (impr === "up" && showCtr && ctr === "down") return "Visibility up — CTR slipping";
-  if (clicks === "down" && showPos && pos === "flat") return "Demand falling faster than rankings";
-  if (clicks === "up" && impr === "up") return "Demand and visibility improving";
-  if (clicks === "flat" && impr === "flat") return "Performance stable in this period";
-  return "Mixed movement across core metrics";
+  if (clicks === "down" && impr !== "down" && showCtr && ctr === "down") {
+    return "Clicks falling despite steady impressions — CTR decline driving losses";
+  }
+  if (impr === "up" && showCtr && ctr === "down") {
+    return "Visibility rising but CTR slipping — clicks gains capped";
+  }
+  if (clicks === "down" && impr === "down" && showPos && rankings === "slipping") {
+    return "Rankings slipping — visibility loss dragging impressions and clicks";
+  }
+  if (clicks === "down" && impr === "down" && showPos && rankings === "improving") {
+    return "Visibility loss outweighs ranking gains — clicks falling across queries";
+  }
+  if (clicks !== "up" && impr === "flat" && showPos && rankings === "slipping") {
+    return "Rankings slipping with steady demand — early traffic risk";
+  }
+  if (clicks === "up" && showCtr && ctr === "down") {
+    return "Ranking gains not converting — CTR underperforming";
+  }
+  if (clicks === "up" && impr === "up" && (!showCtr || ctr !== "down")) {
+    return showCtr && ctr === "up" ? "Demand and visibility rising — CTR improving" : "Demand and visibility rising across queries";
+  }
+  if (clicks === "down" && impr === "down") {
+    return "Impressions down across queries — visibility loss impacting traffic";
+  }
+  if (clicks === "flat" && impr === "flat") {
+    return showCtr && ctr === "down" ? "Demand steady — CTR slipping on key queries" : "Demand steady — monitor CTR and ranking shifts";
+  }
+  return "Demand mixed — watch CTR and visibility signals";
 }
 
 export function PerformanceSnapshotSummary({

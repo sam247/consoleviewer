@@ -92,6 +92,11 @@ export default function SiteDetailPage({
           <div className="mb-4">
             {!isLoading ? (
               <>
+                <div className="mb-1">
+                  <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
+                    ← Overview
+                  </Link>
+                </div>
                 <div className="flex items-start justify-between gap-6">
                   <SiteIdentity siteUrl={siteUrl} textClassName="text-lg font-medium text-foreground" faviconSize={22} />
                   <PerformanceSnapshotStrip summary={data.summary} className="shrink-0 w-[560px]" />

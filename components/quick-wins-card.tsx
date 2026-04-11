@@ -19,12 +19,37 @@ type QuickWin = {
   expectedCtr: number;
   ctrGap: number;
   signal: "CTR gap" | "Visibility gap" | "Momentum" | "Near page 1";
+  priority: "High" | "Medium" | "Low";
 };
 
 function formatCompact(n: number): string {
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
   return String(n);
+}
+
+function formatExpectedCtr(expectedCtr: number): string {
+  if (!Number.isFinite(expectedCtr) || expectedCtr <= 0) return "";
+  return `(exp ~${expectedCtr.toFixed(1)}%)`;
+}
+
+function priorityFromScore(score: number, p40: number, p75: number): "High" | "Medium" | "Low" {
+  if (score >= p75) return "High";
+  if (score >= p40) return "Medium";
+  return "Low";
+}
+
+function labelForSignal(signal: QuickWin["signal"]): string {
+  switch (signal) {
+    case "CTR gap":
+      return "";
+    case "Visibility gap":
+      return "Under-clicked";
+    case "Momentum":
+      return "Momentum";
+    case "Near page 1":
+      return "Near page 1";
+  }
 }
 
 function positionBand(pos: number): "4-6" | "7-10" | "11-15" | "16-20" {
@@ -111,7 +136,7 @@ export function QuickWinsCard({
       .sort((a, b) => a - b);
     const p90 = imprValues.length ? imprValues[Math.floor(imprValues.length * 0.9)] ?? baseMin : baseMin;
 
-    return queries
+    const scored = queries
       .map<QuickWin | null>((q) => {
         const position = Number(q.position ?? NaN);
         const impressions = Number(q.impressions ?? 0);
@@ -148,10 +173,16 @@ export function QuickWinsCard({
           expectedCtr,
           ctrGap,
           signal,
+          priority: "Low",
         };
       })
       .filter((x): x is QuickWin => x !== null)
       .sort((a, b) => b.score - a.score);
+
+    const scores = scored.map((w) => w.score).sort((a, b) => a - b);
+    const p40 = scores.length ? scores[Math.floor(scores.length * 0.4)] ?? 0 : 0;
+    const p75 = scores.length ? scores[Math.floor(scores.length * 0.75)] ?? 0 : 0;
+    return scored.map((w) => ({ ...w, priority: priorityFromScore(w.score, p40, p75) }));
   }, [queries]);
 
   const filtered = useMemo(() => {
@@ -182,7 +213,7 @@ export function QuickWinsCard({
               type="button"
               onClick={() => w && setOpen(true)}
               className={cn(
-                "w-full text-left px-5 py-3",
+                "w-full text-left px-5 py-2.5",
                 w ? "hover:bg-accent/40 transition-colors duration-[120ms] cursor-pointer" : "cursor-default",
                 idx === 0 && w ? "bg-accent/40" : "",
                 w && idx > 0 ? "opacity-95" : ""
@@ -196,13 +227,20 @@ export function QuickWinsCard({
                       {w.query}
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground truncate">
-                      {formatCompact(w.impressions)} impr • Pos {w.position.toFixed(1)} • CTR {w.ctr.toFixed(1)}% ↓
+                      {w.ctr.toFixed(1)}% CTR ↓ {formatExpectedCtr(w.expectedCtr)} • Pos {w.position.toFixed(1)} • {formatCompact(w.impressions)} impr
                     </div>
                   </div>
                   <div className="shrink-0">
-                    <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
-                      {w.signal}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {labelForSignal(w.signal) ? (
+                        <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
+                          {labelForSignal(w.signal)}
+                        </span>
+                      ) : null}
+                      <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
+                        {w.priority}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -215,7 +253,7 @@ export function QuickWinsCard({
 
       <div className="mt-auto flex items-center justify-end border-t border-border px-5 py-2 text-xs text-muted-foreground">
         <button type="button" onClick={() => setOpen(true)} className="hover:text-foreground underline" disabled={!wins.length}>
-          View full report
+          View all opportunities
         </button>
       </div>
 
@@ -224,6 +262,7 @@ export function QuickWinsCard({
         onClose={() => setOpen(false)}
         title="Low hanging fruit"
         subtitle="Queries with strong visibility but underperforming clicks"
+        className="max-w-4xl"
         actions={
           <button
             type="button"
@@ -287,12 +326,14 @@ export function QuickWinsCard({
             <div className="px-4 py-6 text-center text-xs text-muted-foreground">No opportunities found.</div>
           ) : (
             modeFiltered.map((w, idx) => (
-              <div key={w.query} className={cn("px-4 py-3", idx === 0 ? "bg-accent/40" : "")}> 
+              <div key={w.query} className={cn("px-4 py-2.5", idx === 0 ? "bg-accent/40" : "")}> 
                 <div className={cn("text-sm text-foreground truncate", idx === 0 ? "font-semibold" : "font-medium")}>{w.query}</div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  Pos {w.position.toFixed(1)} • {formatCompact(w.impressions)} impressions • CTR {w.ctr.toFixed(1)}% • Score {Math.round(w.score).toLocaleString()}
+                  {w.ctr.toFixed(1)}% CTR {formatExpectedCtr(w.expectedCtr)} • Pos {w.position.toFixed(1)} • {formatCompact(w.impressions)} impr • Score {Math.round(w.score).toLocaleString()}
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">Signal: {w.signal}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Signal: {labelForSignal(w.signal) || "Low CTR"} • Priority: {w.priority}
+                </div>
               </div>
             ))
           )}

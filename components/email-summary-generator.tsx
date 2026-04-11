@@ -117,6 +117,8 @@ function buildSignals(summary: Summary | null, newQueries: DataTableRow[], lostQ
 function buildEmailPrompt(ctx: EmailContext, variant: "default" | "long"): string {
   const lengthRule = variant === "long" ? "Aim for 200–300 words." : "Keep under 150 words.";
   const summaryTarget = variant === "long" ? "200–300" : "120–150";
+  const structureLine =
+    "Structure (do not write these as headings): 1) overall change 2) likely causes 3) opportunities 4) closing.";
 
   return `Generate a concise SEO performance email update.
 
@@ -131,11 +133,11 @@ Context:
 
 Summary paragraph (${summaryTarget} words)
 
-- Notable signals:
-${ctx.signals.slice(0, 4).map((s) => `  - ${s}`).join("\n")}
-
-- Opportunities:
-${ctx.opportunities.slice(0, 4).map((o) => `  - ${o}`).join("\n")}
+Use these signals and opportunities for specificity (don’t label sections in the email):
+Signals:
+${ctx.signals.slice(0, 4).map((s) => `- ${s}`).join("\n")}
+Opportunities:
+${ctx.opportunities.slice(0, 4).map((o) => `- ${o}`).join("\n")}
 
 Rules:
 - Write in natural, human tone (not AI-like)
@@ -149,11 +151,12 @@ Rules:
 - No bullet overload (max 3–4 bullets per section)
 - ${lengthRule}
 
-Structure:
-1. Performance summary
-2. Key drivers
-3. Opportunities
-4. Short closing summary
+${structureLine}
+
+Formatting rules:
+- Do not include section headers like "Performance summary", "Key drivers", or "Opportunities"
+- Write as a natural flowing email using short paragraphs
+- Use natural paragraph breaks instead of headings
 
 Output:
 Plain text email ready to send.

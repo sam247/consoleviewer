@@ -19,7 +19,7 @@ import { ProjectAnalysisTab } from "@/components/sections/project-analysis-tab";
 import { LightSignalsStrip } from "@/components/light-signals-strip";
 import { CustomizeDashboardCard } from "@/components/customize-dashboard-card";
 import { SiteIdentity } from "@/components/site-identity";
-import { InsightStrip } from "@/components/insight-strip";
+import { PerformanceSnapshotStrip } from "@/components/performance-snapshot-strip";
 
 export default function SiteDetailPage({
   params,
@@ -96,11 +96,11 @@ export default function SiteDetailPage({
               <SiteIdentity siteUrl={siteUrl} textClassName="text-lg font-medium text-foreground" faviconSize={22} />
             </div>
             {tab !== "analysis" && !isLoading && (
-              <div className="mt-2 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+              <div className="mt-2 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
                   <LightSignalsStrip summary={data.summary} newQueries={data.newQueries} lostQueries={data.lostQueries} pagesRows={pagesRows} />
                 </div>
-                <InsightStrip summary={data.summary} queriesRows={queriesRows} siteUrl={siteUrl} className="lg:pl-2" />
+                <PerformanceSnapshotStrip summary={data.summary} className="lg:pl-4" />
               </div>
             )}
             <div className="mt-3">

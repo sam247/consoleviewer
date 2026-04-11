@@ -11,6 +11,26 @@ import { useDateRange } from "@/contexts/date-range-context";
 
 type CompareMode = "previous_period" | "previous_year";
 
+function toneFromPercent(value?: number) {
+  if (value == null || Number.isNaN(value)) return "flat" as const;
+  if (value > 2) return "up" as const;
+  if (value < -2) return "down" as const;
+  return "flat" as const;
+}
+
+function buildGraphInsight(summary: PropertyData["summary"]) {
+  if (!summary) return null;
+  const clicksTone = toneFromPercent(summary.clicksChangePercent);
+  const imprTone = toneFromPercent(summary.impressionsChangePercent);
+  const ctrTone = toneFromPercent(summary.ctrChangePercent);
+
+  const clicksWord = clicksTone === "down" ? "declining" : clicksTone === "up" ? "rising" : "stable";
+  const imprWord = imprTone === "down" ? "declining" : imprTone === "up" ? "rising" : "stable";
+  const ctrWord = ctrTone === "down" ? "softening" : ctrTone === "up" ? "improving" : "steady";
+
+  return `Clicks ${clicksWord} while impressions ${imprWord} — CTR ${ctrWord}`;
+}
+
 function compareModeKey(propertyId: string) {
   return `consoleview-compare-mode-${propertyId}`;
 }
@@ -73,6 +93,8 @@ export function ProjectSimplifiedTrendSection({
     return data.priorDaily;
   }, [compareMode, compareToPrior, data.priorDaily, priorYearDaily]);
 
+  const microInsight = useMemo(() => buildGraphInsight(data.summary), [data.summary]);
+
   return (
     <ChartFrame
       title="Performance"
@@ -121,6 +143,7 @@ export function ProjectSimplifiedTrendSection({
         normalizeWhenMultiSeries={false}
         autoNormalizeMixedScales={false}
       />
+      {microInsight ? <div className="mt-2 text-xs text-muted-foreground">{microInsight}</div> : null}
     </ChartFrame>
   );
 }

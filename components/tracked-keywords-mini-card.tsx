@@ -21,6 +21,7 @@ type KeywordRow = {
   position: number | null;
   delta1d: number;
   delta7d: number;
+  delta30d?: number;
   status?: "checking" | "ready" | "error";
 };
 
@@ -30,7 +31,7 @@ type TrackedKeywordsResponse = {
   error?: string;
 };
 
-type KeywordSortKey = "keyword" | "position" | "delta7d";
+type KeywordSortKey = "keyword" | "position" | "delta7d" | "delta30d";
 
 async function fetchTrackedKeywords(propertyId: string): Promise<TrackedKeywordsResponse> {
   const res = await fetch(`/api/properties/${encodeURIComponent(propertyId)}/tracked-keywords`, { cache: "no-store" });
@@ -53,6 +54,11 @@ function changeLabel(delta: number) {
   const improved = delta < 0;
   const arrow = improved ? "▲" : "▼";
   return `${arrow}${Math.abs(delta).toFixed(1)}`;
+}
+
+function changeTone(delta?: number) {
+  if (!delta) return "text-muted-foreground";
+  return delta < 0 ? "text-positive" : "text-negative";
 }
 
 export function TrackedKeywordsMiniCard({
@@ -94,6 +100,11 @@ export function TrackedKeywordsMiniCard({
         if (sortKey === "position") {
           const aV = a.position ?? Infinity;
           const bV = b.position ?? Infinity;
+          return dir * (aV - bV);
+        }
+        if (sortKey === "delta30d") {
+          const aV = a.delta30d ?? 0;
+          const bV = b.delta30d ?? 0;
           return dir * (aV - bV);
         }
         const aV = a.delta7d ?? 0;
@@ -203,21 +214,30 @@ export function TrackedKeywordsMiniCard({
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
-              <SortableHeader label="Keyword" column="keyword" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-[60%]" />
-              <SortableHeader label="Pos" column="position" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
-              <SortableHeader label="Chg" column="delta7d" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
+              <SortableHeader label="Keyword" column="keyword" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-[52%]" />
+              <SortableHeader label="Pos" column="position" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[16%]" />
+              <th className={cn("px-5 font-semibold text-right w-[16%]", TABLE_CELL_Y)}>7d</th>
+              <th className={cn("px-5 font-semibold text-right w-[16%]", TABLE_CELL_Y)}>30d</th>
             </tr>
           </thead>
           <tbody>
             {data?.configured && rows.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-5 py-6 text-center text-sm text-muted-foreground">
+                <td colSpan={4} className="px-5 py-6 text-center text-sm text-muted-foreground">
                   Track Your First Keyword
                 </td>
               </tr>
             ) : (
               [...rows, ...Array.from({ length: Math.max(0, maxRows - rows.length) }).map(() => null)].map((r, idx) => (
-                <tr key={(r && (r.id ?? r.keyword)) ?? `placeholder-${idx}`} className={TABLE_ROW_CLASS} aria-hidden={!r}>
+                <tr
+                  key={(r && (r.id ?? r.keyword)) ?? `placeholder-${idx}`}
+                  className={cn(
+                    TABLE_ROW_CLASS,
+                    idx === 0 && r ? "bg-accent/40 font-medium" : "opacity-95",
+                    r ? "" : "text-muted-foreground"
+                  )}
+                  aria-hidden={!r}
+                >
                   <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r ? r.keyword : undefined}>
                     {r ? r.keyword : <span className="text-muted-foreground">—</span>}
                   </td>
@@ -241,15 +261,10 @@ export function TrackedKeywordsMiniCard({
                     )}
                   </td>
                   <td className={cn("px-5 text-right tabular-nums", TABLE_CELL_Y)}>
-                    {r ? (
-                      r.delta7d ? (
-                      <span className={r.delta7d < 0 ? "text-positive" : "text-negative"}>{changeLabel(r.delta7d)}</span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
+                    {r ? <span className={changeTone(r.delta7d)}>{changeLabel(r.delta7d)}</span> : <span className="text-muted-foreground">—</span>}
+                  </td>
+                  <td className={cn("px-5 text-right tabular-nums", TABLE_CELL_Y)}>
+                    {r ? <span className={changeTone(r.delta30d)}>{changeLabel(r.delta30d ?? 0)}</span> : <span className="text-muted-foreground">—</span>}
                   </td>
                 </tr>
               ))
@@ -301,15 +316,16 @@ export function TrackedKeywordsMiniCard({
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>
             <tr>
-              <SortableHeader label="Keyword" column="keyword" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-[60%]" />
-              <SortableHeader label="Pos" column="position" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
-              <SortableHeader label="Chg" column="delta7d" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[20%]" />
+              <SortableHeader label="Keyword" column="keyword" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="left" className="w-[52%]" />
+              <SortableHeader label="Pos" column="position" sortKey={sortKey} sortDir={sortDir} onSort={onSort} className="w-[16%]" />
+              <th className={cn("px-4 font-semibold text-right w-[16%]", TABLE_CELL_Y)}>7d</th>
+              <th className={cn("px-4 font-semibold text-right w-[16%]", TABLE_CELL_Y)}>30d</th>
             </tr>
           </thead>
           <tbody>
             {filteredAll.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-4 py-6 text-center text-xs text-muted-foreground">
+                <td colSpan={4} className="px-4 py-6 text-center text-xs text-muted-foreground">
                   No rows to display.
                 </td>
               </tr>
@@ -323,11 +339,10 @@ export function TrackedKeywordsMiniCard({
                     {r.position != null ? r.position.toFixed(1) : "—"}
                   </td>
                   <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
-                    {r.delta7d ? (
-                      <span className={r.delta7d < 0 ? "text-positive" : "text-negative"}>{changeLabel(r.delta7d)}</span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
+                    <span className={changeTone(r.delta7d)}>{changeLabel(r.delta7d)}</span>
+                  </td>
+                  <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
+                    <span className={changeTone(r.delta30d)}>{changeLabel(r.delta30d ?? 0)}</span>
                   </td>
                 </tr>
               ))

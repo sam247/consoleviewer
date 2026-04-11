@@ -11,6 +11,7 @@ type KeywordRow = {
   position: number | null;
   delta1d: number;
   delta7d: number;
+  delta30d: number;
   sparkData: number[];
   status: "checking" | "ready" | "error";
   lastCheckedAt: string | null;
@@ -124,6 +125,7 @@ export async function GET(
       last_checked_at: string | null;
       delta1d: number | null;
       delta7d: number | null;
+      delta30d: number | null;
       spark_data: Array<number | null> | null;
     }>(
       `SELECT
@@ -140,6 +142,10 @@ export async function GET(
            WHEN latest.position IS NOT NULL AND prev7.position IS NOT NULL THEN latest.position - prev7.position
            ELSE NULL
          END AS delta7d,
+         CASE
+           WHEN latest.position IS NOT NULL AND prev30.position IS NOT NULL THEN latest.position - prev30.position
+           ELSE NULL
+         END AS delta30d,
          spark.spark_data
        FROM rank_keywords rk
        LEFT JOIN LATERAL (
@@ -163,6 +169,13 @@ export async function GET(
          ORDER BY rp.date DESC, rp.created_at DESC
          OFFSET 7 LIMIT 1
        ) prev7 ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT rp.position
+         FROM rank_positions rp
+         WHERE rp.keyword_id = rk.id
+         ORDER BY rp.date DESC, rp.created_at DESC
+         OFFSET 30 LIMIT 1
+       ) prev30 ON TRUE
        LEFT JOIN LATERAL (
         SELECT ARRAY_AGG(x.position ORDER BY x.date) AS spark_data
          FROM (
@@ -209,6 +222,7 @@ export async function GET(
         position: row.position != null ? Number(row.position) : null,
         delta1d: Number(row.delta1d ?? 0),
         delta7d: Number(row.delta7d ?? 0),
+        delta30d: Number(row.delta30d ?? 0),
         sparkData: (row.spark_data ?? [])
           .map((n) => coerceNumber(n))
           .filter((n): n is number => n != null),

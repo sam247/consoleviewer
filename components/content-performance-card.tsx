@@ -48,8 +48,9 @@ function formatCompact(n: number): string {
 }
 
 function formatDelta(value?: number): { text: string; className: string } {
-  if (value == null || Number.isNaN(value)) return { text: "—", className: "text-muted-foreground" };
+  if (value == null || Number.isNaN(value)) return { text: "", className: "" };
   const v = Math.round(value);
+  if (v === 0) return { text: "", className: "" };
   const sign = v > 0 ? "+" : "";
   const cls = v > 0 ? "text-positive" : v < 0 ? "text-negative" : "text-muted-foreground";
   return { text: `${sign}${v}%`, className: cls };
@@ -58,16 +59,12 @@ function formatDelta(value?: number): { text: string; className: string } {
 function buildInsight(rows: GroupRow[]): string {
   if (!rows.length) return "No content groups detected in this period.";
   const top = [...rows].sort((a, b) => b.share - a.share)[0];
-  const movers = [...rows]
-    .filter((r) => r.impressionsChangePercent != null)
-    .sort((a, b) => Math.abs(b.impressionsChangePercent ?? 0) - Math.abs(a.impressionsChangePercent ?? 0));
-  const mover = movers[0];
   if (!top) return "No content groups detected in this period.";
-  if (mover && mover.key !== top.key) {
-    const dir = (mover.impressionsChangePercent ?? 0) >= 0 ? "gaining" : "declining";
-    return `${top.label} drives most visibility, while ${mover.label} is ${dir}.`;
-  }
-  return `${top.label} is driving most visibility right now.`;
+  const sharePct = Math.round(top.share * 100);
+  const change = top.impressionsChangePercent;
+  const tone = change == null ? "flat" : Math.abs(change) < 2 ? "flat" : change > 0 ? "up" : "down";
+  const verb = tone === "down" ? "declining" : tone === "up" ? "rising" : "flattening";
+  return `${top.label} dominates visibility (${sharePct}%) but ${verb}`;
 }
 
 export function ContentPerformanceCard({ propertyId, className }: { propertyId: string; className?: string }) {
@@ -263,20 +260,23 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
                 const clicksDelta = formatDelta(r.clicksChangePercent);
                 const imprDelta = formatDelta(r.impressionsChangePercent);
                 return (
-                  <tr key={r.key} className={TABLE_ROW_CLASS}>
+                  <tr
+                    key={r.key}
+                    className={cn(TABLE_ROW_CLASS, "opacity-95", topRows[0]?.key === r.key ? "bg-accent/40 font-medium" : "")}
+                  >
                     <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.key}>
                       {r.label}
                     </td>
                     <td className={cn("px-5 text-right tabular-nums", TABLE_CELL_Y)}>
                       <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                         <span className="text-foreground">{formatCompact(r.clicks)}</span>
-                        <span className={cn("text-xs", clicksDelta.className)}>({clicksDelta.text})</span>
+                        {clicksDelta.text ? <span className={cn("text-xs", clicksDelta.className)}>({clicksDelta.text})</span> : null}
                       </span>
                     </td>
                     <td className={cn("px-5 text-right tabular-nums", TABLE_CELL_Y)}>
                       <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                         <span className="text-foreground">{formatCompact(r.impressions)}</span>
-                        <span className={cn("text-xs", imprDelta.className)}>({imprDelta.text})</span>
+                        {imprDelta.text ? <span className={cn("text-xs", imprDelta.className)}>({imprDelta.text})</span> : null}
                       </span>
                     </td>
                     <td className={cn("px-5 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>
@@ -367,13 +367,13 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
                     <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                       <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                         <span className="text-foreground">{formatCompact(r.clicks)}</span>
-                        <span className={cn("text-xs", clicksDelta.className)}>({clicksDelta.text})</span>
+                        {clicksDelta.text ? <span className={cn("text-xs", clicksDelta.className)}>({clicksDelta.text})</span> : null}
                       </span>
                     </td>
                     <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                       <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                         <span className="text-foreground">{formatCompact(r.impressions)}</span>
-                        <span className={cn("text-xs", imprDelta.className)}>({imprDelta.text})</span>
+                        {imprDelta.text ? <span className={cn("text-xs", imprDelta.className)}>({imprDelta.text})</span> : null}
                       </span>
                     </td>
                     <td className={cn("px-4 text-right tabular-nums text-muted-foreground", TABLE_CELL_Y)}>

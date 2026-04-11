@@ -53,9 +53,9 @@ function formatNum(n: number): string {
 }
 
 function formatDelta(value?: number): { text: string; tone: "positive" | "negative" | "neutral" } {
-  if (value == null || Number.isNaN(value)) return { text: "—", tone: "neutral" };
+  if (value == null || Number.isNaN(value)) return { text: "", tone: "neutral" };
   const v = Math.round(value);
-  if (v === 0) return { text: "±0%", tone: "neutral" };
+  if (v === 0) return { text: "", tone: "neutral" };
   return { text: `${v > 0 ? "+" : ""}${v}%`, tone: v > 0 ? "positive" : "negative" };
 }
 
@@ -304,7 +304,10 @@ export function ToggleChangeTableCard({
                   : normalizeExternalUrl(r?.url ?? r?.title ?? "");
 
               return (
-                <tr key={rowKey} className={cn(TABLE_ROW_CLASS, "group")}> 
+                <tr
+                  key={rowKey}
+                  className={cn(TABLE_ROW_CLASS, "group", "opacity-95", i === 0 && r ? "bg-accent/40 font-medium" : "")}
+                > 
                   <td className={cn("px-5 min-w-0 text-foreground", TABLE_CELL_Y)} title={r?.title ?? r?.label}>
                     {r ? (
                       <div className="flex items-center gap-2 min-w-0">
@@ -390,14 +393,16 @@ export function ToggleChangeTableCard({
                         {(() => {
                           const d = formatDelta(r.changePercent);
                           return (
-                            <span
-                              className={cn(
-                                "text-xs",
-                                d.tone === "positive" ? "text-positive" : d.tone === "negative" ? "text-negative" : "text-muted-foreground"
-                              )}
-                            >
-                              ({d.text})
-                            </span>
+                            d.text ? (
+                              <span
+                                className={cn(
+                                  "text-xs",
+                                  d.tone === "positive" ? "text-positive" : d.tone === "negative" ? "text-negative" : "text-muted-foreground"
+                                )}
+                              >
+                                ({d.text})
+                              </span>
+                            ) : null
                           );
                         })()}
                       </span>
@@ -412,14 +417,16 @@ export function ToggleChangeTableCard({
                         {(() => {
                           const d = formatDelta(r.impressionsChangePercent);
                           return (
-                            <span
-                              className={cn(
-                                "text-xs",
-                                d.tone === "positive" ? "text-positive" : d.tone === "negative" ? "text-negative" : "text-muted-foreground"
-                              )}
-                            >
-                              ({d.text})
-                            </span>
+                            d.text ? (
+                              <span
+                                className={cn(
+                                  "text-xs",
+                                  d.tone === "positive" ? "text-positive" : d.tone === "negative" ? "text-negative" : "text-muted-foreground"
+                                )}
+                              >
+                                ({d.text})
+                              </span>
+                            ) : null
                           );
                         })()}
                       </span>
@@ -523,24 +530,28 @@ export function ToggleChangeTableCard({
                   const clicksDelta = formatDelta(r.changePercent);
                   const imprDelta = formatDelta(r.impressionsChangePercent);
                   return (
-                    <tr key={r.key} className={TABLE_ROW_CLASS}>
+                    <tr key={r.key} className={cn(TABLE_ROW_CLASS, "opacity-95", r.key === sortedRows[0]?.key ? "bg-accent/40 font-medium" : "")}>
                       <td className={cn("px-4 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r.title ?? r.label}>
                         {r.label}
                       </td>
                       <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                         <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                           <span className="text-foreground">{formatNum(r.clicks)}</span>
-                          <span className={cn("text-xs", clicksDelta.tone === "positive" ? "text-positive" : clicksDelta.tone === "negative" ? "text-negative" : "text-muted-foreground")}>
-                            ({clicksDelta.text})
-                          </span>
+                          {clicksDelta.text ? (
+                            <span className={cn("text-xs", clicksDelta.tone === "positive" ? "text-positive" : clicksDelta.tone === "negative" ? "text-negative" : "text-muted-foreground")}>
+                              ({clicksDelta.text})
+                            </span>
+                          ) : null}
                         </span>
                       </td>
                       <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                         <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                           <span className="text-foreground">{formatNum(r.impressions)}</span>
-                          <span className={cn("text-xs", imprDelta.tone === "positive" ? "text-positive" : imprDelta.tone === "negative" ? "text-negative" : "text-muted-foreground")}>
-                            ({imprDelta.text})
-                          </span>
+                          {imprDelta.text ? (
+                            <span className={cn("text-xs", imprDelta.tone === "positive" ? "text-positive" : imprDelta.tone === "negative" ? "text-negative" : "text-muted-foreground")}>
+                              ({imprDelta.text})
+                            </span>
+                          ) : null}
                         </span>
                       </td>
                     </tr>

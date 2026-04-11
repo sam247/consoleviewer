@@ -30,8 +30,9 @@ function formatCompact(n: number): string {
 }
 
 function formatDelta(value?: number): { text: string; className: string } {
-  if (value == null || Number.isNaN(value)) return { text: "—", className: "text-muted-foreground" };
+  if (value == null || Number.isNaN(value)) return { text: "", className: "" };
   const v = Math.round(value);
+  if (v === 0) return { text: "", className: "" };
   const sign = v > 0 ? "+" : "";
   const cls = v > 0 ? "text-positive" : v < 0 ? "text-negative" : "text-muted-foreground";
   return { text: `${sign}${v}%`, className: cls };
@@ -166,7 +167,11 @@ export function AiLedQueriesCard({
               const clicksDelta = formatDelta(r?.clicksChangePercent);
               const imprDelta = formatDelta(r?.impressionsChangePercent);
               return (
-                <tr key={r?.query ?? `placeholder-${i}`} className={TABLE_ROW_CLASS} aria-hidden={!r}>
+                <tr
+                  key={r?.query ?? `placeholder-${i}`}
+                  className={cn(TABLE_ROW_CLASS, i === 0 && r ? "bg-accent/40 font-medium" : "opacity-95")}
+                  aria-hidden={!r}
+                >
                   <td className={cn("px-5 truncate min-w-0 text-foreground", TABLE_CELL_Y)} title={r?.query}>
                     {r ? r.query : <span className="text-muted-foreground">—</span>}
                   </td>
@@ -174,7 +179,7 @@ export function AiLedQueriesCard({
                     {r ? (
                       <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                         <span className="text-foreground">{formatCompact(r.clicks)}</span>
-                        <span className={cn("text-xs", clicksDelta.className)}>({clicksDelta.text})</span>
+                        {clicksDelta.text ? <span className={cn("text-xs", clicksDelta.className)}>({clicksDelta.text})</span> : null}
                       </span>
                     ) : (
                       <span className="text-muted-foreground">—</span>
@@ -184,7 +189,7 @@ export function AiLedQueriesCard({
                     {r ? (
                       <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                         <span className="text-foreground">{formatCompact(r.impressions)}</span>
-                        <span className={cn("text-xs", imprDelta.className)}>({imprDelta.text})</span>
+                        {imprDelta.text ? <span className={cn("text-xs", imprDelta.className)}>({imprDelta.text})</span> : null}
                       </span>
                     ) : (
                       <span className="text-muted-foreground">—</span>
@@ -279,13 +284,13 @@ export function AiLedQueriesCard({
                     <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                       <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                         <span className="text-foreground">{formatCompact(r.clicks)}</span>
-                        <span className={cn("text-xs", clicksDelta.className)}>({clicksDelta.text})</span>
+                        {clicksDelta.text ? <span className={cn("text-xs", clicksDelta.className)}>({clicksDelta.text})</span> : null}
                       </span>
                     </td>
                     <td className={cn("px-4 text-right tabular-nums", TABLE_CELL_Y)}>
                       <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
                         <span className="text-foreground">{formatCompact(r.impressions)}</span>
-                        <span className={cn("text-xs", imprDelta.className)}>({imprDelta.text})</span>
+                        {imprDelta.text ? <span className={cn("text-xs", imprDelta.className)}>({imprDelta.text})</span> : null}
                       </span>
                     </td>
                   </tr>

@@ -935,6 +935,7 @@ export function TrendChart({
                   name={s.label}
                   onMouseEnter={() => setHoverFocus(s.key)}
                   onMouseLeave={() => setHoverFocus(null)}
+                  isAnimationActive={false}
                 />
               ))
             : null}
@@ -976,6 +977,7 @@ export function TrendChart({
                 {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "left" })}
                 onMouseEnter={() => setHoverFocus("clicks")}
                 onMouseLeave={() => setHoverFocus(null)}
+                isAnimationActive={false}
               />
               {compareToPrior && priorData?.length && (
                 <Line
@@ -988,6 +990,7 @@ export function TrendChart({
                   strokeOpacity={metricOpacity("clicks", true)}
                   name="Clicks (prior)"
                   {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "left" })}
+                  isAnimationActive={false}
                 />
               )}
             </>
@@ -1006,6 +1009,7 @@ export function TrendChart({
                 {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "right" })}
                 onMouseEnter={() => setHoverFocus("impressions")}
                 onMouseLeave={() => setHoverFocus(null)}
+                isAnimationActive={false}
               />
               {compareToPrior && priorData?.length && (
                 <Line
@@ -1018,6 +1022,7 @@ export function TrendChart({
                   strokeOpacity={metricOpacity("impressions", true)}
                   name="Impressions (prior)"
                   {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "right" })}
+                  isAnimationActive={false}
                 />
               )}
             </>
@@ -1035,6 +1040,7 @@ export function TrendChart({
               {...(useMultiAxisMixed ? { yAxisId: "ctr" } : {})}
               onMouseEnter={() => setHoverFocus("ctr")}
               onMouseLeave={() => setHoverFocus(null)}
+              isAnimationActive={false}
             />
           )}
 
@@ -1050,6 +1056,7 @@ export function TrendChart({
               {...(useMultiAxisMixed ? { yAxisId: "position" } : {})}
               onMouseEnter={() => setHoverFocus("position")}
               onMouseLeave={() => setHoverFocus(null)}
+              isAnimationActive={false}
             />
           )}
         </LineChart>

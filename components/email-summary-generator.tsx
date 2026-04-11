@@ -115,10 +115,8 @@ function buildSignals(summary: Summary | null, newQueries: DataTableRow[], lostQ
 }
 
 function buildEmailPrompt(ctx: EmailContext, variant: "default" | "long"): string {
-  const lengthRule = variant === "long" ? "Aim for 200–300 words." : "Keep under 150 words.";
-  const summaryTarget = variant === "long" ? "200–300" : "120–150";
-  const structureLine =
-    "Structure (do not write these as headings): 1) overall change 2) likely causes 3) opportunities 4) closing.";
+  const summaryTarget = variant === "long" ? "140–150" : "110–130";
+  const structureLine = "Structure (no headings): overall change → drivers → opportunities → close.";
 
   return `Generate a concise SEO performance email update.
 
@@ -131,13 +129,16 @@ Context:
   - CTR: ${ctx.ctr} (${ctx.ctr_change})
   - Avg position: ${ctx.position} (${ctx.position_change})
 
-Summary paragraph (${summaryTarget} words)
+Summary paragraph target: ${summaryTarget} words
 
 Use these signals and opportunities for specificity (don’t label sections in the email):
 Signals:
 ${ctx.signals.slice(0, 4).map((s) => `- ${s}`).join("\n")}
 Opportunities:
 ${ctx.opportunities.slice(0, 4).map((o) => `- ${o}`).join("\n")}
+
+Drivers (wins/losses/opportunities) candidates:
+${[...ctx.signals.slice(0, 3), ...ctx.opportunities.slice(0, 2)].map((s) => `- ${s}`).join("\n")}
 
 Rules:
 - Write in natural, human tone (not AI-like)
@@ -147,9 +148,11 @@ Rules:
 - Use at least one specific example from the signals or opportunities
 - No emojis
 - No fluff
-- No hard recommendations (avoid “you should…”)
-- No bullet overload (max 3–4 bullets per section)
-- ${lengthRule}
+- No recommendations or advice
+- Do not use phrases like “the data suggests” or “there is a need to”
+- Avoid filler phrases like “interestingly”, “it appears”, “this suggests”
+- Keep sentences tight and direct
+- Keep under 150 words
 
 ${structureLine}
 
@@ -157,14 +160,18 @@ Formatting rules:
 - Do not include section headers like "Performance summary", "Key drivers", or "Opportunities"
 - Write as a natural flowing email using short paragraphs
 - Use natural paragraph breaks instead of headings
+- After “Hi,” add this exact line on its own: Here’s a quick update on performance.
+- If there are 3+ distinct drivers (wins/losses/opportunities), use a short bullet list for drivers only
+- Otherwise keep everything in paragraph form
 
 Output:
 Plain text email ready to send.
 
 Format:
 - Start with: Subject: SEO Update: ${ctx.date_range}
-- Then a short greeting
-- Then the 4-part structure above
+- Then: Hi,
+- Then the required line
+- Then the email body
 - End with a sign-off: Thanks,\n${ctx.sender_name}`;
 }
 

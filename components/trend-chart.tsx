@@ -382,7 +382,7 @@ export function TrendChart({
     const base = isPrior ? 0.45 : 1;
     if (!focusKey) {
       if (key === "clicks") return base * 0.9;
-      if (key === "impressions") return base * 0.7;
+      if (key === "impressions") return base * 0.85;
       return base * 0.6;
     }
     if (isFocused(key)) return base * (isPrior ? 0.35 : 1);
@@ -559,7 +559,12 @@ export function TrendChart({
     if (!chartData.length) return undefined;
     const keys = usePerEngine
       ? perEngineSeriesToShow.map((s) => (useNormalized ? `_norm_${s.dataKey}` : s.dataKey))
-      : (["clicks", "impressions", "ctr", "position"] as (keyof DataPoint)[]);
+      : (([
+          showClicks ? "clicks" : null,
+          showImpr ? "impressions" : null,
+          showCtr ? "ctr" : null,
+          showPosition ? "position" : null,
+        ].filter(Boolean) as (keyof DataPoint)[]) ?? []);
     let min = Infinity;
     let max = -Infinity;
 
@@ -576,7 +581,7 @@ export function TrendChart({
     if (min === Infinity || max === -Infinity) return undefined;
     const pad = Math.max(0, (max - min) * 0.06) || (max !== 0 ? Math.abs(max) * 0.06 : 1);
     return [Math.max(0, min - pad), max + pad];
-  }, [chartData, usePerEngine, perEngineSeriesToShow, useNormalized]);
+  }, [chartData, showClicks, showCtr, showImpr, showPosition, usePerEngine, perEngineSeriesToShow, useNormalized]);
 
   const leftDomain = useMemo((): [number, number] | undefined => {
     if (!chartData.length || (!useDualAxis && !useDualAxisPerEngine && !useDualAxisBySource)) return undefined;
@@ -928,6 +933,8 @@ export function TrendChart({
                   strokeOpacity={metricOpacity(s.key)}
                   dot={false}
                   name={s.label}
+                  onMouseEnter={() => setHoverFocus(s.key)}
+                  onMouseLeave={() => setHoverFocus(null)}
                 />
               ))
             : null}
@@ -967,6 +974,8 @@ export function TrendChart({
                 activeDot={{ r: 3, strokeWidth: 1.5, fill: CHART_CLICKS, stroke: "var(--surface)" }}
                 name="Clicks"
                 {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "left" })}
+                onMouseEnter={() => setHoverFocus("clicks")}
+                onMouseLeave={() => setHoverFocus(null)}
               />
               {compareToPrior && priorData?.length && (
                 <Line
@@ -995,6 +1004,8 @@ export function TrendChart({
                 strokeOpacity={metricOpacity("impressions")}
                 name="Impressions"
                 {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "right" })}
+                onMouseEnter={() => setHoverFocus("impressions")}
+                onMouseLeave={() => setHoverFocus(null)}
               />
               {compareToPrior && priorData?.length && (
                 <Line
@@ -1022,6 +1033,8 @@ export function TrendChart({
               dot={false}
               name="CTR"
               {...(useMultiAxisMixed ? { yAxisId: "ctr" } : {})}
+              onMouseEnter={() => setHoverFocus("ctr")}
+              onMouseLeave={() => setHoverFocus(null)}
             />
           )}
 
@@ -1035,6 +1048,8 @@ export function TrendChart({
               dot={false}
               name="Avg position"
               {...(useMultiAxisMixed ? { yAxisId: "position" } : {})}
+              onMouseEnter={() => setHoverFocus("position")}
+              onMouseLeave={() => setHoverFocus(null)}
             />
           )}
         </LineChart>

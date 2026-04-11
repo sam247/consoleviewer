@@ -18,6 +18,24 @@ import { CustomizeDashboardCard } from "@/components/customize-dashboard-card";
 import { SiteIdentity } from "@/components/site-identity";
 import { PerformanceSnapshotStrip, PerformanceSnapshotSummary } from "@/components/performance-snapshot-strip";
 
+function formatHeaderDate(value?: string) {
+  if (!value) return null;
+  const d = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function calcLagDays(endDate?: string) {
+  if (!endDate) return null;
+  const end = new Date(`${endDate}T00:00:00Z`);
+  if (Number.isNaN(end.getTime())) return null;
+  const now = new Date();
+  const utcNow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const utcEnd = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+  const days = Math.max(0, Math.floor((utcNow - utcEnd) / (24 * 60 * 60 * 1000)));
+  return days;
+}
+
 export default function SiteDetailPage({
   params,
 }: {
@@ -32,6 +50,7 @@ export default function SiteDetailPage({
     siteUrl,
     isLoading,
     error,
+    endDate,
   } = usePropertyData(propertyId);
 
   const [contentMounted, setContentMounted] = useState(false);
@@ -71,22 +90,43 @@ export default function SiteDetailPage({
         <main className="flex-1 p-3 md:p-6">
           <div className="mx-auto max-w-[86rem]">
           <div className="mb-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex items-start gap-3">
-                <SiteIdentity siteUrl={siteUrl} textClassName="text-lg font-medium text-foreground" faviconSize={22} />
-                {!isLoading ? (
-                  <LightSignalsStrip
-                    summary={data.summary}
-                    newQueries={data.newQueries}
-                    lostQueries={data.lostQueries}
-                    pagesRows={pagesRows}
-                    className="min-w-0 max-h-[52px] overflow-hidden"
-                  />
-                ) : null}
-              </div>
-              {!isLoading ? <PerformanceSnapshotStrip summary={data.summary} className="shrink-0 w-[560px]" /> : null}
-            </div>
-            {!isLoading ? <PerformanceSnapshotSummary summary={data.summary} className="mt-2" /> : null}
+            {!isLoading ? (
+              <>
+                <div className="flex items-start justify-between gap-6">
+                  <SiteIdentity siteUrl={siteUrl} textClassName="text-lg font-medium text-foreground" faviconSize={22} />
+                  <PerformanceSnapshotStrip summary={data.summary} className="shrink-0 w-[560px]" />
+                </div>
+
+                <div className="mt-1 flex items-start justify-between gap-6">
+                  <div className="text-xs text-muted-foreground">
+                    <span>Updated: {formatHeaderDate(endDate) ?? "—"}</span>
+                    <span className="mx-2">•</span>
+                    <span>Refresh: daily</span>
+                    {(() => {
+                      const lag = calcLagDays(endDate);
+                      if (!lag || lag < 2) return null;
+                      return (
+                        <>
+                          <span className="mx-2">•</span>
+                          <span>Data lag: {lag}d</span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  <div className="min-w-0 flex justify-end">
+                    <LightSignalsStrip
+                      summary={data.summary}
+                      newQueries={data.newQueries}
+                      lostQueries={data.lostQueries}
+                      pagesRows={pagesRows}
+                      className="justify-end min-w-0 max-h-[52px] overflow-hidden"
+                    />
+                  </div>
+                </div>
+
+                <PerformanceSnapshotSummary summary={data.summary} className="mt-2" />
+              </>
+            ) : null}
           </div>
 
           {isLoading ? (

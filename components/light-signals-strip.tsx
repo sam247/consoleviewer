@@ -118,7 +118,7 @@ export function LightSignalsStrip({
   if (items.length === 0) return null;
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)} aria-label="Signals">
+    <div className={cn("flex flex-wrap items-center gap-1.5", className)} aria-label="Signals">
       {items.map((i) => (
         <div
           key={i.key}

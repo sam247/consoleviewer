@@ -8,6 +8,7 @@ import { SortableHeader } from "@/components/ui/sortable-header";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { ReportModal } from "@/components/report-modal";
 import { exportToCsv } from "@/lib/export-csv";
+import { InfoTooltip } from "@/components/info-tooltip";
 import {
   getAiLedSegmentLabel,
   scoreAiLedQuery,
@@ -137,7 +138,12 @@ export function AiLedQueriesCard({
 
   return (
     <TableCard
-      title={<span className="text-sm font-semibold text-foreground">AI-led queries</span>}
+      title={
+        <span className="flex items-center gap-1 text-sm font-semibold text-foreground">
+          AI-led queries
+          <InfoTooltip title={insight} variant="ai" />
+        </span>
+      }
       subtitle="Conversational & discovery-style searches"
       className={cn("min-w-0 min-h-[480px]", className)}
       action={
@@ -160,8 +166,6 @@ export function AiLedQueriesCard({
         </div>
       }
     >
-      <div className="px-5 pt-2 text-xs text-muted-foreground">{insight}</div>
-
       <div className="mt-2 max-h-[400px] overflow-auto">
         <table className={TABLE_BASE_CLASS}>
           <thead className={TABLE_HEAD_CLASS}>

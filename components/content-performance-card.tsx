@@ -8,6 +8,7 @@ import { SortableHeader } from "@/components/ui/sortable-header";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { ReportModal } from "@/components/report-modal";
 import { exportToCsv } from "@/lib/export-csv";
+import { InfoTooltip } from "@/components/info-tooltip";
 import {
   TABLE_BASE_CLASS,
   TABLE_CELL_Y,
@@ -146,7 +147,12 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
 
   return (
     <TableCard
-      title={<span className="text-sm font-semibold text-foreground">Content performance</span>}
+      title={
+        <span className="flex items-center gap-1 text-sm font-semibold text-foreground">
+          Content performance
+          <InfoTooltip title={insight} variant="ai" />
+        </span>
+      }
       subtitle="How different parts of your site are performing"
       className={cn("min-w-0 min-h-[480px]", className)}
       action={
@@ -182,8 +188,6 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
         </div>
       }
     >
-      <div className="px-5 pt-2 text-xs text-muted-foreground">{insight}</div>
-
       {(includePatterns.length > 0 || excludePatterns.length > 0) && (
         <div className="px-5 pt-2 flex flex-wrap items-center gap-2">
           {includePatterns.map((p) => (

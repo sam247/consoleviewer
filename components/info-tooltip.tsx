@@ -9,9 +9,16 @@ interface InfoTooltipProps {
   title: string;
   className?: string;
   "aria-label"?: string;
+  variant?: "info" | "ai";
 }
 
-export function InfoTooltip({ title, className, "aria-label": ariaLabel = "Help" }: InfoTooltipProps) {
+export function InfoTooltip({
+  title,
+  className,
+  "aria-label": ariaLabel,
+  variant = "info",
+}: InfoTooltipProps) {
+  const computedAriaLabel = ariaLabel ?? (variant === "ai" ? "AI summary" : "Help");
   const [visible, setVisible] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -34,14 +41,17 @@ export function InfoTooltip({ title, className, "aria-label": ariaLabel = "Help"
       onMouseLeave={hide}
       onFocus={show}
       onBlur={hide}
-      aria-label={ariaLabel}
+      aria-label={computedAriaLabel}
       role="img"
     >
       <span
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-current text-muted-foreground text-[10px] font-medium opacity-70"
+        className={cn(
+          "inline-flex h-4 w-4 items-center justify-center rounded-full border border-current text-muted-foreground text-[10px] font-medium opacity-70",
+          variant === "ai" ? "tracking-[-0.02em]" : ""
+        )}
         aria-hidden
       >
-        i
+        {variant === "ai" ? "AI" : "i"}
       </span>
       {visible && (
         <span

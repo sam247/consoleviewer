@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAiPanel } from "@/contexts/ai-panel-context";
 import { cn } from "@/lib/utils";
+import { exportToCsv } from "@/lib/export-csv";
+import { uiResponseToText, type UiResponse } from "@/lib/ai/response-shaper";
 
 const SUGGESTED_PROMPTS = [
   "What changed most today?",
@@ -14,6 +16,7 @@ const SUGGESTED_PROMPTS = [
 export function AiPanelShell() {
   const { isOpen, panelContext, prompt, setPrompt, submitPrompt, entries, closePanel, isSubmitting } = useAiPanel();
   const panelRef = useRef<HTMLDivElement>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const contextLabel = useMemo(() => {
     if (!panelContext) return "No context";
@@ -93,8 +96,66 @@ export function AiPanelShell() {
                     <div className="rounded-md bg-accent px-2.5 py-2 text-xs text-foreground">
                       {entry.prompt.text}
                     </div>
-                    <div className="rounded-md border border-border bg-background px-2.5 py-2 text-xs text-muted-foreground whitespace-pre-wrap">
-                      {entry.response.text}
+                    <div className="rounded-md border border-border bg-background px-2.5 py-2 text-xs text-muted-foreground">
+                      {entry.response.ui ? (
+                        <div className="space-y-2">
+                          {(() => {
+                            const ui = entry.response.ui as UiResponse;
+                            return (
+                              <>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="text-xs font-semibold text-foreground">{ui.summary}</div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const text = uiResponseToText(ui);
+                                  try {
+                                    await navigator.clipboard.writeText(text);
+                                    setCopiedId(entry.id);
+                                    setTimeout(() => setCopiedId((cur) => (cur === entry.id ? null : cur)), 1200);
+                                  } catch {}
+                                }}
+                                className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                              >
+                                {copiedId === entry.id ? "Copied" : "Copy"}
+                              </button>
+                              {ui.csv && ui.csv.rows.length > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => exportToCsv(ui.csv!.rows, ui.csv!.filename)}
+                                  className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                                >
+                                  Export CSV
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {ui.sections
+                            .filter((s: UiResponse["sections"][number]) => s.items.length > 0)
+                            .map((section: UiResponse["sections"][number], idx: number) => (
+                              <div key={`${entry.id}-sec-${idx}`} className="space-y-1">
+                                {section.label ? <div className="text-[11px] text-muted-foreground">{section.label}</div> : null}
+                                <div className="space-y-1">
+                                  {section.items.map((item: UiResponse["sections"][number]["items"][number], itemIdx: number) => (
+                                    <div key={`${entry.id}-item-${idx}-${itemIdx}`}>
+                                      <div className="text-xs text-foreground">{item.primary}</div>
+                                      {item.meta.length ? (
+                                        <div className="mt-0.5 text-[11px] text-muted-foreground">{item.meta.join(" • ")}</div>
+                                      ) : null}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-wrap">{entry.response.text}</div>
+                      )}
                     </div>
                   </div>
                 ))}

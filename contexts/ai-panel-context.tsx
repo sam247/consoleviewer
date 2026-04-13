@@ -12,7 +12,8 @@ import {
 import { useDateRange } from "@/contexts/date-range-context";
 import { callMcp, createMcpCallBudgetContext } from "@/lib/mcp-client";
 import { routeAiIntent } from "@/lib/ai/tool-router";
-import { shapeMcpResponse } from "@/lib/ai/response-shaper";
+import { shapeMcpResponse, uiResponseToText, type UiResponse } from "@/lib/ai/response-shaper";
+import type { ToolName } from "@/mcp/types";
 
 export type AiPanelScope = "dashboard" | "project";
 
@@ -28,6 +29,8 @@ export interface AiPromptMessage {
   role: "user" | "assistant";
   text: string;
   timestamp: number;
+  ui?: UiResponse;
+  method?: ToolName;
 }
 
 export interface AiPanelEntry {
@@ -70,6 +73,7 @@ export function AiPanelProvider({ children }: { children: ReactNode }) {
   const [panelContext, setPanelContext] = useState<AiPanelContextData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const lastTriggerRef = useRef<HTMLElement | null>(null);
+  const cacheRef = useRef<Map<string, { ui: UiResponse; method: ToolName }>>(new Map());
 
   const openPanel = useCallback(
     (
@@ -137,18 +141,51 @@ export function AiPanelProvider({ children }: { children: ReactNode }) {
 
           const scope = ctx.scope === "project" ? "project" : "all_projects";
           const params = route.paramsBuilder({ scope, projectId: ctx.propertyId });
+          const cacheKey = JSON.stringify({ method: route.method, scope, projectId: ctx.propertyId ?? null, dateRange: "last_7_days" });
 
-          const budget = createMcpCallBudgetContext(6);
-          const res = await callMcp(route.method, params, { timeoutMs: 8000, budgetContext: budget });
+          const cached = cacheRef.current.get(cacheKey);
+          if (cached) {
+            const responseText = uiResponseToText(cached.ui);
+            setEntries((prev) =>
+              prev.map((e) =>
+                e.id === entryId
+                  ? {
+                      ...e,
+                      response: {
+                        role: "assistant",
+                        text: responseText,
+                        ui: cached.ui,
+                        method: cached.method,
+                        timestamp: Date.now(),
+                      },
+                    }
+                  : e
+              )
+            );
+            return;
+          }
 
-          const responseText = res.ok ? shapeMcpResponse(route.method, res.result) : `MCP error (${res.type}): ${res.message}`;
+          const budget = createMcpCallBudgetContext(4);
+          const res = await callMcp(route.method, params, { timeoutMs: 2000, budgetContext: budget });
+
+          let responseText: string;
+          let ui: UiResponse | undefined;
+          let method: ToolName | undefined;
+          if (res.ok) {
+            method = route.method as ToolName;
+            ui = shapeMcpResponse(method, res.result);
+            responseText = uiResponseToText(ui);
+            cacheRef.current.set(cacheKey, { ui, method });
+          } else {
+            responseText = `MCP error (${res.type}): ${res.message}`;
+          }
 
           setEntries((prev) =>
             prev.map((e) =>
               e.id === entryId
                 ? {
                     ...e,
-                    response: { role: "assistant", text: responseText, timestamp: Date.now() },
+                    response: { role: "assistant", text: responseText, ui, method, timestamp: Date.now() },
                   }
                 : e
             )

@@ -56,6 +56,17 @@ function shortenUrl(url: string): string {
   return url;
 }
 
+function limitItems(items: UiListItem[], max: number): UiListItem[] {
+  if (items.length <= max) return items;
+  const remaining = items.length - max;
+  return [...items.slice(0, max), { primary: `+ ${remaining} more`, meta: [] }];
+}
+
+function stripDrivenBy(summary: string): string {
+  const idx = summary.toLowerCase().indexOf(" driven by");
+  return idx >= 0 ? summary.slice(0, idx) : summary;
+}
+
 export function shapeMcpResponse(method: ToolName, result: unknown): UiResponse {
   switch (method) {
     case "get_movement_summary":
@@ -91,39 +102,54 @@ export function uiResponseToText(input: UiResponse): string {
 }
 
 function shapeMovementSummary(input: MovementSummaryResult): UiResponse {
-  const declines = input.declines?.slice(0, 8) ?? [];
-  const gains = input.gains?.slice(0, 8) ?? [];
-  const empty = declines.length === 0 && gains.length === 0;
-  const summary = empty ? "No significant changes found in this period" : input.summary || "Movement summary";
+  const declinesRaw = input.declines ?? [];
+  const gainsRaw = input.gains ?? [];
+  const empty = declinesRaw.length === 0 && gainsRaw.length === 0;
+  if (empty) return { summary: "No significant changes found in this period", sections: [] };
+
+  const declinesSorted = [...declinesRaw].sort((a, b) => a.clicks_change - b.clicks_change);
+  const main = declinesSorted[0];
+  const otherDeclines = declinesSorted.slice(1);
+
+  const mainItem: UiListItem | null = main
+    ? {
+        primary: main.query,
+        meta: [`pos ${main.position_from.toFixed(1)} → ${main.position_to.toFixed(1)}`, `clicks ${formatClicksChange(main.clicks_change)}`],
+      }
+    : null;
+
+  const otherDeclineItems = otherDeclines.map((r) => ({
+    primary: r.query,
+    meta: [`pos ${r.position_from.toFixed(1)} → ${r.position_to.toFixed(1)}`, `${formatClicksChange(r.clicks_change)} clicks`],
+  }));
+
+  const gainItems = gainsRaw.map((r) => ({
+    primary: r.query,
+    meta: [`pos ${r.position_from.toFixed(1)} → ${r.position_to.toFixed(1)}`, `${formatClicksChange(r.clicks_change)} clicks`],
+  }));
+
+  const summary = stripDrivenBy(input.summary || "Movement summary");
 
   return {
     summary,
     sections: [
       {
-        label: "↓ Declines",
-        items: declines.map((r) => ({
-          primary: r.query,
-          meta: [
-            `position ${formatPosChange(r.position_from, r.position_to)}`,
-            `clicks ${formatClicksChange(r.clicks_change)}`,
-          ],
-        })),
+        label: "Main driver",
+        items: mainItem ? [mainItem] : [],
+      },
+      {
+        label: "↓ Other declines",
+        items: limitItems(otherDeclineItems, 5),
       },
       {
         label: "↑ Gains",
-        items: gains.map((r) => ({
-          primary: r.query,
-          meta: [
-            `position ${formatPosChange(r.position_from, r.position_to)}`,
-            `clicks ${formatClicksChange(r.clicks_change)}`,
-          ],
-        })),
+        items: limitItems(gainItems, 5),
       },
     ],
     csv: {
       filename: "movement-summary.csv",
       rows: [
-        ...declines.map((r) => ({
+        ...declinesRaw.map((r) => ({
           direction: "decline",
           query: r.query,
           clicks_change: r.clicks_change,
@@ -131,7 +157,7 @@ function shapeMovementSummary(input: MovementSummaryResult): UiResponse {
           position_to: r.position_to,
           page: r.page ?? "",
         })),
-        ...gains.map((r) => ({
+        ...gainsRaw.map((r) => ({
           direction: "gain",
           query: r.query,
           clicks_change: r.clicks_change,
@@ -145,13 +171,14 @@ function shapeMovementSummary(input: MovementSummaryResult): UiResponse {
 }
 
 function shapeRankedChanges(input: BiggestChangesResult, title: string, slug: string): UiResponse {
-  const rows = input.data?.slice(0, 10) ?? [];
+  const rows = input.data ?? [];
   const summary = rows.length ? input.summary || title : "No significant changes found in this period";
   return {
     summary,
     sections: [
       {
-        items: rows.map((r, idx) => ({
+        items: limitItems(
+          rows.map((r, idx) => ({
           primary: `${idx + 1}. ${r.query}`,
           meta: [
             `clicks ${formatClicksChange(r.clicks_change)}`,
@@ -159,11 +186,13 @@ function shapeRankedChanges(input: BiggestChangesResult, title: string, slug: st
             `page ${r.page ? shortenUrl(r.page) : "—"}`,
           ],
         })),
+          5
+        ),
       },
     ],
     csv: {
       filename: `${slug}.csv`,
-      rows: rows.map((r) => ({
+      rows: rows.slice(0, 200).map((r) => ({
         query: r.query,
         clicks_change: r.clicks_change,
         position_from: r.position_from,
@@ -175,7 +204,7 @@ function shapeRankedChanges(input: BiggestChangesResult, title: string, slug: st
 }
 
 function shapeOpportunities(input: OpportunitiesResult): UiResponse {
-  const rows = input.data?.slice(0, 10) ?? [];
+  const rows = input.data ?? [];
   const summary = rows.length ? input.summary || "Top opportunities" : "No significant changes found in this period";
 
   return {
@@ -183,19 +212,22 @@ function shapeOpportunities(input: OpportunitiesResult): UiResponse {
     sections: [
       {
         label: "Top Opportunities",
-        items: rows.map((r, idx) => ({
-          primary: `${idx + 1}. ${r.query}`,
-          meta: [
-            `position ${r.position.toFixed(1)}`,
-            `impressions ${formatCompact(r.impressions)}`,
-            `page ${r.page ? shortenUrl(r.page) : "—"}`,
-          ],
-        })),
+        items: limitItems(
+          rows.map((r, idx) => ({
+            primary: `${idx + 1}. ${r.query}`,
+            meta: [
+              `position ${r.position.toFixed(1)}`,
+              `impressions ${formatCompact(r.impressions)}`,
+              `page ${r.page ? shortenUrl(r.page) : "—"}`,
+            ],
+          })),
+          5
+        ),
       },
     ],
     csv: {
       filename: "opportunities.csv",
-      rows: rows.map((r) => ({
+      rows: rows.slice(0, 200).map((r) => ({
         query: r.query,
         position: r.position,
         impressions: r.impressions,
@@ -207,23 +239,40 @@ function shapeOpportunities(input: OpportunitiesResult): UiResponse {
 }
 
 function shapeProjectsAttention(input: ProjectsAttentionResult): UiResponse {
-  const rows = input.data?.slice(0, 10) ?? [];
-  const summary = rows.length ? input.summary || "Projects needing attention" : "No significant changes found in this period";
+  const rows = (input.data ?? []).slice().sort((a, b) => a.traffic_change - b.traffic_change);
+  if (!rows.length) return { summary: "No significant changes found in this period", sections: [] };
+
+  const top = rows[0];
+  const rest = rows.slice(1);
+
+  const summary = input.summary || `${rows.length} projects need attention`;
 
   return {
     summary,
     sections: [
       {
-        label: "Projects Needing Attention",
-        items: rows.map((r, idx) => ({
-          primary: `${idx + 1}. ${r.project}`,
-          meta: [`traffic change ${formatSignedPercent(r.traffic_change)}`, `issue ${r.primary_issue}`],
-        })),
+        label: "Most impacted",
+        items: [
+          {
+            primary: `${top.project} (${formatSignedPercent(top.traffic_change)})`,
+            meta: [`issue ${top.primary_issue}`],
+          },
+        ],
+      },
+      {
+        label: "Also declining",
+        items: limitItems(
+          rest.map((r) => ({
+            primary: `${r.project} (${formatSignedPercent(r.traffic_change)})`,
+            meta: [`issue ${r.primary_issue}`],
+          })),
+          5
+        ),
       },
     ],
     csv: {
       filename: "projects-attention.csv",
-      rows: rows.map((r) => ({
+      rows: rows.slice(0, 200).map((r) => ({
         project: r.project,
         traffic_change: r.traffic_change,
         primary_issue: r.primary_issue,
@@ -231,4 +280,3 @@ function shapeProjectsAttention(input: ProjectsAttentionResult): UiResponse {
     },
   };
 }
-

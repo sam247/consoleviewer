@@ -6,11 +6,18 @@ import { cn } from "@/lib/utils";
 import { exportToCsv } from "@/lib/export-csv";
 import { uiResponseToText, type UiResponse } from "@/lib/ai/response-shaper";
 
-const SUGGESTED_PROMPTS = [
-  "What changed most today?",
-  "Show biggest losers and why.",
-  "Which projects need attention first?",
-  "Summarize this period in 3 bullets.",
+const DASHBOARD_PROMPTS = [
+  "Which projects need attention?",
+  "What changed across sites?",
+  "Biggest declines across projects",
+  "Top opportunities across sites",
+];
+
+const PROJECT_PROMPTS = [
+  "What changed?",
+  "Biggest losers",
+  "Biggest winners",
+  "Opportunities",
 ];
 
 export function AiPanelShell() {
@@ -20,7 +27,12 @@ export function AiPanelShell() {
 
   const contextLabel = useMemo(() => {
     if (!panelContext) return "No context";
-    return panelContext.scope === "project" ? "Project context" : "Dashboard context";
+    return panelContext.scope === "project" ? "For this site" : "Across all projects";
+  }, [panelContext]);
+
+  const suggestedPrompts = useMemo(() => {
+    if (!panelContext) return [];
+    return panelContext.scope === "project" ? PROJECT_PROMPTS : DASHBOARD_PROMPTS;
   }, [panelContext]);
 
   useEffect(() => {
@@ -140,7 +152,7 @@ export function AiPanelShell() {
                                 <div className="space-y-1">
                                   {section.items.map((item: UiResponse["sections"][number]["items"][number], itemIdx: number) => (
                                     <div key={`${entry.id}-item-${idx}-${itemIdx}`}>
-                                      <div className="text-xs text-foreground">{item.primary}</div>
+                                      <div className="text-xs font-semibold text-foreground">{item.primary}</div>
                                       {item.meta.length ? (
                                         <div className="mt-0.5 text-[11px] text-muted-foreground">{item.meta.join(" • ")}</div>
                                       ) : null}
@@ -165,7 +177,7 @@ export function AiPanelShell() {
 
           <div className="border-t border-border px-4 py-3">
             <div className="mb-2 flex flex-wrap gap-1.5">
-              {SUGGESTED_PROMPTS.map((item) => (
+              {suggestedPrompts.map((item) => (
                 <button
                   key={item}
                   type="button"

@@ -150,12 +150,12 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
       subtitle="How different parts of your site are performing"
       className={cn("min-w-0 min-h-[480px]", className)}
       action={
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2 min-w-0">
           <input
             value={patternInput}
             onChange={(e) => setPatternInput(e.target.value)}
             placeholder="Enter URL pattern or regex…"
-            className="h-9 w-[220px] max-w-[32vw] rounded-md border border-input bg-background px-3 text-sm"
+            className="h-9 w-[160px] md:w-[220px] max-w-[32vw] rounded-md border border-input bg-background px-3 text-sm"
           />
           <button
             type="button"
@@ -164,7 +164,7 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
               setPatternInput("");
             }}
             disabled={!patternInput.trim()}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+            className="h-9 rounded-md border border-input bg-background px-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
           >
             Include
           </button>
@@ -175,7 +175,7 @@ export function ContentPerformanceCard({ propertyId, className }: { propertyId: 
               setPatternInput("");
             }}
             disabled={!patternInput.trim()}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+            className="h-9 rounded-md border border-input bg-background px-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
           >
             Exclude
           </button>

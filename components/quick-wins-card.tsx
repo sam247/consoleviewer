@@ -33,6 +33,13 @@ function formatExpectedCtr(expectedCtr: number): string {
   return `(exp ~${expectedCtr.toFixed(1)}%)`;
 }
 
+function formatSignedDelta(value?: number): string {
+  if (value == null || Number.isNaN(value)) return "";
+  const v = Math.round(value);
+  if (v === 0) return "";
+  return `${v > 0 ? "+" : ""}${v}%`;
+}
+
 function priorityFromScore(score: number, p40: number, p75: number): "High" | "Medium" | "Low" {
   if (score >= p75) return "High";
   if (score >= p40) return "Medium";
@@ -213,7 +220,7 @@ export function QuickWinsCard({
               type="button"
               onClick={() => w && setOpen(true)}
               className={cn(
-                "w-full text-left px-5 py-2.5",
+                "w-full text-left px-5 py-2",
                 w ? "hover:bg-accent/40 transition-colors duration-[120ms] cursor-pointer" : "cursor-default",
                 idx === 0 && w ? "bg-accent/40" : "",
                 w && idx > 0 ? "opacity-95" : ""
@@ -223,7 +230,7 @@ export function QuickWinsCard({
               {w ? (
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className={cn("truncate text-foreground", idx === 0 ? "font-semibold" : "font-medium")}>
+                    <div className={cn("truncate text-sm text-foreground", idx === 0 ? "font-semibold" : "font-medium")}>
                       {w.query}
                     </div>
                     <div className="mt-0.5 text-xs text-muted-foreground truncate">
@@ -231,7 +238,7 @@ export function QuickWinsCard({
                     </div>
                   </div>
                   <div className="shrink-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       {labelForSignal(w.signal) ? (
                         <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
                           {labelForSignal(w.signal)}
@@ -262,7 +269,7 @@ export function QuickWinsCard({
         onClose={() => setOpen(false)}
         title="Low hanging fruit"
         subtitle="Queries with strong visibility but underperforming clicks"
-        className="max-w-4xl"
+        className="max-w-3xl"
         actions={
           <button
             type="button"
@@ -272,10 +279,13 @@ export function QuickWinsCard({
                   query: w.query,
                   position: w.position,
                   impressions: w.impressions,
+                  impressionsChangePercent: w.impressionsChangePercent,
                   clicks: w.clicks,
+                  clicksChangePercent: w.clicksChangePercent,
                   ctr: w.ctr,
                   score: w.score,
-                  signal: w.signal,
+                  signal: labelForSignal(w.signal) || "Low CTR",
+                  priority: w.priority,
                   expectedCtr: w.expectedCtr,
                   ctrGap: w.ctrGap,
                 })),
@@ -326,10 +336,10 @@ export function QuickWinsCard({
             <div className="px-4 py-6 text-center text-xs text-muted-foreground">No opportunities found.</div>
           ) : (
             modeFiltered.map((w, idx) => (
-              <div key={w.query} className={cn("px-4 py-2.5", idx === 0 ? "bg-accent/40" : "")}> 
+              <div key={w.query} className={cn("px-4 py-2", idx === 0 ? "bg-accent/40" : "")}> 
                 <div className={cn("text-sm text-foreground truncate", idx === 0 ? "font-semibold" : "font-medium")}>{w.query}</div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {w.ctr.toFixed(1)}% CTR {formatExpectedCtr(w.expectedCtr)} • Pos {w.position.toFixed(1)} • {formatCompact(w.impressions)} impr • Score {Math.round(w.score).toLocaleString()}
+                  {w.ctr.toFixed(1)}% CTR ↓ {formatExpectedCtr(w.expectedCtr)} • Gap {w.ctrGap.toFixed(1)}% • Pos {w.position.toFixed(1)} • Impr {formatCompact(w.impressions)}{formatSignedDelta(w.impressionsChangePercent) ? ` (${formatSignedDelta(w.impressionsChangePercent)})` : ""} • Clicks {formatCompact(w.clicks)}{formatSignedDelta(w.clicksChangePercent) ? ` (${formatSignedDelta(w.clicksChangePercent)})` : ""} • Score {Math.round(w.score).toLocaleString()}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
                   Signal: {labelForSignal(w.signal) || "Low CTR"} • Priority: {w.priority}

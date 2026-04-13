@@ -41,11 +41,10 @@ export function DashboardCard({
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>
           {subtitle ? <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p> : null}
         </div>
-        {action ? <div className="ml-auto shrink-0">{action}</div> : null}
+        {action ? <div className="ml-auto min-w-0">{action}</div> : null}
       </div>
       <div className={cn("min-w-0", contentClassName)}>{children}</div>
       {footer ? <div className="border-t border-border px-5 py-2.5 flex justify-center">{footer}</div> : null}
     </section>
   );
 }
-

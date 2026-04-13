@@ -115,7 +115,7 @@ function buildSignals(summary: Summary | null, newQueries: DataTableRow[], lostQ
 }
 
 function buildEmailPrompt(ctx: EmailContext, variant: "default" | "long"): string {
-  const summaryTarget = variant === "long" ? "260–320" : "200–240";
+  const summaryTarget = variant === "long" ? "160–180" : "120–160";
   const structureLine = "Structure (no headings): overall change → drivers → opportunities → close.";
 
   return `Generate a concise SEO performance email update.
@@ -142,27 +142,30 @@ ${[...ctx.signals.slice(0, 3), ...ctx.opportunities.slice(0, 2)].map((s) => `- $
 
 Rules:
 - Write in natural, human tone (not AI-like)
+- Write as if this is being sent directly to a client without editing
 - Avoid generic phrases
 - Avoid repeating raw metrics without explanation
 - Focus on the most likely cause of change (CTR, rankings, or demand)
 - Use at least one specific example from the signals or opportunities
+- Do not repeat the same cause or insight in multiple ways
+- Do not suggest actions, fixes, or improvements
+- Only describe what is happening and where opportunity exists
 - No emojis
 - No fluff
-- No recommendations or advice
 - Do not use phrases like “the data suggests” or “there is a need to”
 - Avoid filler phrases like “interestingly”, “it appears”, “this suggests”
 - Keep sentences tight and direct
-- Minimum 200 words (do not go below 200)
+- Target 120–180 words. Only go longer if needed.
 
 ${structureLine}
 
 Formatting rules:
-- Do not include section headers like "Performance summary", "Key drivers", or "Opportunities"
+- Do not include section headers
 - Write as a natural flowing email using short paragraphs
 - Use natural paragraph breaks instead of headings
 - After “Hi,” add this exact line on its own: Here’s a quick update on performance.
 - Ensure there is one blank line between “Hi,” and that line
-- If there are 3+ distinct drivers (wins/losses/opportunities), use a short bullet list for drivers only
+- If there are 3 or more clearly different causes (e.g. a loss, a gain, and a CTR issue), use a short bullet list for drivers only
 - Otherwise keep everything in paragraph form
 
 Output:
@@ -272,7 +275,7 @@ export function EmailSummaryGenerator({
       const res = await fetch("/api/ai/email-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, maxTokens: nextVariant === "long" ? 700 : 520 }),
+        body: JSON.stringify({ prompt, maxTokens: nextVariant === "long" ? 420 : 360 }),
       });
       if (!res.ok) {
         const msg = (await res.json().catch(() => null)) as unknown;

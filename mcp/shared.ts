@@ -91,6 +91,17 @@ export function buildDefaultWindow(latestDate: string): DateWindow {
   };
 }
 
+export function buildRangeWindow(latestDate: string, range: "last_7_days"): DateWindow {
+  if (range === "last_7_days") {
+    const currentEnd = latestDate;
+    const currentStart = addDays(currentEnd, -6);
+    const priorEnd = addDays(currentStart, -1);
+    const priorStart = addDays(priorEnd, -6);
+    return { latestDate, currentStart, currentEnd, priorStart, priorEnd };
+  }
+  return buildDefaultWindow(latestDate);
+}
+
 export function normalizeSiteLabel(siteUrl: string, gscSiteUrl: string | null): string {
   const raw = gscSiteUrl || siteUrl;
   if (!raw) return "unknown";

@@ -9,7 +9,12 @@ export type ToolName =
   | "get_keyword_clusters"
   | "explain_traffic_drop"
   | "explain_traffic_change"
-  | "suggest_content";
+  | "suggest_content"
+  | "get_movement_summary"
+  | "get_biggest_losers"
+  | "get_biggest_winners"
+  | "get_opportunities"
+  | "get_projects_attention";
 
 export type SiteScopedToolInput = {
   site: string;
@@ -18,6 +23,17 @@ export type SiteScopedToolInput = {
 };
 
 export type ListToolsInput = Record<string, never> | undefined;
+
+export type AnalyticsScope = "project" | "all_projects";
+export type AnalyticsDateRange = "last_7_days";
+export type AnalyticsCompareMode = "previous_period";
+
+export type AnalyticsToolInput = {
+  scope: AnalyticsScope;
+  project_id?: string;
+  date_range: AnalyticsDateRange;
+  compare: AnalyticsCompareMode;
+};
 
 export type ToolInputMap = {
   list_tools: ListToolsInput;
@@ -29,6 +45,54 @@ export type ToolInputMap = {
   explain_traffic_drop: SiteScopedToolInput;
   explain_traffic_change: SiteScopedToolInput;
   suggest_content: SiteScopedToolInput;
+  get_movement_summary: AnalyticsToolInput;
+  get_biggest_losers: AnalyticsToolInput;
+  get_biggest_winners: AnalyticsToolInput;
+  get_opportunities: AnalyticsToolInput;
+  get_projects_attention: AnalyticsToolInput;
+};
+
+export type MovementRow = {
+  query: string;
+  clicks_change: number;
+  position_from: number;
+  position_to: number;
+  page: string | null;
+};
+
+export type MovementSummaryResult = {
+  summary: string;
+  declines: MovementRow[];
+  gains: MovementRow[];
+};
+
+export type BiggestChangesResult = {
+  summary: string;
+  data: MovementRow[];
+};
+
+export type OpportunityRow = {
+  query: string;
+  position: number;
+  impressions: number;
+  ctr: number;
+  page: string | null;
+};
+
+export type OpportunitiesResult = {
+  summary: string;
+  data: OpportunityRow[];
+};
+
+export type ProjectAttentionRow = {
+  project: string;
+  traffic_change: number;
+  primary_issue: string;
+};
+
+export type ProjectsAttentionResult = {
+  summary: string;
+  data: ProjectAttentionRow[];
 };
 
 export type SiteOverviewItem = {
@@ -171,6 +235,11 @@ export type ToolResponseMap = {
   explain_traffic_drop: TrafficDropExplanationResult;
   explain_traffic_change: TrafficChangeExplanationResult;
   suggest_content: SuggestedContentResult;
+  get_movement_summary: MovementSummaryResult;
+  get_biggest_losers: BiggestChangesResult;
+  get_biggest_winners: BiggestChangesResult;
+  get_opportunities: OpportunitiesResult;
+  get_projects_attention: ProjectsAttentionResult;
 };
 
 export type ToolResponse = ToolResponseMap[ToolName];

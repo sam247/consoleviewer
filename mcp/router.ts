@@ -9,6 +9,11 @@ import { getQueryOpportunitiesTool } from "@/mcp/tools/query-opportunities";
 import { getRecentChangesTool } from "@/mcp/tools/recent-changes";
 import { getSiteOverviewTool } from "@/mcp/tools/site-overview";
 import { suggestContentTool } from "@/mcp/tools/suggest-content";
+import { getMovementSummaryTool } from "@/mcp/tools/movement-summary";
+import { getBiggestLosersTool } from "@/mcp/tools/biggest-losers";
+import { getBiggestWinnersTool } from "@/mcp/tools/biggest-winners";
+import { getOpportunitiesTool } from "@/mcp/tools/opportunities-v2";
+import { getProjectsAttentionTool } from "@/mcp/tools/projects-attention";
 import type { RPCRequest, RPCResponse, ToolContext, ToolDefinition, ToolDescriptor, ToolName } from "@/mcp/types";
 
 export const JSON_RPC_ERRORS = {
@@ -66,6 +71,11 @@ Object.assign(tools, {
   explain_traffic_drop: explainTrafficDropTool,
   explain_traffic_change: explainTrafficChangeTool,
   suggest_content: suggestContentTool,
+  get_movement_summary: getMovementSummaryTool,
+  get_biggest_losers: getBiggestLosersTool,
+  get_biggest_winners: getBiggestWinnersTool,
+  get_opportunities: getOpportunitiesTool,
+  get_projects_attention: getProjectsAttentionTool,
 });
 
 export function listTools(): ToolDescriptor[] {

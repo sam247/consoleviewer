@@ -12,6 +12,7 @@ import {
 import { useDateRange } from "@/contexts/date-range-context";
 import { callMcp, createMcpCallBudgetContext } from "@/lib/mcp-client";
 import { routeAiIntent } from "@/lib/ai/tool-router";
+import { shapeMcpResponse } from "@/lib/ai/response-shaper";
 
 export type AiPanelScope = "dashboard" | "project";
 
@@ -53,17 +54,6 @@ interface AiPanelContextValue {
 const AiPanelContext = createContext<AiPanelContextValue | null>(null);
 
 const MAX_ENTRIES = 20;
-
-function formatAssistantText(input: unknown): string {
-  if (typeof input === "string") return input;
-  try {
-    const json = JSON.stringify(input, null, 2);
-    if (!json) return "No data.";
-    return json.length > 6000 ? json.slice(0, 6000) + "\n…" : json;
-  } catch {
-    return "No data.";
-  }
-}
 
 function buildPlaceholderResponse(prompt: string, context: AiPanelContextData | null): string {
   const clean = prompt.trim();
@@ -128,26 +118,10 @@ export function AiPanelProvider({ children }: { children: ReactNode }) {
             throw new Error("No context available. Open the AI panel from a page with data.");
           }
 
-          if (ctx.scope !== "project" || !ctx.propertyId) {
-            const responseText =
-              "Project-only for now. Open AI Insights from a specific project to ask about traffic, opportunities, pages, or recent changes.";
-            setEntries((prev) =>
-              prev.map((e) =>
-                e.id === entryId
-                  ? {
-                      ...e,
-                      response: { role: "assistant", text: responseText, timestamp: Date.now() },
-                    }
-                  : e
-              )
-            );
-            return;
-          }
-
           const route = routeAiIntent(nextPrompt);
           if (!route) {
             const responseText =
-              "Try: \"site overview\", \"recent changes\", \"page performance\", \"keyword opportunities\", \"traffic drop\", \"content ideas\", or \"keyword clusters\".";
+              "Try: \"what changed\", \"losers\", \"winners\", \"opportunities\", or \"projects needing attention\".";
             setEntries((prev) =>
               prev.map((e) =>
                 e.id === entryId
@@ -161,18 +135,13 @@ export function AiPanelProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          const params = {
-            ...route.paramsBuilder({ propertyId: ctx.propertyId }),
-            startDate: ctx.startDate,
-            endDate: ctx.endDate,
-          };
+          const scope = ctx.scope === "project" ? "project" : "all_projects";
+          const params = route.paramsBuilder({ scope, projectId: ctx.propertyId });
 
           const budget = createMcpCallBudgetContext(6);
           const res = await callMcp(route.method, params, { timeoutMs: 8000, budgetContext: budget });
 
-          const responseText = res.ok
-            ? formatAssistantText(res.result)
-            : `MCP error (${res.type}): ${res.message}`;
+          const responseText = res.ok ? shapeMcpResponse(route.method, res.result) : `MCP error (${res.type}): ${res.message}`;
 
           setEntries((prev) =>
             prev.map((e) =>

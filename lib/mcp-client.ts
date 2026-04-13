@@ -7,7 +7,12 @@ export type AllowedAiMcpMethod =
   | "get_page_performance"
   | "get_keyword_clusters"
   | "explain_traffic_change"
-  | "suggest_content";
+  | "suggest_content"
+  | "get_movement_summary"
+  | "get_biggest_losers"
+  | "get_biggest_winners"
+  | "get_opportunities"
+  | "get_projects_attention";
 
 const ALLOWED_METHODS = new Set<AllowedAiMcpMethod>([
   "get_site_overview",
@@ -17,6 +22,11 @@ const ALLOWED_METHODS = new Set<AllowedAiMcpMethod>([
   "get_keyword_clusters",
   "explain_traffic_change",
   "suggest_content",
+  "get_movement_summary",
+  "get_biggest_losers",
+  "get_biggest_winners",
+  "get_opportunities",
+  "get_projects_attention",
 ]);
 
 export type McpCallBudgetContext = {

@@ -187,9 +187,11 @@ async function fetchFromGscApi(
       const prior = priorRes.rows[0];
       const clicks = current?.clicks ?? 0;
       const impressions = current?.impressions ?? 0;
+      const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
       const position = current?.position ?? undefined;
       const priorClicks = prior?.clicks ?? 0;
       const priorImpressions = prior?.impressions ?? 0;
+      const priorCtr = priorImpressions > 0 ? (priorClicks / priorImpressions) * 100 : 0;
       const priorPosition = prior?.position ?? undefined;
       const daily = (dailyRes.rows ?? [])
         .map((r) => ({
@@ -205,6 +207,8 @@ async function fetchFromGscApi(
         impressions,
         clicksChangePercent: priorClicks > 0 ? Math.round(((clicks - priorClicks) / priorClicks) * 100) : 0,
         impressionsChangePercent: priorImpressions > 0 ? Math.round(((impressions - priorImpressions) / priorImpressions) * 100) : 0,
+        ctr,
+        ctrChangePercent: priorCtr > 0 ? Math.round(((ctr - priorCtr) / priorCtr) * 100) : 0,
         position,
         positionChangePercent:
           position != null && priorPosition != null && priorPosition > 0
@@ -223,6 +227,8 @@ async function fetchFromGscApi(
         impressions: 0,
         clicksChangePercent: 0,
         impressionsChangePercent: 0,
+        ctr: 0,
+        ctrChangePercent: 0,
         trackedKeywordCount: trackedKeywordStatsByProperty.get(prop.id)?.trackedKeywordCount ?? 0,
         avgTrackedRank: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRank,
         avgTrackedRankDelta: trackedKeywordStatsByProperty.get(prop.id)?.avgTrackedRankDelta,
@@ -285,10 +291,12 @@ async function fetchFromDb(
     const prior = priorRes.rows[0];
     const clicks = cur ? Number(cur.clicks) || 0 : 0;
     const impressions = cur ? Number(cur.impressions) || 0 : 0;
+    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
     const positionSum = cur ? Number(cur.position_sum) || 0 : 0;
     const position = impressions > 0 ? positionSum / impressions : undefined;
     const priorClicks = prior ? Number(prior.clicks) || 0 : 0;
     const priorImpressions = prior ? Number(prior.impressions) || 0 : 0;
+    const priorCtr = priorImpressions > 0 ? (priorClicks / priorImpressions) * 100 : 0;
     const priorPositionSum = prior ? Number(prior.position_sum) || 0 : 0;
     const priorPosition = priorImpressions > 0 ? priorPositionSum / priorImpressions : undefined;
 
@@ -343,6 +351,12 @@ async function fetchFromDb(
             livePriorImpressions > 0
               ? Math.round(((liveImpressions - livePriorImpressions) / livePriorImpressions) * 100)
               : 0,
+          ctr: liveImpressions > 0 ? (liveClicks / liveImpressions) * 100 : 0,
+          ctrChangePercent: (() => {
+            const curCtr = liveImpressions > 0 ? (liveClicks / liveImpressions) * 100 : 0;
+            const prevCtr = livePriorImpressions > 0 ? (livePriorClicks / livePriorImpressions) * 100 : 0;
+            return prevCtr > 0 ? Math.round(((curCtr - prevCtr) / prevCtr) * 100) : 0;
+          })(),
           position: livePosition,
           positionChangePercent:
             livePosition != null && livePriorPosition != null && livePriorPosition > 0
@@ -369,6 +383,8 @@ async function fetchFromDb(
         priorImpressions > 0
           ? Math.round(((impressions - priorImpressions) / priorImpressions) * 100)
           : 0,
+      ctr,
+      ctrChangePercent: priorCtr > 0 ? Math.round(((ctr - priorCtr) / priorCtr) * 100) : 0,
       position,
       positionChangePercent:
         position != null && priorPosition != null && priorPosition > 0

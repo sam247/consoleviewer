@@ -34,6 +34,8 @@ export interface SiteOverviewMetrics {
   impressions: number;
   clicksChangePercent: number;
   impressionsChangePercent: number;
+  ctr?: number;
+  ctrChangePercent?: number;
   position?: number;
   positionChangePercent?: number;
   /** Mock only: avg tracked rank for dashboard rank strip variants */

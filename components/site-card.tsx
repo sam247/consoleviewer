@@ -95,7 +95,7 @@ const PositionIcon = ({ className }: { className?: string }) => (
 
 function CardMetricsRow({ metrics }: { metrics: SiteOverviewMetrics }) {
   const { series } = useSparkSeries();
-  const ctrPct = metrics.impressions > 0 ? (metrics.clicks / metrics.impressions) * 100 : 0;
+  const ctrPct = metrics.ctr != null ? metrics.ctr : metrics.impressions > 0 ? (metrics.clicks / metrics.impressions) * 100 : 0;
   const position = metrics.position;
   const positionChange = metrics.positionChangePercent;
 
@@ -148,7 +148,9 @@ function CardMetricsRow({ metrics }: { metrics: SiteOverviewMetrics }) {
             <CTRIcon className="text-muted-foreground shrink-0" />
             <span className={valueClass}>{ctrPct.toFixed(2)}%</span>
           </div>
-          <div className="min-h-[1rem]" />
+          <div className="min-h-[1rem] flex items-center justify-start">
+            {metrics.ctrChangePercent != null && <ChangeBadge value={metrics.ctrChangePercent} size="xs" />}
+          </div>
         </>
       ),
     });

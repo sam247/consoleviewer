@@ -885,9 +885,11 @@ export function TrendChart({
                 color: string;
                 value: string;
                 isPrevious: boolean;
+                dataKey: string;
+                type?: string;
               };
 
-              const rows: TooltipRow[] = payload
+              const rowsRaw: TooltipRow[] = payload
                 .filter((p) => {
                   const item = p as Record<string, unknown>;
                   if (item.value == null || item.name == null) return false;
@@ -929,8 +931,26 @@ export function TrendChart({
                     color: (item.color as string) || "var(--muted-foreground)",
                     value: formatted,
                     isPrevious,
+                    dataKey,
+                    type: typeof item.type === "string" ? item.type : undefined,
                   };
                 });
+
+              const rowsByKey = new Map<string, TooltipRow>();
+              for (const r of rowsRaw) {
+                const existing = rowsByKey.get(r.dataKey);
+                if (!existing) {
+                  rowsByKey.set(r.dataKey, r);
+                  continue;
+                }
+                const existingIsLine = existing.type === "line";
+                const nextIsLine = r.type === "line";
+                if (!existingIsLine && nextIsLine) {
+                  rowsByKey.set(r.dataKey, r);
+                }
+              }
+
+              const rows = Array.from(rowsByKey.values());
 
               const order: Record<string, number> = { clicks: 1, impressions: 2, ctr: 3, position: 4 };
               rows.sort((a: TooltipRow, b: TooltipRow) => {

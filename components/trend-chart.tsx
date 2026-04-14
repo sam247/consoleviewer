@@ -7,6 +7,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -67,7 +68,10 @@ interface TrendChartProps {
   margin?: { top?: number; right?: number; left?: number; bottom?: number };
   className?: string;
   annotations?: ChartAnnotation[];
+  onRangeSelect?: (startDate: string, endDate: string) => void;
+  selectedRange?: { startDate: string; endDate: string } | null;
 }
+
 
 const CHART_CLICKS = "var(--chart-clicks)";
 const CHART_IMPRESSIONS = "var(--chart-impressions)";
@@ -320,10 +324,14 @@ export function TrendChart({
   margin: marginOverride,
   className,
   annotations = [],
+  onRangeSelect,
+  selectedRange,
 }: TrendChartProps) {
   const { series } = useSparkSeries();
   const [lockedFocus, setLockedFocus] = useState<SparkSeriesKey | null>(null);
   const [hoverFocus, setHoverFocus] = useState<SparkSeriesKey | null>(null);
+  const [dragStart, setDragStart] = useState<string | null>(null);
+  const [dragEnd, setDragEnd] = useState<string | null>(null);
   const chartMargin = buildChartMargin(height, marginOverride);
   const effectiveEngines = selectedEngines;
   const usePerEngine = (analyticsSeries != null || dataByEngine != null) && effectiveEngines.length > 0;
@@ -720,10 +728,49 @@ export function TrendChart({
     ? { ...chartMargin, right: (chartMargin.right ?? 6) + yAxisWidth }
     : chartMargin;
 
+  const activeRange = dragStart && dragEnd ? (dragStart <= dragEnd ? { startDate: dragStart, endDate: dragEnd } : { startDate: dragEnd, endDate: dragStart }) : null;
+  const highlightRange = activeRange ?? selectedRange ?? null;
+
   return (
     <ChartPlot height={height} minHeight={height} className={className}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={marginWithDualAxis}>
+        <LineChart
+          data={chartData}
+          margin={marginWithDualAxis}
+          onMouseDown={(e) => {
+            if (!onRangeSelect) return;
+            const label = e?.activeLabel;
+            if (typeof label === "string") {
+              setDragStart(label);
+              setDragEnd(label);
+            }
+          }}
+          onMouseMove={(e) => {
+            if (!onRangeSelect) return;
+            if (!dragStart) return;
+            const label = e?.activeLabel;
+            if (typeof label === "string") setDragEnd(label);
+          }}
+          onMouseUp={() => {
+            if (!onRangeSelect) return;
+            if (!dragStart || !dragEnd) {
+              setDragStart(null);
+              setDragEnd(null);
+              return;
+            }
+            const startDate = dragStart <= dragEnd ? dragStart : dragEnd;
+            const endDate = dragStart <= dragEnd ? dragEnd : dragStart;
+            setDragStart(null);
+            setDragEnd(null);
+            onRangeSelect(startDate, endDate);
+          }}
+          onMouseLeave={() => {
+            if (!onRangeSelect) return;
+            if (!dragStart) return;
+            setDragStart(null);
+            setDragEnd(null);
+          }}
+        >
           <defs>
             <linearGradient id="trend-fill-clicks" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={CHART_CLICKS} stopOpacity={0.12} />
@@ -733,6 +780,16 @@ export function TrendChart({
 
           <CartesianGrid {...CHART_GRID_PROPS} strokeOpacity={0.2} />
           <ReferenceLine y={0} stroke="var(--border)" strokeOpacity={0.55} />
+          {highlightRange ? (
+            <ReferenceArea
+              x1={highlightRange.startDate}
+              x2={highlightRange.endDate}
+              fill="var(--accent)"
+              fillOpacity={0.12}
+              strokeOpacity={0}
+              ifOverflow="extendDomain"
+            />
+          ) : null}
           {annotations.map((a) => (
             <ReferenceLine
               key={a.id ?? a.date + a.label}

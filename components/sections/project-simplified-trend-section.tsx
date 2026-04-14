@@ -52,9 +52,13 @@ async function fetchPriorDaily(propertyId: string, startDate: string, endDate: s
 export function ProjectSimplifiedTrendSection({
   data,
   propertyId,
+  selectedTableRange,
+  onSelectTableRange,
 }: {
   data: PropertyData;
   propertyId: string;
+  selectedTableRange?: { startDate: string; endDate: string } | null;
+  onSelectTableRange?: (startDate: string, endDate: string) => void;
 }) {
   const [compareToPrior, setCompareToPrior] = useState(false);
   const [compareMode, setCompareMode] = useState<CompareMode>("previous_period");
@@ -142,6 +146,8 @@ export function ProjectSimplifiedTrendSection({
         compareToPrior={compareToPrior}
         normalizeWhenMultiSeries={false}
         autoNormalizeMixedScales={false}
+        onRangeSelect={onSelectTableRange}
+        selectedRange={selectedTableRange ?? null}
       />
       {microInsight ? <div className="mt-2 text-xs text-muted-foreground">{microInsight}</div> : null}
     </ChartFrame>

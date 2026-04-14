@@ -56,6 +56,7 @@ export default function SiteDetailPage({
   } = usePropertyData(propertyId);
 
   const [contentMounted, setContentMounted] = useState(false);
+  const [tableRange, setTableRange] = useState<{ startDate: string; endDate: string } | null>(null);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setContentMounted(true));
@@ -168,7 +169,12 @@ export default function SiteDetailPage({
             <div className={cn("space-y-8 transition-opacity duration-200", contentMounted ? "opacity-100" : "opacity-0")}>
               <>
                 <div id="overview-performance">
-                  <ProjectSimplifiedTrendSection data={data} propertyId={propertyId} />
+                  <ProjectSimplifiedTrendSection
+                    data={data}
+                    propertyId={propertyId}
+                    selectedTableRange={tableRange}
+                    onSelectTableRange={(startDate, endDate) => setTableRange({ startDate, endDate })}
+                  />
                 </div>
                 <div id="overview-ai-led">
                   <ProjectSimplifiedTrackersSection propertyId={propertyId} queriesRows={queriesRows} siteUrl={siteUrl} />
@@ -181,7 +187,13 @@ export default function SiteDetailPage({
                     <QuickWinsCard queries={queriesRows} />
                   </div>
                 </div>
-                <ProjectSimplifiedChangeTablesSection propertyId={propertyId} queriesRows={queriesRows} pagesRows={pagesRows} />
+                <ProjectSimplifiedChangeTablesSection
+                  propertyId={propertyId}
+                  queriesRows={queriesRows}
+                  pagesRows={pagesRows}
+                  selectedRange={tableRange}
+                  onClearSelectedRange={() => setTableRange(null)}
+                />
                 <CustomizeDashboardCard propertyId={propertyId} />
               </>
             </div>

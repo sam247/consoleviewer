@@ -14,6 +14,8 @@ import {
   TABLE_ROW_CLASS,
 } from "@/components/ui/table-styles";
 import { PositionSparkline } from "@/components/position-sparkline";
+import { TableDataViewModal } from "@/components/table-data-view-modal";
+import { useDateRange } from "@/contexts/date-range-context";
 
 export type TrendFilter = "all" | "growing" | "decaying" | "new" | "lost" | "highImprLowCtr" | "longForm" | "conversational";
 
@@ -48,6 +50,8 @@ export interface DataTableProps {
   expandInModal?: boolean;
   /** Optional: query key -> daily position array for sparkline column (queries table only) */
   sparklines?: Record<string, number[]>;
+  /** Optional: enables full dataset (10k+) Data view modal for queries/pages */
+  dataView?: { propertyId: string; dimension: "query" | "page"; exportFilename: string; siteLabel?: string };
 }
 
 const INITIAL_VISIBLE = 10;
@@ -107,6 +111,7 @@ interface DataTableViewProps {
   onExportCsv?: () => void;
   /** When set, "View X more" calls this instead of onToggleExpand (opens full-view modal) */
   onOpenFullView?: () => void;
+  onOpenDataView?: () => void;
   sparklines?: Record<string, number[]>;
 }
 
@@ -129,6 +134,7 @@ function DataTableView({
   onRowClick,
   onExportCsv,
   onOpenFullView,
+  onOpenDataView,
   sparklines,
 }: DataTableViewProps) {
   const hasSparklines = Boolean(sparklines && Object.keys(sparklines).length > 0);
@@ -218,10 +224,29 @@ function DataTableView({
                 )}
               </div>
             )}
+            {onOpenDataView && (
+              <button
+                type="button"
+                onClick={onOpenDataView}
+                className="rounded border border-border bg-muted/20 px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-[120ms] min-h-[40px]"
+              >
+                Data view
+              </button>
+            )}
           </div>
           <div className="md:hidden">
             <MobileOverflowMenu buttonLabel={`${title} controls`} panelClassName="min-w-[240px]">
               <div className="flex flex-col gap-2">
+                {onOpenDataView && (
+                  <button
+                    type="button"
+                    data-menu-close="true"
+                    onClick={onOpenDataView}
+                    className="rounded border border-border bg-muted/20 px-2 py-2 text-xs text-left min-h-[40px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    Data view
+                  </button>
+                )}
                 {showFilterBar && (
                   <div className="grid grid-cols-2 gap-1">
                     {filterOptions.map((t) => (
@@ -427,6 +452,7 @@ export function DataTable({
   onExportCsv,
   expandInModal = true,
   sparklines,
+  dataView,
 }: DataTableProps) {
   const [internalTrend, setInternalTrend] = useState<TrendFilter>("all");
   const trend = controlledTrend ?? internalTrend;
@@ -436,6 +462,8 @@ export function DataTable({
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [expanded, setExpanded] = useState(false);
   const [fullViewOpen, setFullViewOpen] = useState(false);
+  const [dataViewOpen, setDataViewOpen] = useState(false);
+  const { startDate, endDate, priorStartDate, priorEndDate } = useDateRange();
 
   const hasPosition = useMemo(() => rows.some((r) => r.position != null), [rows]);
 
@@ -511,6 +539,7 @@ export function DataTable({
         onRowClick={onRowClick}
         onExportCsv={onExportCsv}
         onOpenFullView={expandInModal ? () => setFullViewOpen(true) : undefined}
+        onOpenDataView={dataView ? () => setDataViewOpen(true) : undefined}
         sparklines={sparklines}
       />
       <TableFullViewModal
@@ -521,6 +550,21 @@ export function DataTable({
         hasPosition={hasPosition}
         onExportCsv={onExportCsv}
       />
+      {dataView ? (
+        <TableDataViewModal
+          open={dataViewOpen}
+          onClose={() => setDataViewOpen(false)}
+          title={title}
+          propertyId={dataView.propertyId}
+          dimension={dataView.dimension}
+          startDate={startDate}
+          endDate={endDate}
+          priorStartDate={priorStartDate}
+          priorEndDate={priorEndDate}
+          exportFilename={dataView.exportFilename}
+          siteLabel={dataView.siteLabel}
+        />
+      ) : null}
     </>
   );
 }

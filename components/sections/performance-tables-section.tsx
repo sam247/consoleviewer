@@ -217,6 +217,16 @@ export function PerformanceTablesSection({
             onTrendFilterChange={setQueriesTrendFilter}
             showFilter
             onExportCsv={() => exportToCsv(queriesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "queries", startDate, endDate))}
+            dataView={
+              propertyId
+                ? {
+                    propertyId,
+                    dimension: "query",
+                    exportFilename: formatExportFilename(siteSlug, "queries-data-view", startDate, endDate),
+                    siteLabel: siteSlug,
+                  }
+                : undefined
+            }
             sparklines={querySparklines}
           />
         </div>
@@ -229,6 +239,16 @@ export function PerformanceTablesSection({
             onTrendFilterChange={setPagesTrendFilter}
             showFilter
             onExportCsv={() => exportToCsv(pagesRowsForTable as unknown as Record<string, string | number | undefined>[], formatExportFilename(siteSlug, "pages", startDate, endDate))}
+            dataView={
+              propertyId
+                ? {
+                    propertyId,
+                    dimension: "page",
+                    exportFilename: formatExportFilename(siteSlug, "pages-data-view", startDate, endDate),
+                    siteLabel: siteSlug,
+                  }
+                : undefined
+            }
             onRowClick={propertyId ? (row) => setPageDetailUrl(row.key) : undefined}
           />
           {(contentFilterPattern.trim() || contentGroups.length > 0) && (() => {

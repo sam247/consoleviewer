@@ -879,11 +879,29 @@ export function TrendChart({
                 day: "numeric",
               });
 
-              const rows = payload
-                .filter((p) => p.value != null && p.name != null)
+              type TooltipRow = {
+                key: SparkSeriesKey | null;
+                label: string;
+                color: string;
+                value: string;
+                isPrevious: boolean;
+              };
+
+              const rows: TooltipRow[] = payload
+                .filter((p) => {
+                  const item = p as Record<string, unknown>;
+                  if (item.value == null || item.name == null) return false;
+                  const type = item.type;
+                  const dataKey = item.dataKey;
+                  if (type === "area" && dataKey === "clicks") return false;
+                  return true;
+                })
                 .map((p) => {
-                  const rawName = String(p.name);
+                  const item = p as Record<string, unknown>;
+                  const rawName = String(item.name);
                   const nameLower = rawName.toLowerCase();
+                  const rawDataKey = item.dataKey;
+                  const dataKey = rawDataKey != null ? String(rawDataKey) : "";
                   const key: SparkSeriesKey | null = nameLower.includes("click")
                     ? "clicks"
                     : nameLower.includes("impr")
@@ -893,8 +911,8 @@ export function TrendChart({
                         : nameLower.includes("position")
                           ? "position"
                           : null;
-                  const isPrior = nameLower.includes("prior");
-                  const n = typeof p.value === "number" ? p.value : Number(p.value ?? 0);
+                  const isPrevious = dataKey.toLowerCase().endsWith("prior") || nameLower.includes("(previous)");
+                  const n = typeof item.value === "number" ? item.value : Number(item.value ?? 0);
                   const formatted =
                     useNormalized || nameLower.includes("_norm_")
                       ? `${(n * 100).toFixed(1)}%`
@@ -903,25 +921,23 @@ export function TrendChart({
                         : key === "position"
                           ? n.toFixed(1)
                           : compactNumber(n);
-                  const labelText =
-                    useNormalized && rawName.startsWith("_norm_")
-                      ? rawName.replace(/^_norm_/, "")
-                      : rawName;
+                  const labelText = useNormalized && rawName.startsWith("_norm_") ? rawName.replace(/^_norm_/, "") : rawName;
+                  const labelFinal = isPrevious && !labelText.toLowerCase().includes("previous") ? `${labelText} (previous)` : labelText;
                   return {
                     key,
-                    label: isPrior ? `${labelText} (prior)` : labelText,
-                    color: (p.color as string) || "var(--muted-foreground)",
+                    label: labelFinal,
+                    color: (item.color as string) || "var(--muted-foreground)",
                     value: formatted,
-                    isPrior,
+                    isPrevious,
                   };
                 });
 
               const order: Record<string, number> = { clicks: 1, impressions: 2, ctr: 3, position: 4 };
-              rows.sort((a, b) => {
+              rows.sort((a: TooltipRow, b: TooltipRow) => {
                 const aO = a.key ? order[a.key] ?? 9 : 9;
                 const bO = b.key ? order[b.key] ?? 9 : 9;
                 if (aO !== bO) return aO - bO;
-                if (a.isPrior !== b.isPrior) return a.isPrior ? 1 : -1;
+                if (a.isPrevious !== b.isPrevious) return a.isPrevious ? 1 : -1;
                 return a.label.localeCompare(b.label);
               });
 
@@ -929,13 +945,13 @@ export function TrendChart({
                 <div style={tooltipStyle}>
                   <div className="text-foreground font-medium">{dateLabel}</div>
                   <div className="mt-2 space-y-0.5">
-                    {rows.map((r) => {
+                    {rows.map((r: TooltipRow) => {
                       const focused = r.key ? isFocused(r.key) : false;
-                      const shouldBold = focusKey ? focused && !r.isPrior : false;
+                      const shouldBold = focusKey ? focused && !r.isPrevious : false;
                       return (
                         <div key={`${r.label}-${r.value}`} className={cn("flex items-center justify-between gap-3", shouldBold ? "font-semibold" : "")}> 
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="h-2 w-2 rounded" style={{ background: r.color, opacity: r.isPrior ? 0.5 : 1 }} />
+                            <span className="h-2 w-2 rounded" style={{ background: r.color, opacity: r.isPrevious ? 0.5 : 1 }} />
                             <span className="truncate text-muted-foreground">{r.label}</span>
                           </div>
                           <div className="tabular-nums text-foreground">{r.value}</div>
@@ -1007,7 +1023,7 @@ export function TrendChart({
                   strokeDasharray="2 2"
                   strokeOpacity={metricOpacity(s.key, true)}
                   dot={false}
-                  name={`${s.label} (prior)`}
+                  name={`${s.label} (previous)`}
                 />
               ))
             : null}
@@ -1045,7 +1061,7 @@ export function TrendChart({
                   dot={false}
                   strokeDasharray="2 2"
                   strokeOpacity={metricOpacity("clicks", true)}
-                  name="Clicks (prior)"
+                  name="Clicks (previous)"
                   {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "left" })}
                   isAnimationActive={false}
                 />
@@ -1077,7 +1093,7 @@ export function TrendChart({
                   dot={false}
                   strokeDasharray="2 2"
                   strokeOpacity={metricOpacity("impressions", true)}
-                  name="Impressions (prior)"
+                  name="Impressions (previous)"
                   {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "right" })}
                   isAnimationActive={false}
                 />
@@ -1361,6 +1377,7 @@ export function Sparkline({
           )}
           <Tooltip
             cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}
+            isAnimationActive={false}
             content={({ active, label, payload }) => (
               <SparklineTooltip
                 active={active}
@@ -1389,6 +1406,7 @@ export function Sparkline({
                 dot={false}
                 activeDot={{ r: 3, strokeWidth: 1.5, stroke: "var(--surface)", fill: s.stroke }}
                 strokeOpacity={s.strokeOpacity ?? 0.9}
+                isAnimationActive={false}
               />
             );
           })}

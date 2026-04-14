@@ -887,15 +887,18 @@ export function TrendChart({
                 isPrevious: boolean;
                 dataKey: string;
                 type?: string;
+                stroke?: string;
+                hasFill?: boolean;
               };
 
               const rowsRaw: TooltipRow[] = payload
                 .filter((p) => {
                   const item = p as Record<string, unknown>;
                   if (item.value == null || item.name == null) return false;
-                  const type = item.type;
-                  const dataKey = item.dataKey;
-                  if (type === "area" && dataKey === "clicks") return false;
+                  const dataKey = item.dataKey != null ? String(item.dataKey) : "";
+                  const stroke = item.stroke != null ? String(item.stroke) : undefined;
+                  const hasFill = item.fill != null;
+                  if (dataKey === "clicks" && (stroke === "none" || hasFill)) return false;
                   return true;
                 })
                 .map((p) => {
@@ -924,7 +927,18 @@ export function TrendChart({
                           ? n.toFixed(1)
                           : compactNumber(n);
                   const labelText = useNormalized && rawName.startsWith("_norm_") ? rawName.replace(/^_norm_/, "") : rawName;
-                  const labelFinal = isPrevious && !labelText.toLowerCase().includes("previous") ? `${labelText} (previous)` : labelText;
+                  const labelKey = labelText.toLowerCase().trim();
+                  const baseLabel =
+                    labelKey === "clicks"
+                      ? "Clicks"
+                      : labelKey === "impressions"
+                        ? "Impressions"
+                        : labelKey === "ctr"
+                          ? "CTR"
+                          : labelKey === "avg position" || labelKey === "position"
+                            ? "Avg position"
+                            : labelText;
+                  const labelFinal = isPrevious && !baseLabel.toLowerCase().includes("previous") ? `${baseLabel} (previous)` : baseLabel;
                   return {
                     key,
                     label: labelFinal,
@@ -933,6 +947,8 @@ export function TrendChart({
                     isPrevious,
                     dataKey,
                     type: typeof item.type === "string" ? item.type : undefined,
+                    stroke: typeof item.stroke === "string" ? item.stroke : undefined,
+                    hasFill: item.fill != null,
                   };
                 });
 
@@ -943,10 +959,16 @@ export function TrendChart({
                   rowsByKey.set(r.dataKey, r);
                   continue;
                 }
-                const existingIsLine = existing.type === "line";
-                const nextIsLine = r.type === "line";
-                if (!existingIsLine && nextIsLine) {
+                const existingHasStroke = existing.stroke != null && existing.stroke !== "none";
+                const nextHasStroke = r.stroke != null && r.stroke !== "none";
+                if (!existingHasStroke && nextHasStroke) {
                   rowsByKey.set(r.dataKey, r);
+                  continue;
+                }
+                if (existingHasStroke === nextHasStroke) {
+                  const existingPref = existing.type === "line" ? 1 : 0;
+                  const nextPref = r.type === "line" ? 1 : 0;
+                  if (nextPref > existingPref) rowsByKey.set(r.dataKey, r);
                 }
               }
 
@@ -1006,6 +1028,7 @@ export function TrendChart({
                   connectNulls={s.engine === "bing"}
                   dot={false}
                   name={s.label}
+                  isAnimationActive={false}
                   {...(useDualAxisPerEngine
                     ? { yAxisId: s.metric === "impressions" ? "right" : "left" }
                     : useDualAxisBySource
@@ -1044,6 +1067,7 @@ export function TrendChart({
                   strokeOpacity={metricOpacity(s.key, true)}
                   dot={false}
                   name={`${s.label} (previous)`}
+                  isAnimationActive={false}
                 />
               ))
             : null}
@@ -1056,6 +1080,7 @@ export function TrendChart({
                 fill="url(#trend-fill-clicks)"
                 stroke="none"
                 fillOpacity={metricOpacity("clicks")}
+                isAnimationActive={false}
                 {...((useDualAxis || useMultiAxisMixed) && { yAxisId: "left" })}
               />
                 <Line

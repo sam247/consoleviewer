@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useState, useTransition } from "r
 import { exportToCsv } from "@/lib/export-csv";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { useDataViewRows, type DataViewDimension } from "@/hooks/use-data-view";
+import { useSavedViews, type SavedView } from "@/hooks/use-saved-views";
 import { DataViewFilters, type DataViewFilterState } from "@/components/data-view/data-view-filters";
 import { DataViewVirtualTable } from "@/components/data-view/data-view-virtual-table";
 import {
@@ -52,6 +53,10 @@ export function TableDataViewModal({
   const [smartInput, setSmartInput] = useState("");
   const [smartLoading, setSmartLoading] = useState(false);
 
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+  const [saveName, setSaveName] = useState("");
+  const [saveOpen, setSaveOpen] = useState(false);
+
   const deferredText = useDeferredValue(filter.text);
   const deferredTextMode = useDeferredValue(filter.textMode);
   const deferredPosMin = useDeferredValue(filter.posMin);
@@ -61,6 +66,13 @@ export function TableDataViewModal({
   const deferredClicksMin = useDeferredValue(filter.clicksMin);
 
   const { sortKey, sortDir, onSort } = useTableSort<DataViewSortKey>("clicks", "desc");
+
+  const savedViews = useSavedViews({ propertyId, dimension, enabled: open });
+  const views = useMemo(() => savedViews.query.data ?? [], [savedViews.query.data]);
+  const activeView: SavedView | null = useMemo(() => {
+    if (!activeViewId) return null;
+    return views.find((v) => v.id === activeViewId) ?? null;
+  }, [activeViewId, views]);
 
   const query = useDataViewRows({
     enabled: open,
@@ -162,6 +174,35 @@ export function TableDataViewModal({
     }
   };
 
+  const buildStateForSave = () => ({
+    ...filter,
+  });
+
+  const applySavedState = (state: unknown) => {
+    if (!state || typeof state !== "object") return;
+    const candidate =
+      "filter" in (state as Record<string, unknown>) &&
+      (state as Record<string, unknown>).filter &&
+      typeof (state as Record<string, unknown>).filter === "object"
+        ? ((state as Record<string, unknown>).filter as Record<string, unknown>)
+        : (state as Record<string, unknown>);
+
+    const next: Partial<DataViewFilterState> = {
+      textMode:
+        candidate.textMode === "contains" || candidate.textMode === "not_contains"
+          ? (candidate.textMode as DataViewFilterState["textMode"])
+          : undefined,
+      text: typeof candidate.text === "string" ? candidate.text : undefined,
+      posMin: typeof candidate.posMin === "string" ? candidate.posMin : undefined,
+      posMax: typeof candidate.posMax === "string" ? candidate.posMax : undefined,
+      ctrMax: typeof candidate.ctrMax === "string" ? candidate.ctrMax : undefined,
+      impressionsMin: typeof candidate.impressionsMin === "string" ? candidate.impressionsMin : undefined,
+      clicksMin: typeof candidate.clicksMin === "string" ? candidate.clicksMin : undefined,
+    };
+
+    startTransition(() => setFilter((prev) => ({ ...prev, ...next })));
+  };
+
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
     return [...filtered].sort((a, b) => {
@@ -234,6 +275,111 @@ export function TableDataViewModal({
                   {smartLoading ? "…" : "Apply"}
                 </button>
               </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">Saved views</span>
+                  <select
+                    value={activeViewId ?? ""}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      if (!id) {
+                        setActiveViewId(null);
+                        return;
+                      }
+                      const v = views.find((x) => x.id === id);
+                      setActiveViewId(id);
+                      if (v) applySavedState(v.state);
+                    }}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-[11px]"
+                    disabled={savedViews.query.isLoading}
+                  >
+                    <option value="">None</option>
+                    {views.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {activeView ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground">Active: {activeView.name}</span>
+                    <button
+                      type="button"
+                      className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                      onClick={() => {
+                        const next = window.prompt("Rename view", activeView.name);
+                        if (!next) return;
+                        void savedViews.rename.mutateAsync({ id: activeView.id, name: next.trim() });
+                      }}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      type="button"
+                      className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                      onClick={() => {
+                        if (!window.confirm(`Delete view “${activeView.name}”?`)) return;
+                        void savedViews.remove.mutateAsync({ id: activeView.id }).then(() => setActiveViewId(null));
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ) : null}
+
+                <div className="ml-auto flex items-center gap-2">
+                  {saveOpen ? (
+                    <>
+                      <input
+                        value={saveName}
+                        onChange={(e) => setSaveName(e.target.value)}
+                        placeholder="View name"
+                        className="h-8 w-[180px] rounded-md border border-input bg-background px-2 text-[11px]"
+                      />
+                      <button
+                        type="button"
+                        disabled={!saveName.trim() || savedViews.create.isPending}
+                        onClick={() => {
+                          const name = saveName.trim();
+                          if (!name) return;
+                          void savedViews.create
+                            .mutateAsync({ name, state: buildStateForSave() })
+                            .then((v) => {
+                              setActiveViewId(v.id);
+                              setSaveOpen(false);
+                              setSaveName("");
+                            });
+                        }}
+                        className="text-[11px] text-muted-foreground hover:text-foreground underline disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSaveOpen(false);
+                          setSaveName("");
+                        }}
+                        className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setSaveOpen(true)}
+                      className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                    >
+                      Save view
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <DataViewFilters
                 dimension={dimension}
                 loaded={allRows.length}

@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useDateRange } from "@/contexts/date-range-context";
 import { callMcp, createMcpCallBudgetContext } from "@/lib/mcp-client";
-import { routeAiIntent } from "@/lib/ai/tool-router";
+import { routeAiIntent, routeFromIntent } from "@/lib/ai/tool-router";
 import { shapeMcpResponse, uiResponseToText, type UiResponse } from "@/lib/ai/response-shaper";
 import type { ToolName } from "@/mcp/types";
 
@@ -122,10 +122,40 @@ export function AiPanelProvider({ children }: { children: ReactNode }) {
             throw new Error("No context available. Open the AI panel from a page with data.");
           }
 
-          const route = routeAiIntent(nextPrompt);
+          let route = routeAiIntent(nextPrompt);
           if (!route) {
-            const responseText =
-              "Try: \"what changed\", \"losers\", \"winners\", \"opportunities\", or \"projects needing attention\".";
+            try {
+              const controller = new AbortController();
+              const t = setTimeout(() => controller.abort(), 1200);
+              const res = await fetch("/api/ai/intent-router", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ input: nextPrompt }),
+                signal: controller.signal,
+              });
+              clearTimeout(t);
+              const payload = (await res.json().catch(() => null)) as { intent?: string } | null;
+              const intent = payload?.intent;
+              if (
+                intent === "movement_summary" ||
+                intent === "biggest_losers" ||
+                intent === "biggest_winners" ||
+                intent === "opportunities" ||
+                intent === "projects_attention" ||
+                intent === "not_found_pages"
+              ) {
+                route = routeFromIntent(intent);
+              }
+            } catch {}
+          }
+
+          if (!route) {
+            const clean = nextPrompt.toLowerCase();
+            const looksLike404 =
+              clean.includes("404") || clean.includes("not found") || clean.includes("status code");
+            const responseText = looksLike404
+              ? "I can’t export 404s yet — we don’t currently ingest HTTP status codes or crawl errors. I can help with movement, winners, losers, opportunities, or projects needing attention."
+              : "I can help with movement, biggest losers, biggest winners, opportunities, or projects needing attention. Try one of those, or use the suggested chips.";
             setEntries((prev) =>
               prev.map((e) =>
                 e.id === entryId

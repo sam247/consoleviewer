@@ -53,7 +53,8 @@ export function validateToolParams(method: ToolName, input: unknown): boolean {
     method === "get_biggest_losers" ||
     method === "get_biggest_winners" ||
     method === "get_opportunities" ||
-    method === "get_projects_attention"
+    method === "get_projects_attention" ||
+    method === "get_404_pages"
   ) {
     return validateAnalyticsParams(input);
   }
@@ -75,7 +76,8 @@ export function getInputSchemaForMethod(method: ToolName): Record<string, unknow
     method === "get_biggest_losers" ||
     method === "get_biggest_winners" ||
     method === "get_opportunities" ||
-    method === "get_projects_attention"
+    method === "get_projects_attention" ||
+    method === "get_404_pages"
   ) {
     return {
       type: "object",

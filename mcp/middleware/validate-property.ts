@@ -9,7 +9,8 @@ function isAnalyticsTool(method: ToolName): boolean {
     method === "get_biggest_losers" ||
     method === "get_biggest_winners" ||
     method === "get_opportunities" ||
-    method === "get_projects_attention"
+    method === "get_projects_attention" ||
+    method === "get_404_pages"
   );
 }
 

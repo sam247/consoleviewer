@@ -14,6 +14,7 @@ import { getBiggestLosersTool } from "@/mcp/tools/biggest-losers";
 import { getBiggestWinnersTool } from "@/mcp/tools/biggest-winners";
 import { getOpportunitiesTool } from "@/mcp/tools/opportunities-v2";
 import { getProjectsAttentionTool } from "@/mcp/tools/projects-attention";
+import { get404PagesTool } from "@/mcp/tools/not-found-pages";
 import type { RPCRequest, RPCResponse, ToolContext, ToolDefinition, ToolDescriptor, ToolName } from "@/mcp/types";
 
 export const JSON_RPC_ERRORS = {
@@ -76,6 +77,7 @@ Object.assign(tools, {
   get_biggest_winners: getBiggestWinnersTool,
   get_opportunities: getOpportunitiesTool,
   get_projects_attention: getProjectsAttentionTool,
+  get_404_pages: get404PagesTool,
 });
 
 export function listTools(): ToolDescriptor[] {

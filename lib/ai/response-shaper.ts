@@ -3,6 +3,7 @@ import type {
   MovementSummaryResult,
   OpportunitiesResult,
   ProjectsAttentionResult,
+  NotFoundPagesResult,
   ToolName,
 } from "@/mcp/types";
 
@@ -79,6 +80,8 @@ export function shapeMcpResponse(method: ToolName, result: unknown): UiResponse 
       return shapeOpportunities(result as OpportunitiesResult);
     case "get_projects_attention":
       return shapeProjectsAttention(result as ProjectsAttentionResult);
+    case "get_404_pages":
+      return shapeNotFoundPages(result as NotFoundPagesResult);
     default:
       return { summary: "No significant changes found in this period", sections: [] };
   }
@@ -276,6 +279,44 @@ function shapeProjectsAttention(input: ProjectsAttentionResult): UiResponse {
         project: r.project,
         traffic_change: r.traffic_change,
         primary_issue: r.primary_issue,
+      })),
+    },
+  };
+}
+
+function shapeNotFoundPages(input: NotFoundPagesResult): UiResponse {
+  const rows = input.data ?? [];
+  if (!rows.length) return { summary: "No significant changes found in this period", sections: [] };
+
+  return {
+    summary: input.summary || `${rows.length} likely 404 pages found`,
+    sections: [
+      {
+        label: "Likely 404 pages",
+        items: limitItems(
+          rows.map((r) => ({
+            primary: shortenUrl(r.page),
+            meta: [
+              `clicks ${formatCompact(r.clicks)} (${formatClicksChange(r.clicks_change)})`,
+              `impr ${formatCompact(r.impressions)} (${formatClicksChange(r.impressions_change)})`,
+              `ctr ${r.ctr.toFixed(2)}%`,
+              `pos ${r.position.toFixed(1)}`,
+            ],
+          })),
+          10
+        ),
+      },
+    ],
+    csv: {
+      filename: "404-pages.csv",
+      rows: rows.slice(0, 5000).map((r) => ({
+        page: r.page,
+        clicks: r.clicks,
+        impressions: r.impressions,
+        ctr: r.ctr,
+        position: r.position,
+        clicks_change: r.clicks_change,
+        impressions_change: r.impressions_change,
       })),
     },
   };

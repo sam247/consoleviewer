@@ -12,7 +12,8 @@ export type AllowedAiMcpMethod =
   | "get_biggest_losers"
   | "get_biggest_winners"
   | "get_opportunities"
-  | "get_projects_attention";
+  | "get_projects_attention"
+  | "get_404_pages";
 
 const ALLOWED_METHODS = new Set<AllowedAiMcpMethod>([
   "get_site_overview",
@@ -27,6 +28,7 @@ const ALLOWED_METHODS = new Set<AllowedAiMcpMethod>([
   "get_biggest_winners",
   "get_opportunities",
   "get_projects_attention",
+  "get_404_pages",
 ]);
 
 export type McpCallBudgetContext = {

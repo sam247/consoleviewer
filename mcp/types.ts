@@ -14,7 +14,8 @@ export type ToolName =
   | "get_biggest_losers"
   | "get_biggest_winners"
   | "get_opportunities"
-  | "get_projects_attention";
+  | "get_projects_attention"
+  | "get_404_pages";
 
 export type SiteScopedToolInput = {
   site: string;
@@ -50,6 +51,7 @@ export type ToolInputMap = {
   get_biggest_winners: AnalyticsToolInput;
   get_opportunities: AnalyticsToolInput;
   get_projects_attention: AnalyticsToolInput;
+  get_404_pages: AnalyticsToolInput;
 };
 
 export type MovementRow = {
@@ -93,6 +95,21 @@ export type ProjectAttentionRow = {
 export type ProjectsAttentionResult = {
   summary: string;
   data: ProjectAttentionRow[];
+};
+
+export type NotFoundPageRow = {
+  page: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+  clicks_change: number;
+  impressions_change: number;
+};
+
+export type NotFoundPagesResult = {
+  summary: string;
+  data: NotFoundPageRow[];
 };
 
 export type SiteOverviewItem = {
@@ -240,6 +257,7 @@ export type ToolResponseMap = {
   get_biggest_winners: BiggestChangesResult;
   get_opportunities: OpportunitiesResult;
   get_projects_attention: ProjectsAttentionResult;
+  get_404_pages: NotFoundPagesResult;
 };
 
 export type ToolResponse = ToolResponseMap[ToolName];

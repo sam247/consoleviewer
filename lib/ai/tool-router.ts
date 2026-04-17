@@ -10,7 +10,8 @@ type Intent =
   | "biggest_losers"
   | "biggest_winners"
   | "opportunities"
-  | "projects_attention";
+  | "projects_attention"
+  | "not_found_pages";
 
 type IntentRule = {
   intent: Intent;
@@ -44,6 +45,11 @@ const RULES: IntentRule[] = [
     method: "get_projects_attention",
     phrases: ["projects", "attention", "which sites"],
   },
+  {
+    intent: "not_found_pages",
+    method: "get_404_pages",
+    phrases: ["404", "not found", "page not found"],
+  },
 ];
 
 function score(text: string, phrases: string[]): number {
@@ -64,6 +70,20 @@ function pickIntent(question: string): IntentRule | null {
     if (!best || s > best.score) best = { rule, score: s };
   }
   return best?.rule ?? null;
+}
+
+export function routeFromIntent(intent: Intent): AiToolRoute | null {
+  const picked = RULES.find((r) => r.intent === intent) ?? null;
+  if (!picked) return null;
+  return {
+    method: picked.method,
+    paramsBuilder: ({ scope, projectId }) => ({
+      scope,
+      ...(scope === "project" && projectId ? { project_id: projectId } : {}),
+      date_range: "last_7_days",
+      compare: "previous_period",
+    }),
+  };
 }
 
 export function routeAiIntent(question: string): AiToolRoute | null {
